@@ -1,7 +1,8 @@
 -- | Definition of the most basic elements in an ISOBMFF file /boxes/.
 -- See Chapter 4 in the standard document. Since the standard
 module Data.ByteString.IsoBaseFileFormat.Boxes.Box
-       (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X) where
+       (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
+       where
 
 import Data.Bits as X
 import Data.ByteString.Builder as X
@@ -200,6 +201,7 @@ instance IsBoxContent FourCc where
   boxBuilder (FourCc (a,b,c,d)) = putW a <> putW b <> putW c <> putW d
     where putW = word8 . fromIntegral . fromEnum
 
+-- | TODO REMOVE/REPLACE
 newtype UUID =
   UUID String -- TODO
   deriving (Show,Eq)
