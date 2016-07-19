@@ -18,9 +18,9 @@ type FullBox t = Extend FullBoxHeader t
 
 -- | Create a 'FullBox' from a 'FourCc' 'StdType' and the nested box content.
 fullBox
-  :: IsBoxContent c
-  => FourCc -> BoxVersion -> BoxFlags 24 -> c -> Box (FullBox c)
-fullBox fcc ver fs cnt = box fcc (Extend (FullBoxHeader ver fs) cnt)
+ :: (KnownSymbol t, IsBoxContent c)
+ => BoxVersion -> BoxFlags 24 -> c -> Box (StdType t)
+fullBox ver fs cnt = box (Extend (FullBoxHeader ver fs) cnt)
 
 -- | The additional header with /version/ and /branding/ information
 data FullBoxHeader =
@@ -91,15 +91,16 @@ instance KnownNat bits => Bits (BoxFlags bits) where
 
 -- * /The/ actual Box
 -- | Create a 'Box' with a 'StdType' 'FourCc' type.
-box :: IsBoxContent c
-    => FourCc -> c -> Box c
-box fcc cnt = Box (StdType fcc) cnt
+box :: forall t c.
+       (KnownSymbol t,IsBoxContent c)
+    => c -> Box ('StdType t)
+box cnt = Box (StdType (fromString (symbolVal (Proxy :: Proxy t)))) cnt
 
 -- | A type that wraps the contents of a box and the box type.
-data Box a where
-        Box :: IsBoxContent c => BoxType -> c -> Box c
+data Box (b :: BoxType Symbol) where
+        Box :: IsBoxContent c => BoxType FourCc -> c -> Box t
 
-instance IsBoxContent a => IsBoxContent (Box a) where
+instance IsBoxContent (Box t) where
   boxBuilder b@(Box t cnt) = sFix <> tFix <> sExt <> tExt <> boxBuilder cnt
     where s = boxSize b
           sFix = boxBuilder s
@@ -116,7 +117,7 @@ instance IsBoxContent a => IsBoxContent (Box a) where
 -- large (64bit size, 17*32bit type).
 data BoxHeader =
   BoxHeader BoxSize
-            BoxType
+            (BoxType FourCc)
   deriving (Show,Eq)
 
 -- | The size of the box. If the size is limited to a (fixed) value, it can be
@@ -172,15 +173,28 @@ instance IsBoxContent BoxSizeExtension where
        else 8
 
 -- | A box has a /type/, this is the value level representation for the box type.
-data BoxType
+data BoxType fourcc
   =
     -- | `FourCc` can be used as @boxType@ in `Box`, standard four letter character
     -- code, e.g. @ftyp@
-    StdType FourCc
+    StdType fourcc
   |
     -- | CustomBoxType defines custom @boxType@s in `Box`es.
-    CustomBoxType UUID
+    CustomBoxType String
   deriving (Show,Eq)
+
+-- | Type level 'BoxType' matching 'StdType'
+data StdType t
+
+-- | Type level 'BoxType' matching 'CustomBoxType'
+data CustomBoxType t
+
+-- | Convert type level box types to values
+class IsBoxType (t :: k) where
+  toBoxType :: proxy t -> BoxType FourCc
+
+instance KnownSymbol t => IsBoxType (StdType t) where
+  toBoxType _ = StdType (fromString (symbolVal (Proxy :: Proyx t)))
 
 -- | A type containin a printable four letter character code.
 newtype FourCc =
@@ -201,29 +215,24 @@ instance IsBoxContent FourCc where
   boxBuilder (FourCc (a,b,c,d)) = putW a <> putW b <> putW c <> putW d
     where putW = word8 . fromIntegral . fromEnum
 
--- | TODO REMOVE/REPLACE
-newtype UUID =
-  UUID String -- TODO
-  deriving (Show,Eq)
-
-instance IsBoxContent BoxType where
+instance IsBoxContent (BoxType FourCc) where
   boxSize _ = boxSize (FourCc undefined)
   boxBuilder t =
     case t of
       StdType x -> boxBuilder x
-      CustomBoxType (UUID u) -> boxBuilder (FourCc ('u','u','i','d'))
+      CustomBoxType u -> boxBuilder (FourCc ('u','u','i','d'))
 
 -- | When using custom types extra data must be written after the extra size
 -- information. Since the box type and the optional custom box type are not
 -- guaranteed to be consequtive, this type handles the /second/ part seperately.
 data BoxTypeExtension =
-  BoxTypeExtension BoxType
+  BoxTypeExtension (BoxType FourCc)
 
 instance IsBoxContent BoxTypeExtension where
   boxSize (BoxTypeExtension (StdType _)) = 0
   boxSize (BoxTypeExtension (CustomBoxType _)) = 16 * 4
   boxBuilder (BoxTypeExtension (StdType _)) = mempty
-  boxBuilder (BoxTypeExtension (CustomBoxType (UUID str))) =
+  boxBuilder (BoxTypeExtension (CustomBoxType str)) =
     mconcat (map (word8 . fromIntegral . fromEnum)
                  (take (16 * 4) str) ++
              repeat (word8 0))
