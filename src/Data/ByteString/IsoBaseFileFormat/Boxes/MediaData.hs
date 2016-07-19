@@ -4,11 +4,13 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import qualified Data.ByteString as B
 
 -- | Media data box
-type MediaDataBox = Box MediaData
+type MediaDataBox = Box "mdat"
+
+instance BoxRules "mdat"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
-mdatBox :: B.ByteString -> MediaDataBox
-mdatBox = box "mdat" . MediaData
+mediaDataBox :: MediaData -> MediaDataBox
+mediaDataBox = box
 
 -- | Contents of a 'mdat' box are just bytes from a strict 'ByteString'
 newtype MediaData =

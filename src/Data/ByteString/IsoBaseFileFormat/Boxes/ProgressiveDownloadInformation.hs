@@ -4,11 +4,14 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | A Box with progressive download information
-type ProgressiveDownloadInformationBox = Box (FullBox ProgressiveDownloadInformation)
+type ProgressiveDownloadInformationBox = Box "pdin"
+
+instance BoxRules "pdin"
 
 -- | Create a 'pdin' box
-pdinBox :: ProgressiveDownloadInformation -> ProgressiveDownloadInformationBox
-pdinBox = fullBox "pdin" (BoxVersion 0) zeroBits
+progressiveDownloadInformationBox
+  :: ProgressiveDownloadInformation -> ProgressiveDownloadInformationBox
+progressiveDownloadInformationBox = fullBox (BoxVersion 0) zeroBits
 
 -- | Information for progressive media data download/playback encompasses the
 -- delay for initial playback and expected download bit rate.

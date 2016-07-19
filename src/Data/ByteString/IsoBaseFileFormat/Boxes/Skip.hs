@@ -3,16 +3,14 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Skip where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | A filler box, the contents are skipped
-type SkipBox = Box Skip
+type SkipBox = Box "skip"
+
+instance BoxRules "skip" where
+  type RestrictedTo "skip" = 'Nothing
 
 -- | Create a 'SkipBox' with a given size.
-skipBox :: Int -> SkipBox
-skipBox = box "skip" . Skip
-
--- | Create a 'SkipBox' with a given size. Same es 'skipBox' but with the fourcc
--- 'free' - the standard allows both 'skip' and 'free'.
-freeBox :: Int -> SkipBox
-freeBox = box "free" . Skip
+skipBox :: Skip -> SkipBox
+skipBox = box
 
 -- | Contents of a 'skip' box are just any number of filler bytes.
 newtype Skip =

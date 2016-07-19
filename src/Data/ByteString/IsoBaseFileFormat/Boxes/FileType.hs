@@ -3,12 +3,14 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.FileType where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | File Type Box
-type FileTypeBox = Box ('StdType "ftyp")
+type FileTypeBox = Box "ftyp"
+
+instance BoxRules "ftyp"
 
 -- | Create a 'FileTypeBox' from a major brand, a minor version and a list of
 -- compatible brands
-ftypBox :: FileType -> FileTypeBox
-ftypBox = box 
+fileTypeBox :: FileType -> FileTypeBox
+fileTypeBox = box
 
 -- | Contents of a 'ftyp' box are some 'FourCc' /brands/ and a version.
 data FileType =

@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 -- | Definition of the most basic elements in an ISOBMFF file /boxes/.
 -- See Chapter 4 in the standard document. Since the standard
 module Data.ByteString.IsoBaseFileFormat.Boxes.Box
@@ -11,15 +13,141 @@ import Data.Proxy as X
 import Data.Word as X
 import GHC.TypeLits as X
 import Data.String
+import Data.Type.Equality
+
+import Data.Type.List
+import Data.Type.Bool
+import Data.Type.Equality
+import GHC.Exts
+
+-- * Type-safe box composition
+
+-- | A box that may contain nested boxes. The nested boxes are type checked to
+-- be valid in the container box. This results in a container-box with only
+-- valid and all required child boxes. This is checked by the type system.
+boxes :: forall ts t.
+         (IsBoxType t,ValidBoxes t ts)
+      => Boxes t ts -> Box t
+boxes = box
+
+-- | A container-box with child boxes.
+data Boxes (cont :: x) (boxTypes :: [x]) where
+        Parent :: IsBoxType t => Box t -> Boxes t '[]
+        (:-) :: IsBoxType t => Boxes c ts -> Box t -> Boxes c (t ': ts)
+
+infixl 2 :-
+
+-- | A container box that contains only the parent, and no children (yet).
+type Container parent = Boxes parent '[]
+
+-- | An operator for @Parent parent :- firstChild@
+(^-) :: (IsBoxType t, IsBoxType u) => Box t -> Box u -> Boxes t '[u]
+parent ^- firstChild = Parent parent :- firstChild
+
+infixl 2 ^-
+
+-- | To be nested into a box, 'Boxes' must be an instance of 'IsBoxContent'.
+-- This instance concatenates all nested boxes.
+instance (IsBoxType t,ValidBoxes t bs) => IsBoxContent (Boxes t bs) where
+  boxSize bs = boxSize (UnverifiedBoxes bs)
+  boxBuilder bs = boxBuilder (UnverifiedBoxes bs)
+
+-- | An internal wrapper type around 'Boxes' for the 'IsBoxContent' instance.
+-- Since the 'IsBoxContent' instance recursivly deconstructs a 'Boxes' the
+-- constraints for the validity 'ValidBoxes' cannot be asserted. To circumvent
+-- this the 'IsBoxContent' instance for 'Boxes' delegates to the instance of
+-- 'UnverifiedBoxes', which has no 'ValidBoxes' constraint in the instance head.
+newtype UnverifiedBoxes t ts = UnverifiedBoxes (Boxes t ts)
+
+instance IsBoxContent (UnverifiedBoxes t bs) where
+  boxSize (UnverifiedBoxes (Parent c)) = boxSize c
+  boxSize (UnverifiedBoxes (bs :- b)) = boxSize (UnverifiedBoxes bs) + boxSize b
+  boxBuilder (UnverifiedBoxes (Parent c)) = boxBuilder c
+  boxBuilder (UnverifiedBoxes (bs :- b)) = boxBuilder (UnverifiedBoxes bs) <> boxBuilder b
+
+-- * Type level consistency checks
+
+-- | A type-level check that uses 'BoxRules' to check that the contained boxes
+-- are standard conform.
+type ValidBoxes t ts =
+  ( AllAllowedIn t ts ~ 'True
+  , HasAllRequiredBoxes t (RequiredNestedBoxes t) ts ~ 'True
+  , CheckTopLevelOk t ~ 'True)
+
+-- | A type function to check that all nested boxes are allowed in the
+-- container.
+type family AllAllowedIn (container :: k) (boxes :: [k]) :: Bool
+     where
+        AllAllowedIn c '[] = 'True
+        AllAllowedIn c (t ': ts) =
+          If (CheckAllowedIn c t (RestrictedTo t))
+             (AllAllowedIn c ts)
+             (TypeError (NotAllowedMsg c t))
+
+type family CheckAllowedIn (c :: k) (t :: k) (a :: Maybe [k]) :: Bool where
+  CheckAllowedIn c t 'Nothing   = 'True
+  CheckAllowedIn c t ('Just rs) = Find c rs
+
+
+-- | The custom (type-) error message for 'AllAllowedIn'.
+type NotAllowedMsg c t =
+  Text "Boxes of type: "
+  :<>: ShowType c
+  :<>: Text " may not contain boxes of type "
+  :<>: ShowType t
+  :$$: Text "Valid containers for "
+  :<>: ShowType t
+  :<>: Text " boxes are: "
+  :$$: ShowType (RestrictedTo t)
+  :$$: ShowType t
+  :<>: If (IsTopLevelBox c)
+          (Text " boxes may appear top-level in a file.")
+          (Text " boxes must be nested.")
+
+
+-- | Check that all required boxes have been nested.
+type family HasAllRequiredBoxes (c :: k) (req :: [k]) (nested :: [k]) :: Bool
+     where
+       HasAllRequiredBoxes c '[] nested = 'True
+       HasAllRequiredBoxes c (r ': restReq) nested =
+         If (Find r nested)
+            (HasAllRequiredBoxes c restReq nested)
+            (TypeError (MissingRequired c r nested))
+
+type IsSubSet base sub = Intersection base sub == sub
+
+-- | The custom (type-) error message for 'HasAllRequiredBoxes'.
+type MissingRequired c r nested =
+  Text "Boxes of type: "
+  :<>: ShowType c
+  :<>: Text " require these nested boxes: "
+  :<>: ShowType (RequiredNestedBoxes c)
+  :$$: Text "but only these box types were nested: "
+  :<>: ShowType nested
+  :$$: Text "e.g. this type is missing: "
+  :<>: ShowType r
+
+-- | Check that the box may appear top-level.
+type family CheckTopLevelOk (t :: k) :: Bool where
+   CheckTopLevelOk t = IsTopLevelBox t || TypeError (NotTopLevenError t)
+
+-- | The custom (type-) error message indicating that a box may not appear
+-- top-level.
+type NotTopLevenError c =
+       Text "Boxes of type "
+  :<>: ShowType c
+  :<>: Text " MUST be nested inside boxes of these types: "
+  :$$: ShowType (RestrictedTo c)
 
 -- * Common box /combinators/
+
 -- | A `Box` with /version/ and /branding/ information
 type FullBox t = Extend FullBoxHeader t
 
 -- | Create a 'FullBox' from a 'FourCc' 'StdType' and the nested box content.
 fullBox
- :: (KnownSymbol t, IsBoxContent c)
- => BoxVersion -> BoxFlags 24 -> c -> Box (StdType t)
+ :: (IsBoxType t, IsBoxContent c)
+ => BoxVersion -> BoxFlags 24 -> c -> Box t
 fullBox ver fs cnt = box (Extend (FullBoxHeader ver fs) cnt)
 
 -- | The additional header with /version/ and /branding/ information
@@ -90,15 +218,21 @@ instance KnownNat bits => Bits (BoxFlags bits) where
   zeroBits = BoxFlags 0
 
 -- * /The/ actual Box
+
 -- | Create a 'Box' with a 'StdType' 'FourCc' type.
 box :: forall t c.
-       (KnownSymbol t,IsBoxContent c)
-    => c -> Box ('StdType t)
-box cnt = Box (StdType (fromString (symbolVal (Proxy :: Proxy t)))) cnt
+       (IsBoxType t,IsBoxContent c)
+    => c -> Box t
+box cnt = Box (toBoxType (Proxy :: Proxy t)) cnt
+
+-- | An /empty/ box. This is for boxes without fields. All these boxes contain
+-- is their obligatory 'BoxHeader' possibly nested boxes.
+emptyBox :: forall t . (IsBoxType t) => Box t
+emptyBox = box ()
 
 -- | A type that wraps the contents of a box and the box type.
-data Box (b :: BoxType Symbol) where
-        Box :: IsBoxContent c => BoxType FourCc -> c -> Box t
+data Box (b :: t) where
+        Box :: (IsBoxType t,IsBoxContent c) => BoxType -> c -> Box t
 
 instance IsBoxContent (Box t) where
   boxBuilder b@(Box t cnt) = sFix <> tFix <> sExt <> tExt <> boxBuilder cnt
@@ -117,7 +251,7 @@ instance IsBoxContent (Box t) where
 -- large (64bit size, 17*32bit type).
 data BoxHeader =
   BoxHeader BoxSize
-            (BoxType FourCc)
+            BoxType
   deriving (Show,Eq)
 
 -- | The size of the box. If the size is limited to a (fixed) value, it can be
@@ -173,28 +307,42 @@ instance IsBoxContent BoxSizeExtension where
        else 8
 
 -- | A box has a /type/, this is the value level representation for the box type.
-data BoxType fourcc
+data BoxType
   =
     -- | `FourCc` can be used as @boxType@ in `Box`, standard four letter character
     -- code, e.g. @ftyp@
-    StdType fourcc
+    StdType FourCc
   |
     -- | CustomBoxType defines custom @boxType@s in `Box`es.
     CustomBoxType String
   deriving (Show,Eq)
 
--- | Type level 'BoxType' matching 'StdType'
-data StdType t
-
--- | Type level 'BoxType' matching 'CustomBoxType'
-data CustomBoxType t
-
 -- | Convert type level box types to values
-class IsBoxType (t :: k) where
-  toBoxType :: proxy t -> BoxType FourCc
+class BoxRules t => IsBoxType (t :: k) where
+  toBoxType :: proxy t -> BoxType
 
-instance KnownSymbol t => IsBoxType (StdType t) where
-  toBoxType _ = StdType (fromString (symbolVal (Proxy :: Proyx t)))
+instance (BoxRules t, KnownSymbol t) => IsBoxType t where
+  toBoxType _ = StdType (fromString (symbolVal (Proxy :: Proxy t)))
+
+-- | A class that describes (on the type level) how a box can be nested into
+-- other boxes (see 'Boxes').
+class BoxRules (t :: k) where
+  -- | List of boxes that this box can be nested into.
+  type RestrictedTo t :: Maybe [k]
+  type RestrictedTo t = 'Just '[]
+  -- | If the box is also allowed 'top-level' i.e. in the file directly, not
+  -- nested in an other box.
+  type IsTopLevelBox t :: Bool
+  type IsTopLevelBox t = 'True
+  -- | Describes which nested boxes MUST be present in a box using 'boxes'.
+  type RequiredNestedBoxes t :: [k]
+  type RequiredNestedBoxes t = '[]
+  -- | Describes how many times a box should be present in a container (-box).
+  type GetCardinality t (c :: k) :: Cardinality
+  type GetCardinality t any = ExactlyOnce
+
+-- | Describes how many times a box should be present in a container.
+data Cardinality = AtMostOnce | ExactlyOnce | OnceOrMore
 
 -- | A type containin a printable four letter character code.
 newtype FourCc =
@@ -215,7 +363,7 @@ instance IsBoxContent FourCc where
   boxBuilder (FourCc (a,b,c,d)) = putW a <> putW b <> putW c <> putW d
     where putW = word8 . fromIntegral . fromEnum
 
-instance IsBoxContent (BoxType FourCc) where
+instance IsBoxContent BoxType where
   boxSize _ = boxSize (FourCc undefined)
   boxBuilder t =
     case t of
@@ -226,7 +374,7 @@ instance IsBoxContent (BoxType FourCc) where
 -- information. Since the box type and the optional custom box type are not
 -- guaranteed to be consequtive, this type handles the /second/ part seperately.
 data BoxTypeExtension =
-  BoxTypeExtension (BoxType FourCc)
+  BoxTypeExtension BoxType
 
 instance IsBoxContent BoxTypeExtension where
   boxSize (BoxTypeExtension (StdType _)) = 0
@@ -237,27 +385,23 @@ instance IsBoxContent BoxTypeExtension where
                  (take (16 * 4) str) ++
              repeat (word8 0))
 
--- * Box inheritance/extension
--- | A meta box that mimic object oriented programming inheritance. The first
--- parameter is the /base class/ and should be instance of 'IsBoxContent' and
--- the second parameter is the /derived class/. This can represent
--- 'IsBoxContent' as well as 'IsBox' instances.
+-- | Box content composed of box contents @a@ and @b@.
 data Extend a b =
   Extend a
          b
-
--- | A nice operator to for 'Extend'.
-(<|) :: a -> b -> Extend a b
-(<|) = Extend
 
 instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
   boxSize (Extend p c) = boxSize p + boxSize c
   boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c
 
--- * Box type classes and functions
 -- | Types that go into a box. A box content is a piece of data that can be
 -- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
 -- defines no box.
 class IsBoxContent a  where
   boxSize :: a -> BoxSize
   boxBuilder :: a -> Builder
+
+-- | An empty box content can by represented by @()@ (i.e. /unit/).
+instance IsBoxContent () where
+  boxSize _ = 0
+  boxBuilder _ = mempty
