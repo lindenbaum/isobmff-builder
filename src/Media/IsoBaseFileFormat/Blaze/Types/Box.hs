@@ -3,6 +3,8 @@
 module Media.IsoBaseFileFormat.Blaze.Types.Box where
 
 import Data.Bits
+import Data.ByteString.Builder
+import Data.Monoid
 import Data.Proxy
 import Data.Word
 import GHC.TypeLits
@@ -22,12 +24,13 @@ type SvensBox = Box "sven"
 
 instance IsBox "sven" where
   type BoxContent "sven" = FullBox Svens
-  toBoxType _ = FourCc ('s', 'v', 'e', 'n')
+  boxType _ = FourCc ('s', 'v', 'e', 'n')
 
 data Svens = Svens Word64
 
 instance IsBoxContent Svens where
   boxSize (Svens s) = BoxSize s
+  boxBuilder (Svens s) = word64BE s
 
 -- * Abstract Boxes
 
@@ -39,6 +42,8 @@ data FullBoxHeader = FullBoxHeader BoxVersion (BoxFlags 24)
 
 instance IsBoxContent FullBoxHeader where
   boxSize (FullBoxHeader _ f) = 4 + boxSize f
+  boxBuilder (FullBoxHeader (BoxVersion v) f) =
+      word8 v <> boxBuilder f
 
 -- | The box version (in a 'FullBox') is a single byte
 newtype BoxVersion =
@@ -64,6 +69,10 @@ instance KnownNat bits => IsBoxContent (BoxFlags bits) where
     boxSize f = let minBytes = fromInteger $ natVal f `div` 8
                     modBytes = fromInteger $ natVal f `mod` 8
                 in BoxSize $ minBytes + signum modBytes
+    boxBuilder f@(BoxFlags b) =
+        let (BoxSize bytes) = boxSize f
+            in
+
 
 instance KnownNat bits => Bits (BoxFlags bits) where
   (.&.) lf@(BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
@@ -91,12 +100,22 @@ instance KnownNat bits => Bits (BoxFlags bits) where
 data Box t where
   Box :: IsBox b => BoxContent b -> Box b
 
--- | Get the 'BoxHeader' for a given box.
-toBoxHeader :: forall t . Box t -> BoxHeader
-toBoxHeader (Box cnt) = BoxHeader s t
-  where t = toBoxType px
-        s = boxSize (boxSize cnt + 4) + boxSize cnt + boxSize t
-        px = (Proxy :: Proxy t)
+instance (IsBox t) => IsBox (Box t) where
+  type BoxContent (Box t) = Box (BoxContent t)
+  boxType = boxType
+
+instance IsBoxContent t => IsBoxContent (Box t) where
+  boxBuilder b@(Box cnt) = sFix <> tFix <> sExt <> tExt <> boxBuilder cnt
+    where s = boxSize b
+          t = boxType b
+          sFix = boxBuilder s
+          sExt = boxBuilder (BoxSizeExtension s)
+          tFix = boxBuilder t
+          tExt = boxBuilder (BoxTypeExtension t)
+  boxSize b@(Box cnt) = sPayload + boxSize (BoxSizeExtension sPayload)
+    where sPayload =
+            boxSize sPayload + boxSize t + boxSize (BoxTypeExtension t)
+          t = boxType b
 
 -- * Box Meta Data
 
@@ -115,8 +134,13 @@ data BoxSize = UnlimitedSize | BoxSize Word64
   deriving (Show, Eq)
 
 instance IsBoxContent BoxSize where
-  boxSize UnlimitedSize = BoxSize 4
-  boxSize (BoxSize n) = BoxSize $ if n < 2 ^ 32 then 4 else 8
+  boxSize _ = BoxSize 4
+  boxBuilder UnlimitedSize = word32BE 0
+  boxBuilder (BoxSize n) =
+    word32BE $
+    if n < 2 ^ 32
+       then fromIntegral n
+       else 1
 
 instance Num BoxSize where
   (+) UnlimitedSize _ = UnlimitedSize
@@ -135,6 +159,24 @@ instance Num BoxSize where
   fromInteger 1 = UnlimitedSize
   fromInteger n = BoxSize $ fromInteger n
 
+-- | The 'BoxSize' can be > 2^32 in which case an 'BoxSizeExtension' must be
+-- added after the type field.
+data BoxSizeExtension = BoxSizeExtension BoxSize
+
+instance IsBoxContent BoxSizeExtension where
+  boxBuilder (BoxSizeExtension UnlimitedSize) = mempty
+  boxBuilder (BoxSizeExtension (BoxSize n)) =
+    if n < 2 ^ 32
+       then mempty
+       else word64BE n
+  boxSize (BoxSizeExtension UnlimitedSize) = 0
+  boxSize (BoxSizeExtension (BoxSize n)) =
+    BoxSize $
+    if n < 2 ^ 32
+       then 0
+       else 8
+
+
 -- | A box has a /type/, this is the value level representation for the box type.
 data BoxType =
   -- | `FourCc` can be used as @boxType@ in `Box`, standard four letter character
@@ -149,8 +191,25 @@ newtype UUID =
   deriving (Show, Eq)
 
 instance IsBoxContent BoxType where
-  boxSize (FourCc _) = BoxSize 4
-  boxSize (CustomBoxType _) = BoxSize (4 + 16 * 4)
+  boxSize _ = 4
+  boxBuilder t =
+                  case t of
+                    FourCc x -> putFourCc x
+                    CustomBoxType (UUID u) ->
+                        putFourCc ('u','u','i','d')
+             where
+                putFourCc (a,b,c,d) = putW a <> putW b <> putW c <> putW d
+                putW = word8 . fromIntegral . fromEnum
+
+-- | When using custom types extra data must be written after the extra size
+-- information. Since the box type and the optional custom box type are not
+-- guaranteed to be consequtive, this type handles the /second/ part seperately.
+data BoxTypeExtension = BoxTypeExtension BoxType
+
+instance IsBoxContent BoxTypeExtension where
+  boxSize (BoxTypeExtension (FourCc _)) = 0
+  boxSize (BoxTypeExtension (CustomBoxType _)) = 16 * 4
+
 
 -- * Box inheritance/extension
 
@@ -172,7 +231,7 @@ instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
 -- 'Extend'.
 instance (IsBoxContent parent, IsBox child) => IsBox ('Extend parent child) where
   type BoxContent ('Extend parent child) = Extend parent (BoxContent child)
-  toBoxType _ = toBoxType (Proxy :: Proxy child)
+  boxType _ = boxType (Proxy :: Proxy child)
 
 -- * Box type classes and functions
 
@@ -181,10 +240,11 @@ instance (IsBoxContent parent, IsBox child) => IsBox ('Extend parent child) wher
 class IsBoxContent (BoxContent a) => IsBox a where
   type BoxContent a
   -- | Type-level /box types/ can be converted into value level box types.
-  toBoxType :: proxy a -> BoxType
+  boxType :: proxy a -> BoxType
 
 -- | Types that go into a box. A box content is a piece of data that can be
 -- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
 -- defines no box.
 class IsBoxContent a where
   boxSize :: a -> BoxSize
+  boxBuilder :: a -> Builder
