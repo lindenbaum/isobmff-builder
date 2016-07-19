@@ -1,8 +1,8 @@
-name:                blaze-isobmff
+name:                isobmff-builder
 version:             0.1.0.0
-synopsis:            Blaze-Builder for the ISO base media file format ISO-14496-12
+synopsis:            A ByteString-Builder for the ISO base media file format ISO-14496-12
 description:         Please see README.md
-homepage:            https://github.com/sheyll/blaze-isobmff#readme
+homepage:            https://github.com/sheyll/isobmff-builder#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Sven Heyll
@@ -55,4 +55,4 @@ library
                      , TypeSynonymInstances
 source-repository head
   type:     git
-  location: https://github.com/githubuser/blaze-isobmff
+  location: https://github.com/githubuser/isobmff-builder
