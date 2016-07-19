@@ -66,13 +66,18 @@ cropBits f@(BoxFlags b) = BoxFlags (b .&. boxFlagBitMask f)
 
 -- | Get the number of bytes required to store a number of bits.
 instance KnownNat bits => IsBoxContent (BoxFlags bits) where
-    boxSize f = let minBytes = fromInteger $ natVal f `div` 8
-                    modBytes = fromInteger $ natVal f `mod` 8
-                in BoxSize $ minBytes + signum modBytes
-    boxBuilder f@(BoxFlags b) =
-        let (BoxSize bytes) = boxSize f
-            in
-
+  boxSize f =
+    let minBytes = fromInteger $ natVal f `div` 8
+        modBytes = fromInteger $ natVal f `mod` 8
+    in BoxSize $ minBytes + signum modBytes
+  boxBuilder f@(BoxFlags b) =
+    let bytes = let (BoxSize bytes') = boxSize f in fromIntegral bytes'
+        wordSeq n
+          | n <= bytes =
+            word8 (fromIntegral (shiftR b ((bytes - n) * 8) .&. 255)) <>
+            wordSeq (n + 1)
+          | otherwise = mempty
+    in wordSeq 1
 
 instance KnownNat bits => Bits (BoxFlags bits) where
   (.&.) lf@(BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
