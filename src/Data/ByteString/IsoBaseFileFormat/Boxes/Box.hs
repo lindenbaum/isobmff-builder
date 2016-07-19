@@ -1,7 +1,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 
--- | Definition of the most basic elements in an ISOBMFF file /boxes/.
--- See Chapter 4 in the standard document. Since the standard
+-- | Definition of the most basic element in an ISOBMFF file: a /box/.  See
+-- Chapter 4 in the standard document.  A box is a container with a type, a
+-- size, possible some data and some nested boxes.  The standard defines - among
+-- other characteristics - what boxes exist, what data they contain and how they
+-- are nested into each other.  This library tries to capture some of these
+-- characteristics using modern Haskell type system features to provide compile
+-- checks for (partial) standard compliance.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
        where
@@ -19,6 +24,191 @@ import Data.Type.List
 import Data.Type.Bool
 import Data.Type.Equality
 import GHC.Exts
+
+-- * Basic Types and classes
+
+-- | A class that describes (on the type level) how a box can be nested into
+-- other boxes (see 'Boxes').
+class BoxRules (t :: k) where
+  -- | List of boxes that this box can be nested into.
+  type RestrictedTo t :: Maybe [k]
+  type RestrictedTo t = 'Just '[]
+  -- | If the box is also allowed 'top-level' i.e. in the file directly, not
+  -- nested in an other box.
+  type IsTopLevelBox t :: Bool
+  type IsTopLevelBox t = 'True
+  -- | Describes which nested boxes MUST be present in a box using 'boxes'.
+  type RequiredNestedBoxes t :: [k]
+  type RequiredNestedBoxes t = '[]
+  -- | Describes how many times a box should be present in a container (-box).
+  type GetCardinality t (c :: k) :: Cardinality
+  type GetCardinality t any = ExactlyOnce
+
+-- | Describes how many times a box should be present in a container.
+data Cardinality = AtMostOnce | ExactlyOnce | OnceOrMore
+
+-- | Convert type level box types to values
+class BoxRules t => IsBoxType (t :: k) where
+  toBoxType :: proxy t -> BoxType
+
+instance (BoxRules t, KnownSymbol t) => IsBoxType t where
+  toBoxType _ = StdType (fromString (symbolVal (Proxy :: Proxy t)))
+
+-- | Types that go into a box. A box content is a piece of data that can be
+-- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
+-- defines no box.
+class IsBoxContent a  where
+  boxSize :: a -> BoxSize
+  boxBuilder :: a -> Builder
+
+-- | An empty box content can by represented by @()@ (i.e. /unit/).
+instance IsBoxContent () where
+  boxSize _ = 0
+  boxBuilder _ = mempty
+
+-- | Box content composed of box contents @a@ and @b@.
+data Extend a b =
+  Extend a
+         b
+
+instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
+  boxSize (Extend p c) = boxSize p + boxSize c
+  boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c
+
+-- * Boxes
+
+-- | Create a 'Box' with a 'StdType' 'FourCc' type.
+box :: forall t c.
+       (IsBoxType t,IsBoxContent c)
+    => c -> Box t
+box cnt = Box (toBoxType (Proxy :: Proxy t)) cnt
+
+-- | An /empty/ box. This is for boxes without fields. All these boxes contain
+-- is their obligatory 'BoxHeader' possibly nested boxes.
+emptyBox :: forall t . (IsBoxType t) => Box t
+emptyBox = box ()
+
+-- | A type that wraps the contents of a box and the box type.
+data Box (b :: t) where
+        Box :: (IsBoxType t,IsBoxContent c) => BoxType -> c -> Box t
+
+instance IsBoxContent (Box t) where
+  boxBuilder b@(Box t cnt) = sFix <> tFix <> sExt <> tExt <> boxBuilder cnt
+    where s = boxSize b
+          sFix = boxBuilder s
+          sExt = boxBuilder (BoxSizeExtension s)
+          tFix = boxBuilder t
+          tExt = boxBuilder (BoxTypeExtension t)
+  boxSize b@(Box t cnt) = sPayload + boxSize (BoxSizeExtension sPayload)
+    where sPayload =
+            boxSize sPayload + boxSize t + boxSize cnt +
+            boxSize (BoxTypeExtension t)
+
+-- * Box Size and Type
+
+-- | The size of the box. If the size is limited to a (fixed) value, it can be
+-- provided as a 'Word64' which will be represented as either a 32bit compact
+-- size or as 64 bit /largesize/. If 'UnlimitedSize' is used, the box extends to
+-- the end of the file.
+data BoxSize
+  = UnlimitedSize
+  | BoxSize Word64
+  deriving (Show,Eq)
+
+instance IsBoxContent BoxSize where
+  boxSize _ = BoxSize 4
+  boxBuilder UnlimitedSize = word32BE 0
+  boxBuilder (BoxSize n) =
+    word32BE $
+    if n < 2 ^ 32
+       then fromIntegral n
+       else 1
+
+instance Num BoxSize where
+  (+) UnlimitedSize _ = UnlimitedSize
+  (+) _ UnlimitedSize = UnlimitedSize
+  (+) (BoxSize l) (BoxSize r) = BoxSize (l + r)
+  (-) UnlimitedSize _ = UnlimitedSize
+  (-) _ UnlimitedSize = UnlimitedSize
+  (-) (BoxSize l) (BoxSize r) = BoxSize (l - r)
+  (*) UnlimitedSize _ = UnlimitedSize
+  (*) _ UnlimitedSize = UnlimitedSize
+  (*) (BoxSize l) (BoxSize r) = BoxSize (l * r)
+  abs UnlimitedSize = UnlimitedSize
+  abs (BoxSize n) = BoxSize (abs n)
+  signum UnlimitedSize = UnlimitedSize
+  signum (BoxSize n) = BoxSize (signum n)
+  fromInteger n = BoxSize $ fromInteger n
+
+-- | The 'BoxSize' can be > 2^32 in which case an 'BoxSizeExtension' must be
+-- added after the type field.
+data BoxSizeExtension =
+  BoxSizeExtension BoxSize
+
+instance IsBoxContent BoxSizeExtension where
+  boxBuilder (BoxSizeExtension UnlimitedSize) = mempty
+  boxBuilder (BoxSizeExtension (BoxSize n)) =
+    if n < 2 ^ 32
+       then mempty
+       else word64BE n
+  boxSize (BoxSizeExtension UnlimitedSize) = 0
+  boxSize (BoxSizeExtension (BoxSize n)) =
+    BoxSize $
+    if n < 2 ^ 32
+       then 0
+       else 8
+
+-- | A box has a /type/, this is the value level representation for the box type.
+data BoxType
+  =
+    -- | `FourCc` can be used as @boxType@ in `Box`, standard four letter character
+    -- code, e.g. @ftyp@
+    StdType FourCc
+  |
+    -- | CustomBoxType defines custom @boxType@s in `Box`es.
+    CustomBoxType String
+  deriving (Show,Eq)
+
+-- | A type containin a printable four letter character code.
+newtype FourCc =
+  FourCc (Char,Char,Char,Char)
+  deriving (Show,Eq)
+
+instance IsString FourCc where
+  fromString str
+    | length str == 4 =
+      let [a,b,c,d] = str
+      in FourCc (a,b,c,d)
+    | otherwise =
+      error ("cannot make a 'FourCc' of a String which isn't exactly 4 bytes long: " ++
+             show str ++ " has a length of " ++ show (length str))
+
+instance IsBoxContent FourCc where
+  boxSize _ = 4
+  boxBuilder (FourCc (a,b,c,d)) = putW a <> putW b <> putW c <> putW d
+    where putW = word8 . fromIntegral . fromEnum
+
+instance IsBoxContent BoxType where
+  boxSize _ = boxSize (FourCc undefined)
+  boxBuilder t =
+    case t of
+      StdType x -> boxBuilder x
+      CustomBoxType u -> boxBuilder (FourCc ('u','u','i','d'))
+
+-- | When using custom types extra data must be written after the extra size
+-- information. Since the box type and the optional custom box type are not
+-- guaranteed to be consequtive, this type handles the /second/ part seperately.
+data BoxTypeExtension =
+  BoxTypeExtension BoxType
+
+instance IsBoxContent BoxTypeExtension where
+  boxSize (BoxTypeExtension (StdType _)) = 0
+  boxSize (BoxTypeExtension (CustomBoxType _)) = 16 * 4
+  boxBuilder (BoxTypeExtension (StdType _)) = mempty
+  boxBuilder (BoxTypeExtension (CustomBoxType str)) =
+    mconcat (map (word8 . fromIntegral . fromEnum)
+                 (take (16 * 4) str) ++
+             repeat (word8 0))
 
 -- * Type-safe box composition
 
@@ -139,7 +329,7 @@ type NotTopLevenError c =
   :<>: Text " MUST be nested inside boxes of these types: "
   :$$: ShowType (RestrictedTo c)
 
--- * Common box /combinators/
+-- * Full Boxes
 
 -- | A `Box` with /version/ and /branding/ information
 type FullBox t = Extend FullBoxHeader t
@@ -216,192 +406,3 @@ instance KnownNat bits => Bits (BoxFlags bits) where
     let (BoxFlags b) = cropBits f
     in popCount b
   zeroBits = BoxFlags 0
-
--- * /The/ actual Box
-
--- | Create a 'Box' with a 'StdType' 'FourCc' type.
-box :: forall t c.
-       (IsBoxType t,IsBoxContent c)
-    => c -> Box t
-box cnt = Box (toBoxType (Proxy :: Proxy t)) cnt
-
--- | An /empty/ box. This is for boxes without fields. All these boxes contain
--- is their obligatory 'BoxHeader' possibly nested boxes.
-emptyBox :: forall t . (IsBoxType t) => Box t
-emptyBox = box ()
-
--- | A type that wraps the contents of a box and the box type.
-data Box (b :: t) where
-        Box :: (IsBoxType t,IsBoxContent c) => BoxType -> c -> Box t
-
-instance IsBoxContent (Box t) where
-  boxBuilder b@(Box t cnt) = sFix <> tFix <> sExt <> tExt <> boxBuilder cnt
-    where s = boxSize b
-          sFix = boxBuilder s
-          sExt = boxBuilder (BoxSizeExtension s)
-          tFix = boxBuilder t
-          tExt = boxBuilder (BoxTypeExtension t)
-  boxSize b@(Box t cnt) = sPayload + boxSize (BoxSizeExtension sPayload)
-    where sPayload =
-            boxSize sPayload + boxSize t + boxSize cnt +
-            boxSize (BoxTypeExtension t)
-
--- * Box Meta Data
--- | The box header contains a size and a type. Both can be compact (32bit) or
--- large (64bit size, 17*32bit type).
-data BoxHeader =
-  BoxHeader BoxSize
-            BoxType
-  deriving (Show,Eq)
-
--- | The size of the box. If the size is limited to a (fixed) value, it can be
--- provided as a 'Word64' which will be represented as either a 32bit compact
--- size or as 64 bit /largesize/. If 'UnlimitedSize' is used, the box extends to
--- the end of the file.
-data BoxSize
-  = UnlimitedSize
-  | BoxSize Word64
-  deriving (Show,Eq)
-
-instance IsBoxContent BoxSize where
-  boxSize _ = BoxSize 4
-  boxBuilder UnlimitedSize = word32BE 0
-  boxBuilder (BoxSize n) =
-    word32BE $
-    if n < 2 ^ 32
-       then fromIntegral n
-       else 1
-
-instance Num BoxSize where
-  (+) UnlimitedSize _ = UnlimitedSize
-  (+) _ UnlimitedSize = UnlimitedSize
-  (+) (BoxSize l) (BoxSize r) = BoxSize (l + r)
-  (-) UnlimitedSize _ = UnlimitedSize
-  (-) _ UnlimitedSize = UnlimitedSize
-  (-) (BoxSize l) (BoxSize r) = BoxSize (l - r)
-  (*) UnlimitedSize _ = UnlimitedSize
-  (*) _ UnlimitedSize = UnlimitedSize
-  (*) (BoxSize l) (BoxSize r) = BoxSize (l * r)
-  abs UnlimitedSize = UnlimitedSize
-  abs (BoxSize n) = BoxSize (abs n)
-  signum UnlimitedSize = UnlimitedSize
-  signum (BoxSize n) = BoxSize (signum n)
-  fromInteger n = BoxSize $ fromInteger n
-
--- | The 'BoxSize' can be > 2^32 in which case an 'BoxSizeExtension' must be
--- added after the type field.
-data BoxSizeExtension =
-  BoxSizeExtension BoxSize
-
-instance IsBoxContent BoxSizeExtension where
-  boxBuilder (BoxSizeExtension UnlimitedSize) = mempty
-  boxBuilder (BoxSizeExtension (BoxSize n)) =
-    if n < 2 ^ 32
-       then mempty
-       else word64BE n
-  boxSize (BoxSizeExtension UnlimitedSize) = 0
-  boxSize (BoxSizeExtension (BoxSize n)) =
-    BoxSize $
-    if n < 2 ^ 32
-       then 0
-       else 8
-
--- | A box has a /type/, this is the value level representation for the box type.
-data BoxType
-  =
-    -- | `FourCc` can be used as @boxType@ in `Box`, standard four letter character
-    -- code, e.g. @ftyp@
-    StdType FourCc
-  |
-    -- | CustomBoxType defines custom @boxType@s in `Box`es.
-    CustomBoxType String
-  deriving (Show,Eq)
-
--- | Convert type level box types to values
-class BoxRules t => IsBoxType (t :: k) where
-  toBoxType :: proxy t -> BoxType
-
-instance (BoxRules t, KnownSymbol t) => IsBoxType t where
-  toBoxType _ = StdType (fromString (symbolVal (Proxy :: Proxy t)))
-
--- | A class that describes (on the type level) how a box can be nested into
--- other boxes (see 'Boxes').
-class BoxRules (t :: k) where
-  -- | List of boxes that this box can be nested into.
-  type RestrictedTo t :: Maybe [k]
-  type RestrictedTo t = 'Just '[]
-  -- | If the box is also allowed 'top-level' i.e. in the file directly, not
-  -- nested in an other box.
-  type IsTopLevelBox t :: Bool
-  type IsTopLevelBox t = 'True
-  -- | Describes which nested boxes MUST be present in a box using 'boxes'.
-  type RequiredNestedBoxes t :: [k]
-  type RequiredNestedBoxes t = '[]
-  -- | Describes how many times a box should be present in a container (-box).
-  type GetCardinality t (c :: k) :: Cardinality
-  type GetCardinality t any = ExactlyOnce
-
--- | Describes how many times a box should be present in a container.
-data Cardinality = AtMostOnce | ExactlyOnce | OnceOrMore
-
--- | A type containin a printable four letter character code.
-newtype FourCc =
-  FourCc (Char,Char,Char,Char)
-  deriving (Show,Eq)
-
-instance IsString FourCc where
-  fromString str
-    | length str == 4 =
-      let [a,b,c,d] = str
-      in FourCc (a,b,c,d)
-    | otherwise =
-      error ("cannot make a 'FourCc' of a String which isn't exactly 4 bytes long: " ++
-             show str ++ " has a length of " ++ show (length str))
-
-instance IsBoxContent FourCc where
-  boxSize _ = 4
-  boxBuilder (FourCc (a,b,c,d)) = putW a <> putW b <> putW c <> putW d
-    where putW = word8 . fromIntegral . fromEnum
-
-instance IsBoxContent BoxType where
-  boxSize _ = boxSize (FourCc undefined)
-  boxBuilder t =
-    case t of
-      StdType x -> boxBuilder x
-      CustomBoxType u -> boxBuilder (FourCc ('u','u','i','d'))
-
--- | When using custom types extra data must be written after the extra size
--- information. Since the box type and the optional custom box type are not
--- guaranteed to be consequtive, this type handles the /second/ part seperately.
-data BoxTypeExtension =
-  BoxTypeExtension BoxType
-
-instance IsBoxContent BoxTypeExtension where
-  boxSize (BoxTypeExtension (StdType _)) = 0
-  boxSize (BoxTypeExtension (CustomBoxType _)) = 16 * 4
-  boxBuilder (BoxTypeExtension (StdType _)) = mempty
-  boxBuilder (BoxTypeExtension (CustomBoxType str)) =
-    mconcat (map (word8 . fromIntegral . fromEnum)
-                 (take (16 * 4) str) ++
-             repeat (word8 0))
-
--- | Box content composed of box contents @a@ and @b@.
-data Extend a b =
-  Extend a
-         b
-
-instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
-  boxSize (Extend p c) = boxSize p + boxSize c
-  boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c
-
--- | Types that go into a box. A box content is a piece of data that can be
--- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
--- defines no box.
-class IsBoxContent a  where
-  boxSize :: a -> BoxSize
-  boxBuilder :: a -> Builder
-
--- | An empty box content can by represented by @()@ (i.e. /unit/).
-instance IsBoxContent () where
-  boxSize _ = 0
-  boxBuilder _ = mempty
