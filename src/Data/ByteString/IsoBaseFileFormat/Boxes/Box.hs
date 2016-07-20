@@ -78,14 +78,14 @@ instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
 
 -- * Boxes
 
--- | Create a 'Box' with a 'StdType' 'FourCc' type.
+-- | Create a 'Box' from any 'IsBoxContent' with a type.
 box :: forall t c.
        (IsBoxType t,IsBoxContent c)
     => c -> Box t
 box cnt = Box (toBoxType (Proxy :: Proxy t)) cnt
 
--- | An /empty/ box. This is for boxes without fields. All these boxes contain
--- is their obligatory 'BoxHeader' possibly nested boxes.
+-- | An /empty/ box. This is for boxes without any extra /fields/. Although it is
+-- called /emptyBox/ it might still contain nested boxes.
 emptyBox :: forall t . (IsBoxType t) => Box t
 emptyBox = box ()
 
@@ -225,16 +225,12 @@ parentBox = toParentBox . box
   where toParentBox :: IsBoxType s => Box s -> ParentBox s
         toParentBox (Box t c) = ParentBox t c
 
--- | An /empty/ parent box. This is for boxes without fields. All these boxes
--- contain is their obligatory 'BoxHeader' possibly nested boxes.
+-- | A 'ParentBox' without /fields/.
 emptyParentBox :: forall t . (IsBoxType t) => ParentBox t
 emptyParentBox = parentBox ()
 
--- | A box that may contain nested boxes. The nested boxes are type checked to
--- be valid in the container box. This results in a container-box with only
--- valid and all required child boxes. This is checked by the type system. It
--- accept a 'ParentBox' and the nested 'Boxes' and returns a 'Box', if the type
--- checker is convinced that the parent box and the nested boxes are valid.
+-- | A box that containing nested boxes. The nesting is validated at compile
+-- time using 'BoxRules'. 
 boxes :: (IsBoxType t,IsBoxContent (Boxes t ts))
       => ParentBox t -> Boxes t ts -> Box t
 boxes p = box . Extend (toBox p)
