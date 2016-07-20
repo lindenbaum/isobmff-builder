@@ -2,11 +2,12 @@
 
 -- | Definition of the most basic element in an ISOBMFF file: a /box/.  See
 -- Chapter 4 in the standard document.  A box is a container with a type, a
--- size, possible some data and some nested boxes.  The standard defines - among
--- other characteristics - what boxes exist, what data they contain and how they
--- are nested into each other.  This library tries to capture some of these
--- characteristics using modern Haskell type system features to provide compile
--- checks for (partial) standard compliance.
+-- size, some data and some nested boxes. The standard defines - among other
+-- characteristics - available box types and their semantics, the fields they
+-- contain and how they are nested into each other.  This library tries to
+-- capture some of these characteristics using modern Haskell type system
+-- features, in order to provide compile time checks for (partial) standard
+-- compliance.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
        where
