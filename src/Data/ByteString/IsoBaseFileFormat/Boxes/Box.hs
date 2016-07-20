@@ -212,29 +212,58 @@ instance IsBoxContent BoxTypeExtension where
 
 -- * Type-safe box composition
 
+-- | A 'ParentBox' is a 'Box' but without it's children. It has no
+-- 'IsBoxContent' instance, and it must be converted to a real 'Box' using
+-- 'boxes'. This is to prevent creation of boxes with invalid children.
+data ParentBox (b :: t) where
+        ParentBox :: (IsBoxType t,IsBoxContent c) => BoxType -> c -> ParentBox t
+
+-- | A parent box. Similar to 'box' but for 'ParentBox'es.
+parentBox :: forall t c . (IsBoxType t, IsBoxContent c) => c -> ParentBox t
+parentBox = toParentBox . box
+  where toParentBox :: IsBoxType s => Box s -> ParentBox s
+        toParentBox (Box t c) = ParentBox t c
+
+-- | An /empty/ parent box. This is for boxes without fields. All these boxes
+-- contain is their obligatory 'BoxHeader' possibly nested boxes.
+emptyParentBox :: forall t . (IsBoxType t) => ParentBox t
+emptyParentBox = parentBox ()
+
 -- | A box that may contain nested boxes. The nested boxes are type checked to
 -- be valid in the container box. This results in a container-box with only
--- valid and all required child boxes. This is checked by the type system.
-boxes :: forall ts t.
-         (IsBoxType t,ValidBoxes t ts)
-      => Boxes t ts -> Box t
-boxes = box
+-- valid and all required child boxes. This is checked by the type system. It
+-- accept a 'ParentBox' and the nested 'Boxes' and returns a 'Box', if the type
+-- checker is convinced that the parent box and the nested boxes are valid.
+boxes :: (IsBoxType t,IsBoxContent (Boxes t ts))
+      => ParentBox t -> Boxes t ts -> Box t
+boxes p = box . Extend (toBox p)
+  where
+    toBox :: IsBoxType t => ParentBox t -> Box t
+    toBox (ParentBox t c) = Box t c
 
--- | A container-box with child boxes.
+-- | An operator for starting a 'Boxes' from the parent box.
+--
+-- Example:
+-- >  xxx :: Box "moov"
+-- >  xxx = movieBox
+-- >         ^- Nested (movieHeaderBox (MovieHeader ...))
+-- >                   :- (trackBox
+-- >                       ^- Nested (trackHeaderBox (TrackHeader ...))
+-- >                                 :- trackReferenceBox (TrackReference ...)
+-- >                                 :- trackGroupingIndication (TrackGroupingInd ...))
+--
+(^-) :: (IsBoxType t,IsBoxContent (Boxes t ts))
+     => ParentBox t -> Boxes t ts -> Box t
+parent ^- nested = parent ^- nested
+
+infixr 1 ^-
+
+-- | A heterogenous collection of child boxes for a parent box wiht type @cont@.
 data Boxes (cont :: x) (boxTypes :: [x]) where
-        Parent :: IsBoxType t => Box t -> Boxes t '[]
+        Nested :: IsBoxType t => Box t -> Boxes c '[t]
         (:-) :: IsBoxType t => Boxes c ts -> Box t -> Boxes c (t ': ts)
 
 infixl 2 :-
-
--- | A container box that contains only the parent, and no children (yet).
-type Container parent = Boxes parent '[]
-
--- | An operator for @Parent parent :- firstChild@
-(^-) :: (IsBoxType t, IsBoxType u) => Box t -> Box u -> Boxes t '[u]
-parent ^- firstChild = Parent parent :- firstChild
-
-infixl 2 ^-
 
 -- | To be nested into a box, 'Boxes' must be an instance of 'IsBoxContent'.
 -- This instance concatenates all nested boxes.
@@ -250,9 +279,9 @@ instance (IsBoxType t,ValidBoxes t bs) => IsBoxContent (Boxes t bs) where
 newtype UnverifiedBoxes t ts = UnverifiedBoxes (Boxes t ts)
 
 instance IsBoxContent (UnverifiedBoxes t bs) where
-  boxSize (UnverifiedBoxes (Parent c)) = boxSize c
+  boxSize (UnverifiedBoxes (Nested b)) = boxSize b
   boxSize (UnverifiedBoxes (bs :- b)) = boxSize (UnverifiedBoxes bs) + boxSize b
-  boxBuilder (UnverifiedBoxes (Parent c)) = boxBuilder c
+  boxBuilder (UnverifiedBoxes (Nested b)) = boxBuilder b
   boxBuilder (UnverifiedBoxes (bs :- b)) = boxBuilder (UnverifiedBoxes bs) <> boxBuilder b
 
 -- * Type level consistency checks
