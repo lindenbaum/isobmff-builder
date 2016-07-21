@@ -12,6 +12,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
        where
 
+
 import Data.Bits as X
 import Data.ByteString.Builder as X
 import Data.Monoid as X
@@ -20,11 +21,8 @@ import Data.Word as X
 import GHC.TypeLits as X
 import Data.String
 import Data.Type.Equality
-
 import Data.Type.List
 import Data.Type.Bool
-import Data.Type.Equality
-import GHC.Exts
 
 -- * Basic Types and classes
 
@@ -43,7 +41,7 @@ class BoxRules (t :: k) where
   type RequiredNestedBoxes t = '[]
   -- | Describes how many times a box should be present in a container (-box).
   type GetCardinality t (c :: k) :: Cardinality
-  type GetCardinality t any = ExactlyOnce
+  type GetCardinality t any = 'ExactlyOnce
 
 -- | Describes how many times a box should be present in a container.
 data Cardinality = AtMostOnce | ExactlyOnce | OnceOrMore
@@ -107,9 +105,9 @@ instance IsBoxContent (Box t) where
           sExt = boxBuilder (BoxSizeExtension s)
           tFix = boxBuilder t
           tExt = boxBuilder (BoxTypeExtension t)
-  boxSize b@(Box t cnt) = sPayload + boxSize (BoxSizeExtension sPayload)
+  boxSize (Box t cnt) = sPayload + boxSize (BoxSizeExtension sPayload)
     where sPayload =
-            boxSize sPayload + boxSize t + boxSize cnt +
+            boxSize (BoxSize 2) + boxSize t + boxSize cnt +
             boxSize (BoxTypeExtension t)
 
 -- * Box Size and Type
@@ -128,7 +126,7 @@ instance IsBoxContent BoxSize where
   boxBuilder UnlimitedSize = word32BE 0
   boxBuilder (BoxSize n) =
     word32BE $
-    if n < 2 ^ 32
+    if n < (4294967296 :: Word64)
        then fromIntegral n
        else 1
 
@@ -156,13 +154,13 @@ data BoxSizeExtension =
 instance IsBoxContent BoxSizeExtension where
   boxBuilder (BoxSizeExtension UnlimitedSize) = mempty
   boxBuilder (BoxSizeExtension (BoxSize n)) =
-    if n < 2 ^ 32
+    if n < 4294967296
        then mempty
        else word64BE n
   boxSize (BoxSizeExtension UnlimitedSize) = 0
   boxSize (BoxSizeExtension (BoxSize n)) =
     BoxSize $
-    if n < 2 ^ 32
+    if n < 4294967296
        then 0
        else 8
 
@@ -201,7 +199,7 @@ instance IsBoxContent BoxType where
   boxBuilder t =
     case t of
       StdType x -> boxBuilder x
-      CustomBoxType u -> boxBuilder (FourCc ('u','u','i','d'))
+      CustomBoxType _ -> boxBuilder (FourCc ('u','u','i','d'))
 
 -- | When using custom types extra data must be written after the extra size
 -- information. Since the box type and the optional custom box type are not
@@ -240,10 +238,7 @@ emptyParentBox = parentBox ()
 -- time using 'BoxRules'.
 boxes :: (IsBoxType t,IsBoxContent (Boxes t ts))
       => ParentBox t -> Boxes t ts -> Box t
-boxes p = box . Extend (toBox p)
-  where
-    toBox :: IsBoxType t => ParentBox t -> Box t
-    toBox (ParentBox t c) = Box t c
+boxes (ParentBox t c) = Box t . Extend c
 
 -- | An operator for starting a 'Boxes' from the parent box.
 --
@@ -258,7 +253,7 @@ boxes p = box . Extend (toBox p)
 --
 (^-) :: (IsBoxType t,IsBoxContent (Boxes t ts))
      => ParentBox t -> Boxes t ts -> Box t
-parent ^- nested = parent ^- nested
+parent ^- nested = boxes parent nested
 
 infixr 1 ^-
 
@@ -271,7 +266,7 @@ infixl 2 :-
 
 -- | To be nested into a box, 'Boxes' must be an instance of 'IsBoxContent'.
 -- This instance concatenates all nested boxes.
-instance (IsBoxType t,ValidBoxes t bs) => IsBoxContent (Boxes t bs) where
+instance (ValidBoxes t bs) => IsBoxContent (Boxes t bs) where
   boxSize bs = boxSize (UnverifiedBoxes bs)
   boxBuilder bs = boxBuilder (UnverifiedBoxes bs)
 
@@ -314,18 +309,18 @@ type family CheckAllowedIn (c :: k) (t :: k) (a :: Maybe [k]) :: Bool where
 
 -- | The custom (type-) error message for 'AllAllowedIn'.
 type NotAllowedMsg c t =
-  Text "Boxes of type: "
-  :<>: ShowType c
-  :<>: Text " may not contain boxes of type "
-  :<>: ShowType t
-  :$$: Text "Valid containers for "
-  :<>: ShowType t
-  :<>: Text " boxes are: "
-  :$$: ShowType (RestrictedTo t)
-  :$$: ShowType t
-  :<>: If (IsTopLevelBox c)
-          (Text " boxes may appear top-level in a file.")
-          (Text " boxes must be nested.")
+  'Text "Boxes of type: "
+  ':<>: 'ShowType c
+  ':<>: 'Text " may not contain boxes of type "
+  ':<>: 'ShowType t
+  ':$$: 'Text "Valid containers for "
+  ':<>: 'ShowType t
+  ':<>: 'Text " boxes are: "
+  ':$$: 'ShowType (RestrictedTo t)
+  ':$$: 'ShowType t
+  ':<>: If (IsTopLevelBox c)
+          ('Text " boxes may appear top-level in a file.")
+          ('Text " boxes must be nested.")
 
 
 -- | Check that all required boxes have been nested.
@@ -341,14 +336,14 @@ type IsSubSet base sub = Intersection base sub == sub
 
 -- | The custom (type-) error message for 'HasAllRequiredBoxes'.
 type MissingRequired c r nested =
-  Text "Boxes of type: "
-  :<>: ShowType c
-  :<>: Text " require these nested boxes: "
-  :<>: ShowType (RequiredNestedBoxes c)
-  :$$: Text "but only these box types were nested: "
-  :<>: ShowType nested
-  :$$: Text "e.g. this type is missing: "
-  :<>: ShowType r
+  'Text "Boxes of type: "
+  ':<>: 'ShowType c
+  ':<>: 'Text " require these nested boxes: "
+  ':<>: 'ShowType (RequiredNestedBoxes c)
+  ':$$: 'Text "but only these box types were nested: "
+  ':<>: 'ShowType nested
+  ':$$: 'Text "e.g. this type is missing: "
+  ':<>: 'ShowType r
 
 -- | Check that the box may appear top-level.
 type family CheckTopLevelOk (t :: k) :: Bool where
@@ -357,10 +352,10 @@ type family CheckTopLevelOk (t :: k) :: Bool where
 -- | The custom (type-) error message indicating that a box may not appear
 -- top-level.
 type NotTopLevenError c =
-       Text "Boxes of type "
-  :<>: ShowType c
-  :<>: Text " MUST be nested inside boxes of these types: "
-  :$$: ShowType (RestrictedTo c)
+        'Text "Boxes of type "
+  ':<>: 'ShowType c
+  ':<>: 'Text " MUST be nested inside boxes of these types: "
+  ':$$: 'ShowType (RestrictedTo c)
 
 -- * Full Boxes
 
@@ -421,8 +416,8 @@ instance KnownNat bits => IsBoxContent (BoxFlags bits) where
     in wordSeq 1
 
 instance KnownNat bits => Bits (BoxFlags bits) where
-  (.&.) lf@(BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
-  (.|.) lf@(BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
+  (.&.) (BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
+  (.|.) (BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
   xor (BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ xor l r
   complement (BoxFlags x) = cropBits $ BoxFlags $ complement x
   shift (BoxFlags x) = cropBits . BoxFlags . shift x

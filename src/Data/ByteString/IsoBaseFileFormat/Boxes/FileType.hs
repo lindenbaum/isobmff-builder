@@ -3,9 +3,12 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.FileType where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | File Type Box
-type FileTypeBox = Box "ftyp"
+type FileTypeBox = Box FileType
 
-instance BoxRules "ftyp"
+instance BoxRules FileType
+
+instance IsBoxType FileType where
+  toBoxType _ = StdType "ftyp"
 
 -- | Create a 'FileTypeBox' from a major brand, a minor version and a list of
 -- compatible brands
@@ -19,6 +22,7 @@ data FileType =
            ,compatibleBrands :: [FourCc]}
 
 instance IsBoxContent FileType where
-  boxSize (FileType maj ver comps) = boxSize maj + 4 + sum (boxSize <$> comps)
+  boxSize (FileType maj _ver comps) =
+    boxSize maj + 4 + sum (boxSize <$> comps)
   boxBuilder (FileType maj ver comps) =
     boxBuilder maj <> word32BE ver <> mconcat (boxBuilder <$> comps)
