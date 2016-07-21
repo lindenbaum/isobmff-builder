@@ -72,6 +72,13 @@ data Extend a b =
   Extend a
          b
 
+-- | An operator for 'Extend'.
+type a :+ b = Extend a b
+
+-- | An operator for 'Extend'.
+(<+>) :: a -> b -> Extend a b
+(<+>) = Extend
+
 instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
   boxSize (Extend p c) = boxSize p + boxSize c
   boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c
@@ -230,7 +237,7 @@ emptyParentBox :: forall t . (IsBoxType t) => ParentBox t
 emptyParentBox = parentBox ()
 
 -- | A box that containing nested boxes. The nesting is validated at compile
--- time using 'BoxRules'. 
+-- time using 'BoxRules'.
 boxes :: (IsBoxType t,IsBoxContent (Boxes t ts))
       => ParentBox t -> Boxes t ts -> Box t
 boxes p = box . Extend (toBox p)
