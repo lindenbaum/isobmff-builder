@@ -7,8 +7,9 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.Kind  (Type, Constraint)
 import Data.Int
 import Data.Type.Equality
-import Data.Type.List
+-- import Data.Type.List
 import Data.Vector.Sized
+import Data.Singletons
 import Data.Singletons.Prelude.List
 
 -- | The metadata for a presentation, a single 'MovieBox' which occurs only once
@@ -69,85 +70,19 @@ instance IsBoxContent (Field Int64) where
   boxSize _ = 8
   boxBuilder (Field v) = int64BE v
 
-
 -- * Field with (type-level) overidable predefined default values
 
-data TemplateField (defaultValue :: k) c where
-  DefaultField ::      TemplateField defaultValue t
-  SetField     :: t -> TemplateField defaultValue t
+data TemplateField (v :: k) o where
+  DefaultField :: SingI val =>            TemplateField val outType
+  SetField     :: SingI val => outType -> TemplateField val outType
 
-instance ( IsFieldValue v
-         , FieldVal v ~ Integer
-         , Num t
-         , IsBoxContent (Field t))
-         => IsBoxContent (TemplateField v t) where
-  boxSize DefaultField = boxSize (Field ((fromIntegral (fieldVal (Proxy :: Proxy v))) :: t))
-  boxSize (SetField t) = boxSize (Field t) -- TODO should always be the same??
-  boxBuilder DefaultField = boxBuilder (Field ((fromIntegral (fieldVal (Proxy :: Proxy v))) :: t))
-  boxBuilder (SetField t) = boxBuilder (Field t)
+class (IsBoxContent f) => IsField f where
+  type SField f 
+  fromTypeVal :: forall (st :: (SField f)) . (SingKind (SField f))  => Sing st -> f
 
-class IsFieldValue (f :: t) where
-  type FieldVal f
-  fieldVal :: proxy f -> FieldVal f
-
-class IsBoxContent f => IsField f tf where
-  type TypeValConstraint t tf (x :: tf) :: Constraint
-  type TypeValConstraint t tf x = ()
-  fromTypeVal :: forall proxy (x :: tf) . TypeValConstraint f tf x => proxy x -> f
-
-
-instance (Num a, IsBoxContent (Field a)) => IsField (Field a) Nat where
-  type TypeValConstraint (Field a) Nat x = KnownNat x
-  fromTypeVal = Field . fromIntegral . natVal
-
-instance (IsBoxContent (Vector 0 a), IsField a e) => IsField (Vector 0 a) [e] where
-  type TypeValConstraint (Vector size a) [e] '[] = ()
-  fromTypeVal _ = empty
-
-
-instance ( IsBoxContent (Vector incSize a)
-         , IsField (Vector size a) [e]
-         , incSize ~ (size + 1))
-         => IsField (Vector incSize a) [e] where
-  type TypeValConstraint (Vector incSize a) [e] (x ': xs) =
-    (
-      TypeValConstraint a e x
-    , TypeValConstraint (Vector (incSize - 1) a) [e] xs
-    )
-  fromTypeVal tlistPx =
-    snoc (fromTypeVal (Proxy :: Proxy xs) :: Vector size a)
-         (fromTypeVal (Proxy :: Proxy x))
-
-
-type family MapC (xs :: [k]) (toConstraint :: k -> Constraint) :: Constraint where
-  MapC '[] toConstraint = ()
-  MapC (e ': rest) toConstraint = (toConstraint e, MapC rest toConstraint)
-
-instance KnownNat f => IsFieldValue (f :: Nat) where
-  type FieldVal f = Integer
-  fieldVal = natVal
-
-instance IsFieldValue (TemplateField '[] (t :: Type)) where
-  type FieldVal (TemplateField '[] t) = Vector 0 t
-  fieldVal _                       = empty
-
-instance ( IsFieldValue                              (t :: k)
-         , rt                                      ~ FieldVal t
-         , IsFieldValue                              (TemplateField (ts :: [k]) rt)
-         , FieldVal (TemplateField (ts :: [k]) rt) ~ Vector (Length ts) rt
-         )
-      => IsFieldValue (TemplateField (t ': ts) rt) where
-  type FieldVal (TemplateField (t ': ts) rt) =
-    Vector (Length ts + 1) rt
-  fieldVal _ =
-    cons (fieldVal (Proxy :: Proxy t))
-         (fieldVal (Proxy :: Proxy (TemplateField ts rt)))
-
-
-instance (Num t, IsBoxContent (Field t), KnownNat v) => IsBoxContent (TemplateField v t) where
-  boxSize _ = boxSize (Field (fromIntegral (natVal (Proxy :: Proxy v))) :: Field t)
-  boxBuilder DefaultField = boxBuilder (Field (fromIntegral (natVal (Proxy :: Proxy v))) :: Field t)
-  boxBuilder (SetField v) = boxBuilder (Field v :: Field t)
+instance IsField (Field Word8) where
+  type SField (Field Word8) = Nat
+  fromTypeVal = Field . fromIntegral . fromSing
 
 -- * Field with (type-level) predefined default values
 
