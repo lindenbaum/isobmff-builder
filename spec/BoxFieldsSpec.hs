@@ -44,7 +44,7 @@ spec =
 renderBox :: IsBoxContent c => c -> BL.ByteString
 renderBox = toLazyByteString . boxBuilder
 
-type ExampleContent = Scalar "bla" Word8 :+ Constant (Scalar "blub" Word8) 123 :+ Template (ScalarArray "foos" 3 Int64) '[1, 2, 3] :+ ScalarArray "baz" 7 Word64
+type ExampleContent = Scalar Word8 "bla" :+ Constant (Scalar Word8 "blub") 123 :+ Template (ScalarArray "foos" 3 Int64) '[1, 2, 3] :+ ScalarArray "baz" 7 Word64
 
 type ExampleContentShort = U8 "bla" :+ Constant (U8 "blub") 123 :+ Template (I64Arr "foos" 3) '[1, 2, 3] :+ U64Arr "baz" 7
 
