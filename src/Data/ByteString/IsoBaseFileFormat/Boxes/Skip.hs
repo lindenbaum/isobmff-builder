@@ -10,8 +10,7 @@ instance IsBoxType' Skip where
   type BoxContent Skip = Skip
   toBoxType' _ = StdType "skip"
 
-instance BoxRules Skip where
-  type RestrictedTo Skip = 'Nothing
+instance BoxRules Skip
 
 -- | Create a 'Skip' with a given size.
 skipBox :: Skip -> Box' Skip

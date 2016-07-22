@@ -4,6 +4,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.Default
 import Data.Int
 import Data.Maybe
 import Text.Printf
@@ -59,7 +60,8 @@ i8 = Scalar
 -- smart constructors, e.g. 'u8','i8','u16','i16','u32','i32','u64','i64' or the
 -- 'Num' instance, whereas the constructors might give a bit more safety.
 newtype Scalar scalartype (label :: k) =
-  Scalar scalartype deriving (Show, Read, Ord, Eq, Num)
+  Scalar {fromScalar :: scalartype}
+  deriving (Show, Read, Ord, Eq, Num, Default)
 
 instance IsBoxContent (Scalar Word8 label) where
   boxSize _ = 1
@@ -153,6 +155,10 @@ i8Arr = fromList
 -- 'u8Arr','i8Arr','u16Arr','i16Arr','u32Arr','i32Arr','u64Arr','i64Arr' .
 newtype ScalarArray (label :: k) (len :: Nat) o where
         ScalarArray :: Vec.Vector n o -> ScalarArray label n o
+        deriving (Show,Eq)
+
+instance (Default o,KnownNat (len :: Nat)) => Default (ScalarArray label len o) where
+  def = ScalarArray $ Vec.replicate def
 
 instance (Num o,IsBoxContent (Scalar o label),KnownNat (len :: Nat)) => IsBoxContent (ScalarArray label len o) where
   boxSize (ScalarArray vec) =
@@ -182,13 +188,17 @@ fromList l =
 -- * Constant fields
 
 -- | Wrapper around a field, e.g. a 'Scalar' or 'ScalarArray', with a type level
--- value. The wrapped content must implement 'FromTypeLit'.
+-- value. The wrapped content must implement 'FromTypeLit'. To get the value of
+-- a 'Constant'  use 'fromTypeLit'.
 data Constant o v where
         Constant :: Constant o v
 
 instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Constant o v) where
   boxSize = boxSize . fromTypeLit
   boxBuilder = boxBuilder . fromTypeLit
+
+instance Default (Constant o v) where
+  def = Constant
 
 -- * Template Fields
 
@@ -200,10 +210,17 @@ data Template o v where
         Default :: Template o v
         Custom :: o -> Template o v
 
+instance Default (Template o v) where
+  def = Default
+
+-- | Get a value from a 'Template'.
+templateValue :: FromTypeLit o v => Template o v -> o
+templateValue d@Default = fromTypeLit d
+templateValue (Custom v) = v
+
 instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Template o v) where
-  boxSize = boxSize . fromTypeLit
-  boxBuilder d@Default = boxBuilder $ fromTypeLit d
-  boxBuilder (Custom o) = boxBuilder o
+  boxSize = boxSize . templateValue
+  boxBuilder = boxBuilder . templateValue
 
 -- * Conversion from type-level numbers and lists to values
 
@@ -223,17 +240,13 @@ instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromT
 -- * Box concatenation
 
 -- | Box content composition
-data Extend a b =
-  Extend a
-         b
+data a :+ b = a :+ b
 
--- | An operator for 'Extend'.
-type a :+ b = Extend a b
+infixr 3 :+
 
--- | An operator for 'Extend'.
-(<+>) :: a -> b -> Extend a b
-(<+>) = Extend
+instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (p :+ c) where
+  boxSize (p :+ c) = boxSize p + boxSize c
+  boxBuilder (p :+ c) = boxBuilder p <> boxBuilder c
 
-instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
-  boxSize (Extend p c) = boxSize p + boxSize c
-  boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c
+instance (Default a, Default b) => Default (a :+ b) where
+  def = def :+ def

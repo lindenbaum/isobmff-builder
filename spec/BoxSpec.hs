@@ -22,10 +22,10 @@ spec =
             do describe "boxSize" $
                  do describe "a box with one nested box" $
                       do it "returns the sum of both boxSizes" $
-                           boxSize (testParentBox1 $ Nested :. testBox1) `shouldBe`
+                           boxSize (testParentBox1 $ singletonBox testBox1) `shouldBe`
                            (2 * boxSize testBox1)
                          it "returns the same value as written by boxBuilder" $
-                           let b = testParentBox1 $ Nested :. testBox1
+                           let b = testParentBox1 $ singletonBox testBox1
                                writtenSize =
                                  let out = toLazyByteString (boxBuilder b)
                                      getSize = Binary.runGet Binary.getWord32be
@@ -36,8 +36,7 @@ spec =
 
 data TestBox1
 
-instance BoxRules TestBox1 where
-  type RestrictedTo TestBox1 = 'Nothing
+instance BoxRules TestBox1
 
 instance IsBoxType' TestBox1 where
   toBoxType' _ = StdType "tst1"
@@ -53,5 +52,5 @@ instance BoxRules TestParentBox1
 instance IsBoxType' TestParentBox1 where
   toBoxType' _ = StdType "par1"
 
-testParentBox1 :: (ValidBoxes TestParentBox1 ts) => Boxes ts -> Box' TestParentBox1
+testParentBox1 :: Boxes ts -> Box' TestParentBox1
 testParentBox1 = containerBox

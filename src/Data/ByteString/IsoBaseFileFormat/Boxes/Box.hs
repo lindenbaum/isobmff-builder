@@ -17,10 +17,12 @@ import Data.ByteString.Builder as X
 import Data.Monoid as X
 import Data.Proxy as X
 import Data.Word as X
+import Data.Kind
 import GHC.TypeLits as X
 import Data.String
 import Data.Type.Equality
-import Data.Type.List
+import Data.Type.List (Find, Intersection)
+import Data.Singletons.Prelude.List ((:++))
 import Data.Type.Bool
 import qualified Data.ByteString as B
 
@@ -35,9 +37,6 @@ class (IsBoxContent (BoxContent t), BoxRules t) => IsBoxType' t where
 -- | A class that describes (on the type level) how a box can be nested into
 -- other boxes (see 'Boxes).
 class BoxRules (t :: k) where
-  -- | List of boxes that this box can be nested into.
-  type RestrictedTo t :: Maybe [k]
-  type RestrictedTo t = 'Just '[]
   -- | If the box is also allowed 'top-level' i.e. in the file directly, not
   -- nested in an other box.
   type IsTopLevelBox t :: Bool
@@ -85,29 +84,44 @@ instance IsBoxContent (Box' cnt) where
           t        = toBoxType' b
 
 -- | A heterogenous collection of boxes.
-data Boxes (boxTypes :: [k]) where
-        Nested :: Boxes '[]
-        (:.) :: Boxes ts -> Box' t -> Boxes (t ': ts)
+data Boxes (boxTypes :: [Type]) where
+        NoBoxes ::                       Boxes       '[]
+        (:.)    :: Box' l  -> Boxes r -> Boxes (l ': r)
+        (:<>)   :: Boxes l -> Boxes r -> Boxes (l :++ r)
 
-infixl 2 :.
+infixr 2 :.
+
+-- | Create a 'Boxes' collection with a single box.
+singletonBox :: Box' l -> Boxes '[l]
+singletonBox b = b :. NoBoxes
+
+-- | Create a 'Boxes' collection with a single box.
+(.:.) :: Box' l -> Box' r -> Boxes '[l, r]
+(.:.) l r = l :. r :. NoBoxes
+
+infixr 0 .:.
+
+(.:) :: (Boxes '[l] -> r) -> Box' l -> r
+(.:) f l = f $ l :. NoBoxes
+
+infixr 2 .:
+
 
 instance IsBoxContent (Boxes bs) where
-  boxSize Nested = 0
-  boxSize (bs :. b) = boxSize bs + boxSize b
-  boxBuilder Nested = mempty
-  boxBuilder (bs :. b) = boxBuilder bs <> boxBuilder b
+  boxSize NoBoxes = 0
+  boxSize (l :. r) = boxSize l + boxSize r
+  boxSize (l :<> r) = boxSize l + boxSize r
+  boxBuilder NoBoxes = mempty
+  boxBuilder (l :. r) = boxBuilder l <> boxBuilder r
+  boxBuilder (l :<> r) = boxBuilder l <> boxBuilder r
 
 -- | A box that contains no nested boxes.
 closedBox :: (IsBoxType' t, ValidBoxes t '[]) => BoxContent t -> Box' t
-closedBox c = Box' c Nested
+closedBox c = Box' c NoBoxes
 
 -- | A box that contains no fields, but nested boxes.
 containerBox :: (IsBoxType' t, ValidBoxes t ts, BoxContent t ~ ()) => Boxes ts -> Box' t
 containerBox = Box' ()
-
--- | A complete media file, consisting of top-level boxes.
-mediaFile :: Boxes ts -> Builder
-mediaFile = boxBuilder
 
 -- * Box Size and Type
 
@@ -223,39 +237,7 @@ instance IsBoxContent BoxTypeExtension where
 -- | A type-level check that uses 'BoxRules' to check that the contained boxes
 -- are standard conform.
 type ValidBoxes t ts =
-  ( AllAllowedIn t ts ~ 'True
-  , HasAllRequiredBoxes t (RequiredNestedBoxes t) ts ~ 'True )
-
--- | A type function to check that all nested boxes are allowed in the
--- container.
-type family AllAllowedIn (container :: k) (boxes :: [k]) :: Bool
-     where
-        AllAllowedIn c '[] = 'True
-        AllAllowedIn c (t ': ts) =
-          If (CheckAllowedIn c t (RestrictedTo t))
-             (AllAllowedIn c ts)
-             (TypeError (NotAllowedMsg c t))
-
-type family CheckAllowedIn (c :: k) (t :: k) (a :: Maybe [k]) :: Bool where
-  CheckAllowedIn c t 'Nothing   = 'True
-  CheckAllowedIn c t ('Just rs) = Find c rs
-
-
--- | The custom (type-) error message for 'AllAllowedIn'.
-type NotAllowedMsg c t =
-  'Text "Boxes of type: "
-  ':<>: 'ShowType c
-  ':<>: 'Text " may not contain boxes of type "
-  ':<>: 'ShowType t
-  ':$$: 'Text "Valid containers for "
-  ':<>: 'ShowType t
-  ':<>: 'Text " boxes are: "
-  ':$$: 'ShowType (RestrictedTo t)
-  ':$$: 'ShowType t
-  ':<>: If (IsTopLevelBox c)
-          ('Text " boxes may appear top-level in a file.")
-          ('Text " boxes must be nested.")
-
+  ( HasAllRequiredBoxes t (RequiredNestedBoxes t) ts ~ 'True )
 
 -- | Check that all required boxes have been nested.
 type family HasAllRequiredBoxes (c :: k) (req :: [k]) (nested :: [k]) :: Bool
@@ -286,16 +268,16 @@ type family CheckAllTopLevelOk (ts :: [k]) :: Bool where
 
 -- | Check that the box may appear top-level.
 type family CheckTopLevelOk (t :: k) :: Bool where
-   CheckTopLevelOk t = IsTopLevelBox t || TypeError (NotTopLevenError t)
+   CheckTopLevelOk t = IsTopLevelBox t || TypeError (NotTopLevelError t)
 
 
 -- | The custom (type-) error message indicating that a box may not appear
 -- top-level.
-type NotTopLevenError c =
+type NotTopLevelError c =
         'Text "Boxes of type "
   ':<>: 'ShowType c
-  ':<>: 'Text " MUST be nested inside boxes of these types: "
-  ':$$: 'ShowType (RestrictedTo c)
+  ':<>: 'Text "have no meaning outside other boxes"
+  ':<>: 'Text " and MUST be nested inside other boxes."
 
 -- * 'IsBoxContent' instances
 
@@ -308,3 +290,8 @@ instance IsBoxContent () where
 instance IsBoxContent B.ByteString where
   boxSize = fromIntegral . B.length
   boxBuilder = byteString
+
+-- -- | A list, a maybe, and every other 'Foldable' of contents is a content.
+-- instance (Foldable f, IsBoxContent t) => IsBoxContent (f t) where
+--   boxSize = foldr' (\e acc -> acc + boxSize e) 0
+--   boxBuilder = foldMap boxBuilder
