@@ -176,8 +176,8 @@ fromList l =
       error $
       printf "Invalid number of array elements for array %s. Got length: %d elments, expected %d."
              (show (symbolVal (Proxy :: Proxy label)))
-             (natVal (Proxy :: Proxy n))
              (length l)
+             (natVal (Proxy :: Proxy n))
     Just v -> v
 
 -- * Constant fields with default values

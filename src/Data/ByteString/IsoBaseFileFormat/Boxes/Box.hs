@@ -12,7 +12,6 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
        where
 
-
 import Data.Bits as X
 import Data.ByteString.Builder as X
 import Data.Monoid as X
@@ -23,6 +22,7 @@ import Data.String
 import Data.Type.Equality
 import Data.Type.List
 import Data.Type.Bool
+import qualified Data.ByteString as B
 
 -- * Basic Types and classes
 
@@ -65,6 +65,11 @@ instance IsBoxContent () where
   boxSize _ = 0
   boxBuilder _ = mempty
 
+-- | Trivial instance for 'ByteString'
+instance IsBoxContent B.ByteString where
+  boxSize = fromIntegral . B.length
+  boxBuilder = byteString
+
 -- | Box content composed of box contents @a@ and @b@.
 data Extend a b =
   Extend a
@@ -82,6 +87,67 @@ instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
   boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c
 
 -- * Boxes
+
+
+
+-- | Base class for all (abstract/phantom/normal-) types that represent boxes
+class (IsBoxContent (BoxContent t), BoxRules t) => IsBoxType' t where
+  type BoxContent t
+  type BoxContent t = ()
+  toBoxType' :: proxy t -> BoxType
+
+-- | A type that wraps the contents of a box and the box type.
+data Box' b where
+  Box' :: (IsBoxType' b, ValidBoxes b ts) => BoxContent b -> Boxes' ts -> Box' b
+
+instance IsBoxContent (Box' cnt) where
+  boxBuilder b@(Box' cnt nested) = sB <> tB <> sExtB <> tExtB <> cntB <> nestedB
+    where s       = boxSize    b
+          t       = toBoxType' b
+          sB      = boxBuilder s
+          sExtB   = boxBuilder (BoxSizeExtension s)
+          tB      = boxBuilder t
+          tExtB   = boxBuilder (BoxTypeExtension t)
+          cntB    = boxBuilder cnt
+          nestedB = boxBuilder nested
+
+  boxSize b@(Box' cnt nested) = sPayload + boxSize (BoxSizeExtension sPayload)
+    where sPayload =   boxSize (BoxSize undefined)
+                     + boxSize t
+                     + boxSize cnt
+                     + boxSize (BoxTypeExtension t)
+                     + boxSize nested
+          t        = toBoxType' b
+
+
+-- | A heterogenous collection of child boxes for a parent box wiht type @cont@.
+data Boxes' (boxTypes :: [k]) where
+        Nested' :: Boxes' '[]
+        (:.) :: Boxes' ts -> Box' t -> Boxes' (t ': ts)
+
+infixl 2 :.
+
+instance IsBoxContent (Boxes' bs) where
+  boxSize Nested' = 0
+  boxSize (bs :. b) = boxSize bs + boxSize b
+  boxBuilder Nested' = mempty
+  boxBuilder (bs :. b) = boxBuilder bs <> boxBuilder b
+
+-- | A box that contains no nested boxes.
+closedBox :: (IsBoxType' t, ValidBoxes t '[]) => BoxContent t -> Box' t
+closedBox c = Box' c Nested'
+
+-- | A box that contains no fields, but nested boxes.
+containerBox :: (IsBoxType' t, ValidBoxes t ts, BoxContent t ~ ()) => Boxes' ts -> Box' t
+containerBox = Box' ()
+
+-- | A complete media file, consisting of top-level boxes.
+mediaFile :: Boxes' ts -> Builder
+mediaFile = boxBuilder
+
+
+
+
 
 -- | Create a 'Box' from any 'IsBoxContent' with a type.
 box :: forall t c.
@@ -289,8 +355,7 @@ instance IsBoxContent (UnverifiedBoxes t bs) where
 -- are standard conform.
 type ValidBoxes t ts =
   ( AllAllowedIn t ts ~ 'True
-  , HasAllRequiredBoxes t (RequiredNestedBoxes t) ts ~ 'True
-  , CheckTopLevelOk t ~ 'True)
+  , HasAllRequiredBoxes t (RequiredNestedBoxes t) ts ~ 'True )
 
 -- | A type function to check that all nested boxes are allowed in the
 -- container.
@@ -345,9 +410,15 @@ type MissingRequired c r nested =
   ':$$: 'Text "e.g. this type is missing: "
   ':<>: 'ShowType r
 
+-- | Check that all boxes may appear top-level.
+type family CheckAllTopLevelOk (ts :: [k]) :: Bool where
+   CheckAllTopLevelOk '[] = 'True
+   CheckAllTopLevelOk (t ': rest) = CheckTopLevelOk t && CheckAllTopLevelOk rest
+
 -- | Check that the box may appear top-level.
 type family CheckTopLevelOk (t :: k) :: Bool where
    CheckTopLevelOk t = IsTopLevelBox t || TypeError (NotTopLevenError t)
+
 
 -- | The custom (type-) error message indicating that a box may not appear
 -- top-level.

@@ -4,18 +4,15 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import qualified Data.ByteString as B
 
 -- | Media data box
-type MediaDataBox = Box "mdat"
+data MediaData
 
-instance BoxRules "mdat"
+instance BoxRules MediaData
+
+instance IsBoxType' MediaData where
+  -- | Contents of a 'mdat' box are just bytes from a strict 'ByteString'
+  type BoxContent MediaData = B.ByteString
+  toBoxType' _ = StdType "mdat"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
-mediaDataBox :: MediaData -> MediaDataBox
-mediaDataBox = box
-
--- | Contents of a 'mdat' box are just bytes from a strict 'ByteString'
-newtype MediaData =
-  MediaData B.ByteString
-
-instance IsBoxContent MediaData where
-  boxSize (MediaData bs) = fromIntegral $ B.length bs
-  boxBuilder (MediaData bs) = byteString bs
+mediaDataBox :: B.ByteString -> Box' MediaData
+mediaDataBox = closedBox

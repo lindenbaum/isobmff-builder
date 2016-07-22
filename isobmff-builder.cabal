@@ -59,11 +59,13 @@ library
                      , TypeSynonymInstances
 
 test-suite spec
-  type:              exitcode-stdio-1.0
-  ghc-options:       -Wall
-  hs-source-dirs:    spec
-  default-language:  Haskell2010
-  main-is:           Spec.hs
+  type:                exitcode-stdio-1.0
+  ghc-options:         -Wall
+  hs-source-dirs:      spec
+  default-language:    Haskell2010
+  main-is:             Spec.hs
+  other-modules:       BoxFieldsSpec
+                     , BoxSpec
   build-depends:       base >= 4.9 && < 5
                      , bytestring >= 0.10.8.1
                      , hspec

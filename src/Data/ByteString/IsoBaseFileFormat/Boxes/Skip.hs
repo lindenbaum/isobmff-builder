@@ -1,20 +1,21 @@
+-- | A filler box with a specific size.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Skip where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
--- | A filler box, the contents are skipped
-type SkipBox = Box "skip"
-
-instance BoxRules "skip" where
-  type RestrictedTo "skip" = 'Nothing
-
--- | Create a 'SkipBox' with a given size.
-skipBox :: Skip -> SkipBox
-skipBox = box
-
 -- | Contents of a 'skip' box are just any number of filler bytes.
-newtype Skip =
-  Skip Int
+newtype Skip = Skip Int
+
+instance IsBoxType' Skip where
+  type BoxContent Skip = Skip
+  toBoxType' _ = StdType "skip"
+
+instance BoxRules Skip where
+  type RestrictedTo Skip = 'Nothing
+
+-- | Create a 'Skip' with a given size.
+skipBox :: Skip -> Box' Skip
+skipBox = closedBox
 
 instance IsBoxContent Skip where
   boxSize (Skip bs) = fromIntegral bs

@@ -9,6 +9,7 @@ import Control.Exception (evaluate)
 
 -- import qualified Data.ByteString.Builder as B import qualified Data.ByteString.Lazy as BL import
 -- qualified Data.Binary.Get as Binary
+
 spec :: Spec
 spec =
   describe "Scalar, Constant, Template and ScalarArry composition" $
@@ -22,7 +23,23 @@ spec =
        do it "boxSize reports the correct size" $
              boxSize example2 `shouldBe` (2 * 4 + 2 + 2 + 2 + 2 + 9 * 4 + 4 + 4)
           it "it renders the expected content" $
-             boxSize example2 `shouldBe` (2 * 4 + 2 + 2 + 2 + 2 + 9 * 4 + 4 + 4)
+             renderBox example2 `shouldBe` (BL.pack [0,0,0,0,
+                                                     0,0,0,0,
+                                                        0,65,
+                                                        0,66,
+                                                         1,0,
+                                                         0,0,
+                                                     0,0,0,67,
+                                                     0,0,0,68,
+                                                     0,0,0,69,
+                                                     0,0,0,70,
+                                                     0,0,0,71,
+                                                     0,0,0,72,
+                                                     0,0,0,73,
+                                                     0,0,0,74,
+                                                     0,0,0,75,
+                                                     0,0,0,76,
+                                                     0,0,0,77])
 
 renderBox :: IsBoxContent c => c -> BL.ByteString
 renderBox = toLazyByteString . boxBuilder
@@ -52,8 +69,8 @@ example2 =
   Constant <+>
   Custom 65 <+>
   Custom 66 <+>
-  Custom 67 <+>
+  Default <+>
   Constant <+>
-  Custom (i32Arr [68 .. 77]) <+>
-  i32 78 <+>
-  i32 79
+  Custom (i32Arr [67 .. 75]) <+>
+  i32 76 <+>
+  i32 77

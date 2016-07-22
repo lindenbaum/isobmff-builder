@@ -3,17 +3,17 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.FileType where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | File Type Box
-type FileTypeBox = Box FileType
 
 instance BoxRules FileType
 
-instance IsBoxType FileType where
-  toBoxType _ = StdType "ftyp"
+instance IsBoxType' FileType where
+  type BoxContent FileType = FileType
+  toBoxType' _ = StdType "ftyp"
 
 -- | Create a 'FileTypeBox' from a major brand, a minor version and a list of
 -- compatible brands
-fileTypeBox :: FileType -> FileTypeBox
-fileTypeBox = box
+fileTypeBox :: FileType -> Box' FileType
+fileTypeBox = closedBox
 
 -- | Contents of a 'ftyp' box are some 'FourCc' /brands/ and a version.
 data FileType =
