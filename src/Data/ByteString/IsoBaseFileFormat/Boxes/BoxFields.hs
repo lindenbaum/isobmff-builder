@@ -11,7 +11,8 @@ import Data.Singletons
 import Data.Singletons.Prelude.List
 import qualified Data.Vector.Sized as Vec
 
--- * Convenient API
+-- * Scalar box fields
+
 type U64 label = Scalar label Word64
 
 type I64 label = Scalar label Int64
@@ -51,6 +52,51 @@ u8 = Scalar
 
 i8 :: Int8 -> I8 label
 i8 = Scalar
+
+-- | A numeric box field with a type level label. Note that it has a 'Num'
+-- instance. Use the type aliases above, e.g.
+-- 'U8','I8','U16','I16','U32','I32','U64','I64' from above. Use either the
+-- smart constructors, e.g. 'u8','i8','u16','i16','u32','i32','u64','i64' or the
+-- 'Num' instance, whereas the constructors might give a bit more safety.
+newtype Scalar (label :: k) scalartype =
+  Scalar scalartype deriving (Show, Read, Ord, Eq, Num)
+
+instance IsBoxContent (Scalar label Word8) where
+  boxSize _ = 1
+  boxBuilder (Scalar v) = word8 v
+
+instance IsBoxContent (Scalar label Word16) where
+  boxSize _ = 2
+  boxBuilder (Scalar v) = word16BE v
+
+instance IsBoxContent (Scalar label Word32) where
+  boxSize _ = 4
+  boxBuilder (Scalar v) = word32BE v
+
+instance IsBoxContent (Scalar label Word64) where
+  boxSize _ = 8
+  boxBuilder (Scalar v) = word64BE v
+
+instance IsBoxContent (Scalar label Int8) where
+  boxSize _ = 1
+  boxBuilder (Scalar v) = int8 v
+
+instance IsBoxContent (Scalar label Int16) where
+  boxSize _ = 2
+  boxBuilder (Scalar v) = int16BE v
+
+instance IsBoxContent (Scalar label Int32) where
+  boxSize _ = 4
+  boxBuilder (Scalar v) = int32BE v
+
+instance IsBoxContent (Scalar label Int64) where
+  boxSize _ = 8
+  boxBuilder (Scalar v) = int64BE v
+
+instance (KnownNat scalar,Num o) => FromTypeLit (Scalar label o) scalar where
+  fromTypeLit _ = Scalar $ fromIntegral $ natVal (Proxy :: Proxy scalar)
+
+-- * Array fields
 
 type U64Arr label size = ScalarArray label size Word64
 
@@ -100,59 +146,11 @@ i8Arr :: (KnownNat size,KnownSymbol label)
       => [Int8] -> I8Arr label size
 i8Arr = fromList
 
--- * Conversion from type-level numbers and lists to values
-class FromTypeLit o v  where
-  fromTypeLit :: proxy o v -> o
-
-instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromTypeLit (ScalarArray label len o) (arr :: [Nat]) where
-  fromTypeLit _ =
-    let s = sing :: Sing arr
-        vs :: [Integer]
-        vs = fromSing s
-        vs' :: [o]
-        vs' = fromIntegral <$> vs
-    in ScalarArray (fromJust (Vec.fromList vs'))
-
--- * Scalar box fields
-newtype Scalar (label :: k) scalartype =
-  Scalar scalartype deriving (Show, Read, Ord, Eq, Num)
-
-instance IsBoxContent (Scalar label Word8) where
-  boxSize _ = 1
-  boxBuilder (Scalar v) = word8 v
-
-instance IsBoxContent (Scalar label Word16) where
-  boxSize _ = 2
-  boxBuilder (Scalar v) = word16BE v
-
-instance IsBoxContent (Scalar label Word32) where
-  boxSize _ = 4
-  boxBuilder (Scalar v) = word32BE v
-
-instance IsBoxContent (Scalar label Word64) where
-  boxSize _ = 8
-  boxBuilder (Scalar v) = word64BE v
-
-instance IsBoxContent (Scalar label Int8) where
-  boxSize _ = 1
-  boxBuilder (Scalar v) = int8 v
-
-instance IsBoxContent (Scalar label Int16) where
-  boxSize _ = 2
-  boxBuilder (Scalar v) = int16BE v
-
-instance IsBoxContent (Scalar label Int32) where
-  boxSize _ = 4
-  boxBuilder (Scalar v) = int32BE v
-
-instance IsBoxContent (Scalar label Int64) where
-  boxSize _ = 8
-  boxBuilder (Scalar v) = int64BE v
-
-instance (KnownNat scalar,Num o) => FromTypeLit (Scalar label o) scalar where
-  fromTypeLit _ = Scalar $ fromIntegral $ natVal (Proxy :: Proxy scalar)
-
--- * Scalar array
+-- | A box field that is an array of 'Scalar's with a type level label. Use the
+-- type aliases, e.g.
+-- 'U8Arr','I8Arr','U16Arr','I16Arr','U32Arr','I32Arr','U64Arr','I64Arr' from
+-- above. Use the smart constructors, e.g.
+-- 'u8Arr','i8Arr','u16Arr','i16Arr','u32Arr','i32Arr','u64Arr','i64Arr' .
 newtype ScalarArray (label :: k) (len :: Nat) o where
         ScalarArray :: Vec.Vector n o -> ScalarArray label n o
 
@@ -166,6 +164,7 @@ instance (Num o,IsBoxContent (Scalar label o),KnownNat (len :: Nat)) => IsBoxCon
     where mkScalar :: o -> Scalar label o
           mkScalar = Scalar
 
+-- | Internal function
 fromList :: forall label n o.
             (KnownSymbol label,KnownNat n)
          => [o] -> ScalarArray label n o
@@ -180,7 +179,10 @@ fromList l =
              (natVal (Proxy :: Proxy n))
     Just v -> v
 
--- * Constant fields with default values
+-- * Constant fields
+
+-- | Wrapper around a field, e.g. a 'Scalar' or 'ScalarArray', with a type level
+-- value. The wrapped content must implement 'FromTypeLit'.
 data Constant o v where
         Constant :: Constant o v
 
@@ -188,7 +190,12 @@ instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Constant o v) where
   boxSize = boxSize . fromTypeLit
   boxBuilder = boxBuilder . fromTypeLit
 
--- * Fields with default values that can be overriden with custom value
+-- * Template Fields
+
+-- | Fields with default values that can be overriden with custom value. Like
+-- 'Constant' this is a wrapper around a field, e.g. a 'Scalar' or
+-- 'ScalarArray', with a type level default value. The wrapped content must
+-- implement 'FromTypeLit'.
 data Template o v where
         Default :: Template o v
         Custom :: o -> Template o v
@@ -197,3 +204,36 @@ instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Template o v) where
   boxSize = boxSize . fromTypeLit
   boxBuilder d@Default = boxBuilder $ fromTypeLit d
   boxBuilder (Custom o) = boxBuilder o
+
+-- * Conversion from type-level numbers and lists to values
+
+-- | Types that can be constructed from type level value representations.
+class FromTypeLit o v  where
+  fromTypeLit :: proxy o v -> o
+
+instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromTypeLit (ScalarArray label len o) (arr :: [Nat]) where
+  fromTypeLit _ =
+    let s = sing :: Sing arr
+        vs :: [Integer]
+        vs = fromSing s
+        vs' :: [o]
+        vs' = fromIntegral <$> vs
+    in ScalarArray (fromJust (Vec.fromList vs'))
+
+-- * Box concatenation
+
+-- | Box content composition
+data Extend a b =
+  Extend a
+         b
+
+-- | An operator for 'Extend'.
+type a :+ b = Extend a b
+
+-- | An operator for 'Extend'.
+(<+>) :: a -> b -> Extend a b
+(<+>) = Extend
+
+instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
+  boxSize (Extend p c) = boxSize p + boxSize c
+  boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c

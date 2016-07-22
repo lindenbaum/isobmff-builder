@@ -16,19 +16,19 @@ instance IsBoxType' Movie where
 instance BoxRules Movie where
   type RequiredNestedBoxes Movie = '[MovieHeader]
 
--- | A movie parent box. Combine with the nested 'Boxes' using 'boxes' or '(^-)'
+-- | A movie parent box. Combine with the nested 'Boxes using 'boxes' or '(^-)'
 --
 -- Example:
 --
 -- >  xxx :: Box' Movie
 -- >  xxx = movieBox $
--- >         Nested' (movieHeaderBox (...))
+-- >         Nested (movieHeaderBox (...))
 -- >         :. (trackBox $
--- >              Nested' (trackHeaderBox (TrackHeader ...))
+-- >              Nested (trackHeaderBox (TrackHeader ...))
 -- >              :. trackReferenceBox (TrackReference ...)
 -- >              :. trackGroupingIndication (TrackGroupingInd ...))
 --
-movieBox :: ValidBoxes Movie ts => Boxes' ts -> Box' Movie
+movieBox :: ValidBoxes Movie ts => Boxes ts -> Box' Movie
 movieBox = containerBox
 
 
@@ -69,7 +69,7 @@ instance BoxRules Track where
   type GetCardinality Track any = 'ExactlyOnce
   type RestrictedTo Track = 'Just '[Movie]
 
-track :: ValidBoxes Track ts => Boxes' ts -> Box' Track
+track :: ValidBoxes Track ts => Boxes ts -> Box' Track
 track = containerBox
 
   -- * @tkhd@ Box

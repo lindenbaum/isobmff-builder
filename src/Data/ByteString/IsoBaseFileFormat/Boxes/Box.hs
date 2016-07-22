@@ -26,8 +26,14 @@ import qualified Data.ByteString as B
 
 -- * Basic Types and classes
 
+-- | Base class for all (abstract/phantom/normal-) types that represent boxes
+class (IsBoxContent (BoxContent t), BoxRules t) => IsBoxType' t where
+  type BoxContent t
+  type BoxContent t = ()
+  toBoxType' :: proxy t -> BoxType
+
 -- | A class that describes (on the type level) how a box can be nested into
--- other boxes (see 'Boxes').
+-- other boxes (see 'Boxes).
 class BoxRules (t :: k) where
   -- | List of boxes that this box can be nested into.
   type RestrictedTo t :: Maybe [k]
@@ -46,13 +52,6 @@ class BoxRules (t :: k) where
 -- | Describes how many times a box should be present in a container.
 data Cardinality = AtMostOnce | ExactlyOnce | OnceOrMore
 
--- | Convert type level box types to values
-class BoxRules t => IsBoxType (t :: k) where
-  toBoxType :: proxy t -> BoxType
-
-instance (BoxRules t, KnownSymbol t) => IsBoxType t where
-  toBoxType _ = StdType (fromString (symbolVal (Proxy :: Proxy t)))
-
 -- | Types that go into a box. A box content is a piece of data that can be
 -- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
 -- defines no box.
@@ -60,45 +59,11 @@ class IsBoxContent a  where
   boxSize :: a -> BoxSize
   boxBuilder :: a -> Builder
 
--- | An empty box content can by represented by @()@ (i.e. /unit/).
-instance IsBoxContent () where
-  boxSize _ = 0
-  boxBuilder _ = mempty
-
--- | Trivial instance for 'ByteString'
-instance IsBoxContent B.ByteString where
-  boxSize = fromIntegral . B.length
-  boxBuilder = byteString
-
--- | Box content composed of box contents @a@ and @b@.
-data Extend a b =
-  Extend a
-         b
-
--- | An operator for 'Extend'.
-type a :+ b = Extend a b
-
--- | An operator for 'Extend'.
-(<+>) :: a -> b -> Extend a b
-(<+>) = Extend
-
-instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (Extend p c) where
-  boxSize (Extend p c) = boxSize p + boxSize c
-  boxBuilder (Extend p c) = boxBuilder p <> boxBuilder c
-
--- * Boxes
-
-
-
--- | Base class for all (abstract/phantom/normal-) types that represent boxes
-class (IsBoxContent (BoxContent t), BoxRules t) => IsBoxType' t where
-  type BoxContent t
-  type BoxContent t = ()
-  toBoxType' :: proxy t -> BoxType
+-- * Data types
 
 -- | A type that wraps the contents of a box and the box type.
 data Box' b where
-  Box' :: (IsBoxType' b, ValidBoxes b ts) => BoxContent b -> Boxes' ts -> Box' b
+  Box' :: (IsBoxType' b, ValidBoxes b ts) => BoxContent b -> Boxes ts -> Box' b
 
 instance IsBoxContent (Box' cnt) where
   boxBuilder b@(Box' cnt nested) = sB <> tB <> sExtB <> tExtB <> cntB <> nestedB
@@ -119,62 +84,30 @@ instance IsBoxContent (Box' cnt) where
                      + boxSize nested
           t        = toBoxType' b
 
-
--- | A heterogenous collection of child boxes for a parent box wiht type @cont@.
-data Boxes' (boxTypes :: [k]) where
-        Nested' :: Boxes' '[]
-        (:.) :: Boxes' ts -> Box' t -> Boxes' (t ': ts)
+-- | A heterogenous collection of boxes.
+data Boxes (boxTypes :: [k]) where
+        Nested :: Boxes '[]
+        (:.) :: Boxes ts -> Box' t -> Boxes (t ': ts)
 
 infixl 2 :.
 
-instance IsBoxContent (Boxes' bs) where
-  boxSize Nested' = 0
+instance IsBoxContent (Boxes bs) where
+  boxSize Nested = 0
   boxSize (bs :. b) = boxSize bs + boxSize b
-  boxBuilder Nested' = mempty
+  boxBuilder Nested = mempty
   boxBuilder (bs :. b) = boxBuilder bs <> boxBuilder b
 
 -- | A box that contains no nested boxes.
 closedBox :: (IsBoxType' t, ValidBoxes t '[]) => BoxContent t -> Box' t
-closedBox c = Box' c Nested'
+closedBox c = Box' c Nested
 
 -- | A box that contains no fields, but nested boxes.
-containerBox :: (IsBoxType' t, ValidBoxes t ts, BoxContent t ~ ()) => Boxes' ts -> Box' t
+containerBox :: (IsBoxType' t, ValidBoxes t ts, BoxContent t ~ ()) => Boxes ts -> Box' t
 containerBox = Box' ()
 
 -- | A complete media file, consisting of top-level boxes.
-mediaFile :: Boxes' ts -> Builder
+mediaFile :: Boxes ts -> Builder
 mediaFile = boxBuilder
-
-
-
-
-
--- | Create a 'Box' from any 'IsBoxContent' with a type.
-box :: forall t c.
-       (IsBoxType t,IsBoxContent c)
-    => c -> Box t
-box cnt = Box (toBoxType (Proxy :: Proxy t)) cnt
-
--- | An /empty/ box. This is for boxes without any extra /fields/. Although it is
--- called /emptyBox/ it might still contain nested boxes.
-emptyBox :: forall t . (IsBoxType t) => Box t
-emptyBox = box ()
-
--- | A type that wraps the contents of a box and the box type.
-data Box (b :: t) where
-        Box :: (IsBoxType t,IsBoxContent c) => BoxType -> c -> Box t
-
-instance IsBoxContent (Box t) where
-  boxBuilder b@(Box t cnt) = sFix <> tFix <> sExt <> tExt <> boxBuilder cnt
-    where s = boxSize b
-          sFix = boxBuilder s
-          sExt = boxBuilder (BoxSizeExtension s)
-          tFix = boxBuilder t
-          tExt = boxBuilder (BoxTypeExtension t)
-  boxSize (Box t cnt) = sPayload + boxSize (BoxSizeExtension sPayload)
-    where sPayload =
-            boxSize (BoxSize 2) + boxSize t + boxSize cnt +
-            boxSize (BoxTypeExtension t)
 
 -- * Box Size and Type
 
@@ -284,70 +217,6 @@ instance IsBoxContent BoxTypeExtension where
 
 -- * Type-safe box composition
 
--- | A 'ParentBox' is a 'Box' but without it's children. It has no
--- 'IsBoxContent' instance, and it must be converted to a real 'Box' using
--- 'boxes'. This is to prevent creation of boxes with invalid children.
-data ParentBox (b :: t) where
-        ParentBox :: (IsBoxType t,IsBoxContent c) => BoxType -> c -> ParentBox t
-
--- | A parent box. Similar to 'box' but for 'ParentBox'es.
-parentBox :: forall t c . (IsBoxType t, IsBoxContent c) => c -> ParentBox t
-parentBox = toParentBox . box
-  where toParentBox :: IsBoxType s => Box s -> ParentBox s
-        toParentBox (Box t c) = ParentBox t c
-
--- | A 'ParentBox' without /fields/.
-emptyParentBox :: forall t . (IsBoxType t) => ParentBox t
-emptyParentBox = parentBox ()
-
--- | A box that containing nested boxes. The nesting is validated at compile
--- time using 'BoxRules'.
-boxes :: (IsBoxType t,IsBoxContent (Boxes t ts))
-      => ParentBox t -> Boxes t ts -> Box t
-boxes (ParentBox t c) = Box t . Extend c
-
--- | An operator for starting a 'Boxes' from the parent box.
---
--- Example:
--- >  xxx :: Box "moov"
--- >  xxx = movieBox
--- >         ^- Nested (movieHeaderBox (MovieHeader ...))
--- >                   :- (trackBox
--- >                       ^- Nested (trackHeaderBox (TrackHeader ...))
--- >                                 :- trackReferenceBox (TrackReference ...)
--- >                                 :- trackGroupingIndication (TrackGroupingInd ...))
---
-(^-) :: (IsBoxType t,IsBoxContent (Boxes t ts))
-     => ParentBox t -> Boxes t ts -> Box t
-parent ^- nested = boxes parent nested
-
-infixr 1 ^-
-
--- | A heterogenous collection of child boxes for a parent box wiht type @cont@.
-data Boxes (cont :: x) (boxTypes :: [x]) where
-        Nested :: IsBoxType t => Box t -> Boxes c '[t]
-        (:-) :: IsBoxType t => Boxes c ts -> Box t -> Boxes c (t ': ts)
-
-infixl 2 :-
-
--- | To be nested into a box, 'Boxes' must be an instance of 'IsBoxContent'.
--- This instance concatenates all nested boxes.
-instance (ValidBoxes t bs) => IsBoxContent (Boxes t bs) where
-  boxSize bs = boxSize (UnverifiedBoxes bs)
-  boxBuilder bs = boxBuilder (UnverifiedBoxes bs)
-
--- | An internal wrapper type around 'Boxes' for the 'IsBoxContent' instance.
--- Since the 'IsBoxContent' instance recursivly deconstructs a 'Boxes' the
--- constraints for the validity 'ValidBoxes' cannot be asserted. To circumvent
--- this the 'IsBoxContent' instance for 'Boxes' delegates to the instance of
--- 'UnverifiedBoxes', which has no 'ValidBoxes' constraint in the instance head.
-newtype UnverifiedBoxes t ts = UnverifiedBoxes (Boxes t ts)
-
-instance IsBoxContent (UnverifiedBoxes t bs) where
-  boxSize (UnverifiedBoxes (Nested b)) = boxSize b
-  boxSize (UnverifiedBoxes (bs :- b)) = boxSize (UnverifiedBoxes bs) + boxSize b
-  boxBuilder (UnverifiedBoxes (Nested b)) = boxBuilder b
-  boxBuilder (UnverifiedBoxes (bs :- b)) = boxBuilder (UnverifiedBoxes bs) <> boxBuilder b
 
 -- * Type level consistency checks
 
@@ -399,7 +268,7 @@ type family HasAllRequiredBoxes (c :: k) (req :: [k]) (nested :: [k]) :: Bool
 
 type IsSubSet base sub = Intersection base sub == sub
 
--- | The custom (type-) error message for 'HasAllRequiredBoxes'.
+-- | The custom (type-) error message for 'HasAllRequiredBoxes.
 type MissingRequired c r nested =
   'Text "Boxes of type: "
   ':<>: 'ShowType c
@@ -428,80 +297,14 @@ type NotTopLevenError c =
   ':<>: 'Text " MUST be nested inside boxes of these types: "
   ':$$: 'ShowType (RestrictedTo c)
 
--- * Full Boxes
+-- * 'IsBoxContent' instances
 
--- | A `Box` with /version/ and /branding/ information
-type FullBox t = Extend FullBoxHeader t
+-- | An empty box content can by represented by @()@ (i.e. /unit/).
+instance IsBoxContent () where
+  boxSize _ = 0
+  boxBuilder _ = mempty
 
--- | Create a 'FullBox' from a 'FourCc' 'StdType' and the nested box content.
-fullBox
- :: (IsBoxType t, IsBoxContent c)
- => BoxVersion -> BoxFlags 24 -> c -> Box t
-fullBox ver fs cnt = box (Extend (FullBoxHeader ver fs) cnt)
-
--- | The additional header with /version/ and /branding/ information
-data FullBoxHeader =
-  FullBoxHeader BoxVersion
-                (BoxFlags 24)
-
-instance IsBoxContent FullBoxHeader where
-  boxSize (FullBoxHeader _ f) = 1 + boxSize f
-  boxBuilder (FullBoxHeader (BoxVersion v) f) = word8 v <> boxBuilder f
-
--- | The box version (in a 'FullBox') is a single byte
-newtype BoxVersion =
-  BoxVersion Word8
-
--- | In addition to a 'BoxVersion' there can be 24 bits for custom flags etc in
--- a 'FullBox'.
-newtype BoxFlags bits =
-  BoxFlags Integer
-  deriving (Eq,Show,Num)
-
--- | Internal function that creates a bit mask with all bits in a 'BoxFlags' set
--- to 1.
-boxFlagBitMask :: KnownNat bits
-               => BoxFlags bits -> Integer
-boxFlagBitMask px = 2 ^ natVal px - 1
-
--- | Internal function that masks-out all bits higher than 'bits'.
-cropBits :: KnownNat bits
-         => BoxFlags bits -> BoxFlags bits
-cropBits f@(BoxFlags b) = BoxFlags (b .&. boxFlagBitMask f)
-
--- | Get the number of bytes required to store a number of bits.
-instance KnownNat bits => IsBoxContent (BoxFlags bits) where
-  boxSize f =
-    let minBytes = fromInteger $ natVal f `div` 8
-        modBytes = fromInteger $ natVal f `mod` 8
-    in BoxSize $ minBytes + signum modBytes
-  boxBuilder f@(BoxFlags b) =
-    let bytes =
-          let (BoxSize bytes') = boxSize f
-          in fromIntegral bytes'
-        wordSeq n
-          | n <= bytes =
-            word8 (fromIntegral (shiftR b ((bytes - n) * 8) .&. 255)) <>
-            wordSeq (n + 1)
-          | otherwise = mempty
-    in wordSeq 1
-
-instance KnownNat bits => Bits (BoxFlags bits) where
-  (.&.) (BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
-  (.|.) (BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ l .&. r
-  xor (BoxFlags l) (BoxFlags r) = cropBits $ BoxFlags $ xor l r
-  complement (BoxFlags x) = cropBits $ BoxFlags $ complement x
-  shift (BoxFlags x) = cropBits . BoxFlags . shift x
-  rotateL = error "TODO rotateL"
-  rotateR = error "TODO rotateR"
-  bitSize = fromInteger . natVal
-  bitSizeMaybe = Just . fromInteger . natVal
-  isSigned _ = False
-  testBit f n =
-    let (BoxFlags b) = cropBits f
-    in testBit b n
-  bit = cropBits . BoxFlags . bit
-  popCount f =
-    let (BoxFlags b) = cropBits f
-    in popCount b
-  zeroBits = BoxFlags 0
+-- | Trivial instance for 'ByteString'
+instance IsBoxContent B.ByteString where
+  boxSize = fromIntegral . B.length
+  boxBuilder = byteString

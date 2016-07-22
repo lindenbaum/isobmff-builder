@@ -19,6 +19,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Box
                      , Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
                      , Data.ByteString.IsoBaseFileFormat.Boxes.FileType
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaData
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Skip
                      , Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation
