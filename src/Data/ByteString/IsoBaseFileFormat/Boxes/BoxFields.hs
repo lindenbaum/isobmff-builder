@@ -13,9 +13,9 @@ import qualified Data.Vector.Sized as Vec
 
 -- * Scalar box fields
 
-type U64 label = Scalar label Word64
+type U64 label = Scalar Word64 label
 
-type I64 label = Scalar label Int64
+type I64 label = Scalar Int64 label
 
 u64 :: Word64 -> U64 label
 u64 = Scalar
@@ -23,9 +23,9 @@ u64 = Scalar
 i64 :: Int64 -> I64 label
 i64 = Scalar
 
-type U32 label = Scalar label Word32
+type U32 label = Scalar Word32 label
 
-type I32 label = Scalar label Int32
+type I32 label = Scalar Int32 label
 
 u32 :: Word32 -> U32 label
 u32 = Scalar
@@ -33,9 +33,9 @@ u32 = Scalar
 i32 :: Int32 -> I32 label
 i32 = Scalar
 
-type U16 label = Scalar label Word16
+type U16 label = Scalar Word16 label
 
-type I16 label = Scalar label Int16
+type I16 label = Scalar Int16 label
 
 u16 :: Word16 -> U16 label
 u16 = Scalar
@@ -43,9 +43,9 @@ u16 = Scalar
 i16 :: Int16 -> I16 label
 i16 = Scalar
 
-type U8 label = Scalar label Word8
+type U8 label = Scalar Word8 label
 
-type I8 label = Scalar label Int8
+type I8 label = Scalar Int8 label
 
 u8 :: Word8 -> U8 label
 u8 = Scalar
@@ -58,42 +58,42 @@ i8 = Scalar
 -- 'U8','I8','U16','I16','U32','I32','U64','I64' from above. Use either the
 -- smart constructors, e.g. 'u8','i8','u16','i16','u32','i32','u64','i64' or the
 -- 'Num' instance, whereas the constructors might give a bit more safety.
-newtype Scalar (label :: k) scalartype =
+newtype Scalar scalartype (label :: k) =
   Scalar scalartype deriving (Show, Read, Ord, Eq, Num)
 
-instance IsBoxContent (Scalar label Word8) where
+instance IsBoxContent (Scalar Word8 label) where
   boxSize _ = 1
   boxBuilder (Scalar v) = word8 v
 
-instance IsBoxContent (Scalar label Word16) where
+instance IsBoxContent (Scalar Word16 label) where
   boxSize _ = 2
   boxBuilder (Scalar v) = word16BE v
 
-instance IsBoxContent (Scalar label Word32) where
+instance IsBoxContent (Scalar Word32 label) where
   boxSize _ = 4
   boxBuilder (Scalar v) = word32BE v
 
-instance IsBoxContent (Scalar label Word64) where
+instance IsBoxContent (Scalar Word64 label) where
   boxSize _ = 8
   boxBuilder (Scalar v) = word64BE v
 
-instance IsBoxContent (Scalar label Int8) where
+instance IsBoxContent (Scalar Int8 label) where
   boxSize _ = 1
   boxBuilder (Scalar v) = int8 v
 
-instance IsBoxContent (Scalar label Int16) where
+instance IsBoxContent (Scalar Int16 label) where
   boxSize _ = 2
   boxBuilder (Scalar v) = int16BE v
 
-instance IsBoxContent (Scalar label Int32) where
+instance IsBoxContent (Scalar Int32 label) where
   boxSize _ = 4
   boxBuilder (Scalar v) = int32BE v
 
-instance IsBoxContent (Scalar label Int64) where
+instance IsBoxContent (Scalar Int64 label) where
   boxSize _ = 8
   boxBuilder (Scalar v) = int64BE v
 
-instance (KnownNat scalar,Num o) => FromTypeLit (Scalar label o) scalar where
+instance (KnownNat scalar,Num o) => FromTypeLit (Scalar o label) scalar where
   fromTypeLit _ = Scalar $ fromIntegral $ natVal (Proxy :: Proxy scalar)
 
 -- * Array fields
@@ -154,14 +154,14 @@ i8Arr = fromList
 newtype ScalarArray (label :: k) (len :: Nat) o where
         ScalarArray :: Vec.Vector n o -> ScalarArray label n o
 
-instance (Num o,IsBoxContent (Scalar label o),KnownNat (len :: Nat)) => IsBoxContent (ScalarArray label len o) where
+instance (Num o,IsBoxContent (Scalar o label),KnownNat (len :: Nat)) => IsBoxContent (ScalarArray label len o) where
   boxSize (ScalarArray vec) =
-    fromIntegral (Vec.length vec) * boxSize (Scalar 0 :: Scalar label o)
+    fromIntegral (Vec.length vec) * boxSize (Scalar 0 :: Scalar o label)
   boxBuilder (ScalarArray vec) =
     Vec.foldl' mappend
                mempty
                (Vec.map (boxBuilder . mkScalar) vec)
-    where mkScalar :: o -> Scalar label o
+    where mkScalar :: o -> Scalar o label
           mkScalar = Scalar
 
 -- | Internal function

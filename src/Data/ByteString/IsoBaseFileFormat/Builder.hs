@@ -6,6 +6,7 @@ module Data.ByteString.IsoBaseFileFormat.Builder
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.FileType as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MediaData as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MovieBox as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation as X

@@ -1,6 +1,6 @@
 -- | Full Boxes
 module Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-       (FullBox(), fullBox, closedFullBox, BoxVersion, BoxFlags(..)) where
+       (FullBox(), fullBox, closedFullBox, BoxVersion, BoxFlags(..), Versioned(..)) where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
@@ -31,6 +31,18 @@ closedFullBox version fs cnt = closedBox (FullBox version fs cnt)
 
 -- | The box version (in a 'FullBox') is a single byte
 type BoxVersion v = Template (U8 "fullbox-version") v
+
+-- | Two alternative representations based on a /version/ index.
+--   Use this for box content that can be either 32 or 64 bit.
+data Versioned v0 v1 (version :: Nat) where
+  V0 :: IsBoxContent v0 => v0 -> Versioned v0 v1 0
+  V1 :: IsBoxContent v1 => v1 -> Versioned v0 v1 1
+
+instance IsBoxContent (Versioned v0 v1 version) where
+  boxSize (V0 c) = boxSize c
+  boxSize (V1 c) = boxSize c
+  boxBuilder (V0 c) = boxBuilder c
+  boxBuilder (V1 c) = boxBuilder c
 
 -- | In addition to a 'BoxVersion' there can be 24 bits for custom flags etc in
 -- a 'FullBox'.
