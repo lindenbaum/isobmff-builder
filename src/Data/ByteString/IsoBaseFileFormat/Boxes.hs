@@ -12,6 +12,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.MovieBox as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Skip as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Time as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.Track as X
 import qualified Data.ByteString.Lazy as BL
 
 import Data.Int as X

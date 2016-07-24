@@ -18,7 +18,39 @@ import Control.Lens
 -- | A record which contains the stuff needed for the 'dash' brand. TODO incomplete
 data Dash (version :: Nat) =
   Dash {_mvhd :: MovieHeader version
-      ,_tkhd :: TrackHeader version}
+       ,_tkhd :: TrackHeader version
+       }
+
+-- Missing Boxes
+--  mdia
+--  mdhd
+--  hdlr
+--  soun
+--  minf
+--  smhd
+--  dinf
+--  dref
+--  url
+--  stbl
+--  stsd
+--  mp4a
+--  esds
+--  stts
+--  stsc
+--  stsz
+--  stco
+--  mvex
+--  trex
+-- For media
+-- styp
+-- moof
+-- mfhd
+-- traf
+-- tfhd
+-- trun
+
+
+type Todo = ()
 
 makeLenses ''Dash
 
