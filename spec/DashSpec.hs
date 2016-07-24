@@ -1,7 +1,7 @@
-module MinimalDocumentSpec (spec) where
+module DashSpec (spec) where
 
 import Test.Hspec
-import Data.ByteString.IsoBaseFileFormat.Builder
+import Data.ByteString.IsoBaseFileFormat.Brands.Dash
 import qualified Data.ByteString.Lazy as BL
 
 spec :: Spec

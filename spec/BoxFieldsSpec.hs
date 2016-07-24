@@ -1,7 +1,7 @@
 module BoxFieldsSpec (spec) where
 
 import Test.Hspec
-import Data.ByteString.IsoBaseFileFormat.Builder
+import Data.ByteString.IsoBaseFileFormat.Boxes
 -- import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BL
 -- import qualified Data.Binary.Get as Binary
