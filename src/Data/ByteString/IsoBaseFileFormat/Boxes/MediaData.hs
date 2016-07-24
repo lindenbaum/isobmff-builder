@@ -14,5 +14,5 @@ instance IsBoxType' MediaData where
   toBoxType' _ = StdType "mdat"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
-mediaDataBox :: B.ByteString -> Box' MediaData
+mediaDataBox :: B.ByteString -> Box MediaData
 mediaDataBox = closedBox

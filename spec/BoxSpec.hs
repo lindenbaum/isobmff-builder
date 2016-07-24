@@ -41,7 +41,7 @@ instance BoxRules TestBox1
 instance IsBoxType' TestBox1 where
   toBoxType' _ = StdType "tst1"
 
-testBox1 :: Box' TestBox1
+testBox1 :: Box TestBox1
 testBox1 = closedBox ()
 
 
@@ -52,5 +52,5 @@ instance BoxRules TestParentBox1
 instance IsBoxType' TestParentBox1 where
   toBoxType' _ = StdType "par1"
 
-testParentBox1 :: Boxes ts -> Box' TestParentBox1
+testParentBox1 :: Boxes ts -> Box TestParentBox1
 testParentBox1 = containerBox

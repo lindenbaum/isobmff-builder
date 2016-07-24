@@ -13,7 +13,7 @@ instance IsBoxType' Skip where
 instance BoxRules Skip
 
 -- | Create a 'Skip' with a given size.
-skipBox :: Skip -> Box' Skip
+skipBox :: Skip -> Box Skip
 skipBox = closedBox
 
 instance IsBoxContent Skip where

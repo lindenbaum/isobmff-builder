@@ -12,7 +12,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Time
 --
 -- Example:
 --
--- >  xxx :: Box' Movie
+-- >  xxx :: Box Movie
 -- >  xxx = movie $
 -- >         Nested (movieHeader (...))
 -- >         :. (trackBox $
@@ -21,7 +21,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Time
 -- >              :. trackGroupingIndication (TrackGroupingInd ...))
 --
 movie :: ValidBoxes (Movie version) ts
-         => Boxes ts -> Box' (Movie version)
+         => Boxes ts -> Box (Movie version)
 movie = containerBox
 
 -- | The metadata for a presentation, a single 'Movie' which occurs only once
@@ -40,7 +40,7 @@ instance BoxRules (Movie version) where
 -- | Construct a 'MovieHeader' box.
 movieHeader
   :: KnownNat version
-  => MovieHeader version -> Box' (MovieHeader version)
+  => MovieHeader version -> Box (MovieHeader version)
 movieHeader = closedFullBox Default 0
 
 -- | Movie meta data, indexed by a version.
@@ -103,7 +103,7 @@ instance BoxRules (MovieHeader version) where
 
 -- | Compose a 'Track' box from the given boxes.
 track :: ValidBoxes (Track version) ts
-      => Boxes ts -> Box' (Track version)
+      => Boxes ts -> Box (Track version)
 track = containerBox
 
 -- | Container box for tracks.
@@ -121,7 +121,7 @@ instance BoxRules (Track version) where
 
 -- | Create a 'TrackHeader' box.
 trackHeader
-  :: KnownNat version => TrackHeader version -> Box' (TrackHeader version)
+  :: KnownNat version => TrackHeader version -> Box (TrackHeader version)
 trackHeader = closedFullBox Default 0
 
 -- | Track meta data, indexed by a version.

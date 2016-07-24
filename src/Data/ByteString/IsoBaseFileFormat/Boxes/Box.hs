@@ -61,11 +61,11 @@ class IsBoxContent a  where
 -- * Data types
 
 -- | A type that wraps the contents of a box and the box type.
-data Box' b where
-  Box' :: (IsBoxType' b, ValidBoxes b ts) => BoxContent b -> Boxes ts -> Box' b
+data Box b where
+  Box :: (IsBoxType' b, ValidBoxes b ts) => BoxContent b -> Boxes ts -> Box b
 
-instance IsBoxContent (Box' cnt) where
-  boxBuilder b@(Box' cnt nested) = sB <> tB <> sExtB <> tExtB <> cntB <> nestedB
+instance IsBoxContent (Box cnt) where
+  boxBuilder b@(Box cnt nested) = sB <> tB <> sExtB <> tExtB <> cntB <> nestedB
     where s       = boxSize    b
           t       = toBoxType' b
           sB      = boxBuilder s
@@ -75,7 +75,7 @@ instance IsBoxContent (Box' cnt) where
           cntB    = boxBuilder cnt
           nestedB = boxBuilder nested
 
-  boxSize b@(Box' cnt nested) = sPayload + boxSize (BoxSizeExtension sPayload)
+  boxSize b@(Box cnt nested) = sPayload + boxSize (BoxSizeExtension sPayload)
     where sPayload =   boxSize (BoxSize undefined)
                      + boxSize t
                      + boxSize cnt
@@ -86,25 +86,26 @@ instance IsBoxContent (Box' cnt) where
 -- | A heterogenous collection of boxes.
 data Boxes (boxTypes :: [Type]) where
         NoBoxes ::                       Boxes       '[]
-        (:.)    :: Box' l  -> Boxes r -> Boxes (l ': r)
+        (:.)    :: Box l  -> Boxes r -> Boxes (l ': r)
         (:<>)   :: Boxes l -> Boxes r -> Boxes (l :++ r)
 
 infixr 2 :.
 
--- | Create a 'Boxes' collection with a single box.
-singletonBox :: Box' l -> Boxes '[l]
+-- | Create a 'Boxes' collection with a single 'Box'.
+singletonBox :: Box l -> Boxes '[l]
 singletonBox b = b :. NoBoxes
 
--- | Create a 'Boxes' collection with a single box.
-(.:.) :: Box' l -> Box' r -> Boxes '[l, r]
+-- | Create a 'Boxes' collection from two 'Box'es
+(.:.) :: Box l -> Box r -> Boxes '[l, r]
 (.:.) l r = l :. r :. NoBoxes
 
 infixr 0 .:.
 
-(.:) :: (Boxes '[l] -> r) -> Box' l -> r
-(.:) f l = f $ l :. NoBoxes
+-- | Apply a function to a 'Boxes' collection containing only a single 'Box'.
+($:) :: (Boxes '[l] -> r) -> Box l -> r
+($:) f l = f $ l :. NoBoxes
 
-infixr 2 .:
+infixr 2 $:
 
 
 instance IsBoxContent (Boxes bs) where
@@ -116,12 +117,12 @@ instance IsBoxContent (Boxes bs) where
   boxBuilder (l :<> r) = boxBuilder l <> boxBuilder r
 
 -- | A box that contains no nested boxes.
-closedBox :: (IsBoxType' t, ValidBoxes t '[]) => BoxContent t -> Box' t
-closedBox c = Box' c NoBoxes
+closedBox :: (IsBoxType' t, ValidBoxes t '[]) => BoxContent t -> Box t
+closedBox c = Box c NoBoxes
 
 -- | A box that contains no fields, but nested boxes.
-containerBox :: (IsBoxType' t, ValidBoxes t ts, BoxContent t ~ ()) => Boxes ts -> Box' t
-containerBox = Box' ()
+containerBox :: (IsBoxType' t, ValidBoxes t ts, BoxContent t ~ ()) => Boxes ts -> Box t
+containerBox = Box ()
 
 -- * Box Size and Type
 

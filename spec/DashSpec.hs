@@ -17,8 +17,8 @@ spec =
                    ct0 = (ct `shiftR` 0) .&. 255
                    cts :: [Word8]
                    cts = fromIntegral <$> [ct3,ct2,ct1,ct0]
-               let args = exampleMinimalIsobmff createionTime
-                   doc = minimalIsobmff args
+               let args = exampleDashFile createionTime
+                   doc = mkDash args
                    rendered = rawContent doc
                    expected =
                      BL.pack $
@@ -270,11 +270,10 @@ spec =
                BL.writeFile "/tmp/xxx.mp4" rendered
                rendered `shouldBe` expected
 
-exampleMinimalIsobmff
-  :: U32 "creation_time" -> MinimalIsobmff 0
-exampleMinimalIsobmff creationTime =
-  MinimalIsobmff
-    (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
+exampleDashFile
+  :: U32 "creation_time" -> Dash 0
+exampleDashFile creationTime =
+  Dash
     (MovieHeader $
      V0 (creationTime :+ 0 :+ Default :+ durationFromSeconds Default 1) :+
      def)
