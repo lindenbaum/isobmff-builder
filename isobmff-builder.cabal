@@ -23,11 +23,16 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Media
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaData
-                     , Data.ByteString.IsoBaseFileFormat.Boxes.MovieBox
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.MediaHeader
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.Movie
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.Language
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Skip
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Time
-                     , Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.Track
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
                      , Data.ByteString.IsoBaseFileFormat.Brands.Dash
   build-depends:       base >= 4.9 && < 5
                      , bytestring >= 0.10.8.1

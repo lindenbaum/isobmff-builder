@@ -1,36 +1,10 @@
-{-# LANGUAGE UndecidableInstances #-}
-
 -- | Meta data for a presentation of a /movie/.
-module Data.ByteString.IsoBaseFileFormat.Boxes.MovieBox where
+module Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
 import Data.ByteString.IsoBaseFileFormat.Boxes.Time
-
--- | Compose a set of boxes into a 'MovieBox'
---
--- Example:
---
--- >  xxx :: Box Movie
--- >  xxx = movie $
--- >         Nested (movieHeader (...))
--- >         :. (trackBox $
--- >              Nested (trackHeaderBox (TrackHeader ...))
--- >              :. trackReferenceBox (TrackReference ...)
--- >              :. trackGroupingIndication (TrackGroupingInd ...))
---
-movie :: (ValidContainerBox brand Movie ts)
-      => Boxes brand ts -> Box brand Movie
-movie = containerBox
-
--- | The metadata for a presentation, a single 'Movie' which occurs only once
--- and top-level. It is pretty empty on it's own, but it contains nested boxes
--- with all the relevant meta data.
-data Movie
-
-instance IsBoxType' Movie where
-  toBoxType' _ = StdType "moov"
 
 -- * @mvhd@ Box
 
@@ -52,9 +26,7 @@ movieHeader = closedFullBox Default 0
 data MovieHeader (version :: Nat) where
         MovieHeader ::
             KnownNat version =>
-               Versioned MovieHeaderTimesV0
-                         MovieHeaderTimesV1
-                         version
+               Timing version
             :+ Template (I32 "rate") 0x00010000
             :+ Template (I16 "volume") 0x0100
             :+ Constant (I16 "reserved") 0
@@ -83,6 +55,7 @@ type MovieHeaderTimes uint =
    :+ uint "modification_time"
    :+ TimeScale
    :+ uint "duration"
+
 
 instance IsBoxContent (MovieHeader version) where
   boxSize (MovieHeader c) = boxSize c

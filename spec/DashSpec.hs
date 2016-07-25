@@ -56,7 +56,7 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,224
+                     ,252 -- Here
                      ,109
                      ,111
                      ,111
@@ -169,7 +169,7 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,108
+                     ,136 -- Here
                      ,116
                      ,114
                      ,97
@@ -266,17 +266,21 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,0,0,0,8,109,100,105,97]
+                     ,0
+                     ,0
+                     ,0
+                     ,36,109,100,105,97,0,0,0,28,109,100,104,100
+                     ,0,0,0,0,0,0,0,0,0,1,95,144,0,0,0,0,16,181,0,0]
                -- BL.writeFile "/tmp/xxx.mp4" (BL.pack rendered)
-               rendered `shouldBe` expected
+               rendered `shouldBe`
+                 expected
 
-exampleDashFile
-  :: U32 "creation_time" -> Dash 0
+exampleDashFile :: U32 "creation_time" -> Dash 0
 exampleDashFile creationTime =
-  Dash
-    (MovieHeader $
-     V0 (creationTime :+ 0 :+ Default :+ durationFromSeconds Default 1) :+
-     def)
-    (TrackHeader $
-     V0 (0 :+ 0 :+ 1 :+ Constant :+ durationFromSeconds Default 1) :+
-     def)
+  Dash (MovieHeader $
+        V0 (creationTime :+ 0 :+ Default :+ durationFromSeconds Default 1) :+
+        def)
+       (TrackHeader $
+        V0 (0 :+ 0 :+ 1 :+ Constant :+ durationFromSeconds Default 1) :+
+        def)
+       (MediaHeader $ def)

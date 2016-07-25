@@ -63,6 +63,11 @@ newtype Scalar scalartype (label :: k) =
   Scalar {fromScalar :: scalartype}
   deriving (Show, Read, Ord, Eq, Num, Default)
 
+-- | Relabel a scalar value, e.g. convert a @Scalar U32 "foo"@ to a @Scalar U32
+-- "bar"@.
+relabelScalar :: Scalar t l -> Scalar t l'
+relabelScalar (Scalar x) = (Scalar x)
+
 instance IsBoxContent (Scalar Word8 label) where
   boxSize _ = 1
   boxBuilder (Scalar v) = word8 v

@@ -1,9 +1,10 @@
+-- | Media data box
 module Data.ByteString.IsoBaseFileFormat.Boxes.MediaData where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import qualified Data.ByteString as B
 
--- | Media data box
+-- | Media data box phantom type
 data MediaData
 
 instance IsBoxType' MediaData where

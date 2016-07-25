@@ -1,22 +1,10 @@
--- | Meta data for a presentation of a /movie/.
-module Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox where
+-- | Track header box
+module Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-
--- * @trak@ Box
--- | Compose a 'Track' box from the given boxes.
-track
-  :: (ValidContainerBox brand Track ts)
-  => Boxes brand ts -> Box brand Track
-track = containerBox
-
--- | Container box for tracks.
-data Track
-
-instance IsBoxType' Track where
-  toBoxType' _ = StdType "trak"
+import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
 
 -- * @tkhd@ Box
 -- | Create a 'TrackHeader' box.

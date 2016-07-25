@@ -21,8 +21,8 @@ instance KnownNat v => IsBrand (Dash v) where
           '[ OM_ (MovieHeader v)
            , SM  Track
                 '[ OM_ (TrackHeader v)
-                 , OM_ Media
-                      -- '[ OM_ (MediaHeader v)
+                 , OM  Media
+                      '[ OM_ (MediaHeader v)
                       --  , OM_ (MediaHandler v)
                       --  , OM  (MediaInformation v)
                       --       '[ OO_ (SoundMediaHeader v)
@@ -36,7 +36,7 @@ instance KnownNat v => IsBrand (Dash v) where
                       --              , OM_ (SampleChunkOffset v)
                       --              ]
                       --        ]
-                      --  ]
+                      ]
                  ]
            ]
      , SO_ Skip
@@ -78,9 +78,8 @@ instance KnownNat v => IsBrand (Dash v) where
 data Dash (version :: Nat) =
   Dash {_mvhd :: MovieHeader version
        ,_tkhd :: TrackHeader version
+       ,_mdhd :: MediaHeader version
        }
-
-type Todo = ()
 
 makeLenses ''Dash
 
@@ -95,4 +94,5 @@ mkDash doc =
            $  movieHeader (doc ^. mvhd)
           .:. track
                 $  trackHeader (doc ^. tkhd)
-               .:. media NoBoxes
+               .:. media
+                     $:  mediaHeader (doc ^. mdhd)

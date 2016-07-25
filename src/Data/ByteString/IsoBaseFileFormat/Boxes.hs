@@ -9,11 +9,16 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.FileType as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Media as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MediaData as X
-import Data.ByteString.IsoBaseFileFormat.Boxes.MovieBox as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.MediaHeader as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.Movie as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.Language as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Skip as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Time as X
-import Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.Track as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned as X
 import qualified Data.ByteString.Lazy as BL
 
 import Data.Int as X
