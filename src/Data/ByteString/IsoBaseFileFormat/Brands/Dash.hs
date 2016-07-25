@@ -23,8 +23,8 @@ instance KnownNat v => IsBrand (Dash v) where
                 '[ OM_ (TrackHeader v)
                  , OM  Media
                       '[ OM_ (MediaHeader v)
-                      --  , OM_ (MediaHandler v)
-                      --  , OM  (MediaInformation v)
+                       , OM_ Handler
+                      --  , OM  (MediaInformation v)   -- TODO
                       --       '[ OO_ (SoundMediaHeader v)
                       --        , OM  (DataInformation v)
                       --             '[ OM_ (DataReference v) ]
@@ -79,6 +79,7 @@ data Dash (version :: Nat) =
   Dash {_mvhd :: MovieHeader version
        ,_tkhd :: TrackHeader version
        ,_mdhd :: MediaHeader version
+       ,_hdlr :: Handler
        }
 
 makeLenses ''Dash
@@ -95,4 +96,5 @@ mkDash doc =
           .:. track
                 $  trackHeader (doc ^. tkhd)
                .:. media
-                     $:  mediaHeader (doc ^. mdhd)
+                     $  mediaHeader (doc ^. mdhd)
+                    .:. handler (doc ^. hdlr)

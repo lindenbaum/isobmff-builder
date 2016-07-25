@@ -11,6 +11,7 @@ import Text.Printf
 import Data.Singletons
 import Data.Singletons.Prelude.List
 import qualified Data.Vector.Sized as Vec
+import qualified Data.Text as T
 
 -- * Scalar box fields
 
@@ -241,6 +242,9 @@ instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromT
         vs' :: [o]
         vs' = fromIntegral <$> vs
     in ScalarArray (fromJust (Vec.fromList vs'))
+
+instance KnownSymbol str => FromTypeLit T.Text (str :: Symbol) where
+  fromTypeLit = T.pack . symbolVal
 
 -- * Box concatenation
 

@@ -21,6 +21,8 @@ import Data.Word as X
 import Data.Kind
 import GHC.TypeLits as X
 import Data.String
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import Data.Singletons.Prelude.List ((:++))
 import qualified Data.ByteString as B
 
@@ -222,3 +224,9 @@ instance IsBoxContent B.ByteString where
                          -- instance (Foldable f, IsBoxContent t) => IsBoxContent (f t) where
                          --   boxSize = foldr' (\e acc -> acc + boxSize e) 0
                          --   boxBuilder = foldMap boxBuilder
+
+-- | This 'Text' instance writes a null terminated UTF-8 string.
+instance IsBoxContent T.Text where
+  boxSize = (1+) . fromIntegral . T.length
+  boxBuilder txt = boxBuilder (T.encodeUtf8 txtNoNulls) <> word8 0
+    where txtNoNulls = T.map (\c -> if c == '\0' then ' ' else c) txt

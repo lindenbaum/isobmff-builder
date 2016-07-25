@@ -6,12 +6,30 @@ import Data.ByteString.IsoBaseFileFormat.Boxes
 import qualified Data.ByteString.Lazy as BL
 -- import qualified Data.Binary.Get as Binary
 import Control.Exception (evaluate)
+import qualified Data.Text as T
 
 -- import qualified Data.ByteString.Builder as B import qualified Data.ByteString.Lazy as BL import
 -- qualified Data.Binary.Get as Binary
 spec :: Spec
 spec =
-  do describe "mkLanguage" $
+  do describe "boxSize of Data.Text.Text" $
+       it "returns string length + 1 (for the null termination byte)" $ do
+          boxSize (T.pack "") `shouldBe` 1
+          boxSize (T.pack "Hello!") `shouldBe` 7
+     describe "boxBuilder of Data.Text.Text" $ do
+       it "appends the null termination byte" $
+          let expected = [72,101,108,108,111,32,119,111,114,108,100,33,0]
+              actual = BL.unpack $ toLazyByteString $ boxBuilder (T.pack "Hello world!")
+              in actual `shouldBe` expected
+       it "appends the null termination byte" $
+          let expected = [72,101,108,108,111,32,119,111,114,108,100,33,0]
+              actual = BL.unpack $ toLazyByteString $ boxBuilder (T.pack "Hello world!")
+              in actual `shouldBe` expected
+       it "replaces embeded NULL characters with a space (0x20)" $
+          let expected = [72,101,108,108,111,32,119,111,114,108,100,33,0]
+              actual = BL.unpack $ toLazyByteString $ boxBuilder (T.pack "Hello\0world!")
+              in actual `shouldBe` expected
+     describe "mkLanguage" $
        do it "throws runtime exceptions when the code is too short or too long" $
             do evaluate (mkLanguage "") `shouldThrow` anyException
                evaluate (mkLanguage "a") `shouldThrow` anyException

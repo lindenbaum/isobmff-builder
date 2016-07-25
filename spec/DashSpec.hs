@@ -1,8 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
 module DashSpec (spec) where
 
 import Test.Hspec
 import Data.ByteString.IsoBaseFileFormat.Brands.Dash
 import qualified Data.ByteString.Lazy as BL
+import Data.Text ()
 
 spec :: Spec
 spec =
@@ -55,8 +57,8 @@ spec =
                      ,50
                      ,0
                      ,0
-                     ,0
-                     ,252 -- Here
+                     ,1
+                     ,45 -- Here
                      ,109
                      ,111
                      ,111
@@ -169,7 +171,7 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,136 -- Here
+                     ,185 -- Here
                      ,116
                      ,114
                      ,97
@@ -266,11 +268,14 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,0
-                     ,0
-                     ,0
-                     ,36,109,100,105,97,0,0,0,28,109,100,104,100
-                     ,0,0,0,0,0,0,0,0,0,1,95,144,0,0,0,0,16,181,0,0]
+                     ,0,0,0,85 -- HERE
+                     ,109,100,105,97
+                     ,0,0,0,32,109,100,104,100,0,0,0,0
+                     ,0,0,0,0,0,0,0,0,0,1,95,144,0,0,0,0,16,181,0,0
+                     ,0,0,0,45 -- HERE
+                     ,104,100,108,114
+                     ,0,0,0,0,0,0,0,0,115,111,117,110,0,0,0,0,0,0,0,0,0,0,0,0
+                     ,72,101,108,108,111,32,119,111,114,108,100,33,0]
                -- BL.writeFile "/tmp/xxx.mp4" (BL.pack rendered)
                rendered `shouldBe`
                  expected
@@ -284,3 +289,4 @@ exampleDashFile creationTime =
         V0 (0 :+ 0 :+ 1 :+ Constant :+ durationFromSeconds Default 1) :+
         def)
        (MediaHeader $ def)
+       (Handler $ def :+ AudioTrack :+ def :+ (Custom "Hello world!"))
