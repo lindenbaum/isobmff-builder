@@ -18,6 +18,7 @@ library
   exposed-modules:     Data.ByteString.IsoBaseFileFormat.Boxes
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Box
                      , Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.Brand
                      , Data.ByteString.IsoBaseFileFormat.Boxes.FileType
                      , Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaData
@@ -26,7 +27,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Skip
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Time
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox
-                     , Data.ByteString.IsoBaseFileFormat.Brands.Dash
+                     , Data.ByteString.IsoBaseFileFormat.Brands.Dash                     
   build-depends:       base >= 4.9 && < 5
                      , bytestring >= 0.10.8.1
                      , type-list >= 0.5.0.0

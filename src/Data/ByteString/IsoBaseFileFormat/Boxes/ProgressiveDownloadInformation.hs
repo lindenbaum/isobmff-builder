@@ -8,8 +8,6 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
 -- | A Box with progressive download information
 data ProgressiveDownload
 
-instance BoxRules ProgressiveDownload
-
 instance IsBoxType' ProgressiveDownload where
   type BoxContent ProgressiveDownload = FullBox 0 ProgressiveDownloadContent
   toBoxType' _ = StdType "pdin"

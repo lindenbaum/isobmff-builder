@@ -22,14 +22,14 @@ instance (KnownNat version,IsBoxContent t) => IsBoxContent (FullBox version t) w
 
 -- | Create a 'FullBox' from a 'BoxVersion' and 'BoxFlags'
 fullBox
-  :: (IsBoxType' t,ValidBoxes t ts,BoxContent t ~ FullBox version c)
-  => BoxVersion version -> BoxFlags 24 -> c -> Boxes ts -> Box t
+  :: (IsBoxType' t,ValidContainerBox brand t ts,BoxContent t ~ FullBox version c)
+  => BoxVersion version -> BoxFlags 24 -> c -> Boxes brand ts -> Box brand t
 fullBox version fs cnt = Box (FullBox version fs cnt)
 
 -- | Create a 'FullBox' from a 'BoxVersion' and 'BoxFlags' without nested boxes.
 closedFullBox
-  :: (IsBoxType' t,ValidBoxes t '[],BoxContent t ~ FullBox version c)
-  => BoxVersion version -> BoxFlags 24 -> c -> Box t
+  :: (IsBoxType' t,ValidBox brand t,BoxContent t ~ FullBox version c)
+  => BoxVersion version -> BoxFlags 24 -> c -> Box brand t
 closedFullBox version fs cnt = closedBox (FullBox version fs cnt)
 
 -- | The box version (in a 'FullBox') is a single byte

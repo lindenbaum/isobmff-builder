@@ -12,6 +12,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
        where
 
+import Data.ByteString.IsoBaseFileFormat.Boxes.Brand as X
 import Data.Bits as X
 import Data.ByteString.Builder as X
 import Data.Monoid as X
@@ -20,62 +21,15 @@ import Data.Word as X
 import Data.Kind
 import GHC.TypeLits as X
 import Data.String
-import Data.Type.Equality
-import Data.Type.List (Find, Intersection)
 import Data.Singletons.Prelude.List ((:++))
-import Data.Type.Bool
 import qualified Data.ByteString as B
 
--- * Basic Types and classes
+-- * Box Type Classes
 -- | Base class for all (abstract/phantom/normal-) types that represent boxes
-class (IsBoxContent (BoxContent t),BoxRules t) => IsBoxType' t  where
+class (IsBoxContent (BoxContent t)) => IsBoxType' t  where
   type BoxContent t
   type BoxContent t = ()
   toBoxType' :: proxy t -> BoxType
-
-data Brand =
-  Brand String
-
-class IsBrand (x :: Brand)  where
-  type FileStructure x :: BoxTree
-
-data BoxTree
-  = MaybeOne String
-             Cardinality
-             [BoxTree]
-  | One String
-        Cardinality
-        [BoxTree]
-  | Many String
-         Cardinality
-         [BoxTree]
-  | Some String
-         Cardinality
-         [BoxTree]
-
-type ConformsTo (b :: Brand) t (ts :: [Type]) =
-  (IsBrand b,IsBoxType t, XXX t ts)
-
--- | A class that describes (on the type level) how a box can be nested into
--- other boxes (see 'Boxes).
-class BoxRules (t :: k)  where
-  -- | If the box is also allowed 'top-level' i.e. in the file directly, not
-  -- nested in an other box.
-  type IsTopLevelBox t :: Bool
-  type IsTopLevelBox t = 'True
-  -- | Describes which nested boxes MUST be present in a box using 'boxes'.
-  type RequiredNestedBoxes t :: [k]
-  type RequiredNestedBoxes t = '[]
-  -- | Describes how many times a box should be present in a container (-box).
-  type GetCardinality t (c :: k) :: Cardinality
-  type GetCardinality t any = 'ExactlyOne
-
--- | Describes how many times a box should be present in a container.
-data Cardinality
-  = AtMostOnce
-  | ExactlyOne
-  | OneOrMore
-  | ZeroOrMore
 
 -- | Types that go into a box. A box content is a piece of data that can be
 -- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
@@ -86,12 +40,12 @@ class IsBoxContent a  where
 
 -- * Data types
 -- | A type that wraps the contents of a box and the box type.
-data Box b where
+data Box brand b where
         Box ::
-            (IsBoxType' b, ValidBoxes b ts) =>
-            BoxContent b -> Boxes ts -> Box b
+            (IsBoxType' b, IsBrandConform brand ('Just b) ts) =>
+            BoxContent b -> Boxes brand ts -> Box brand b
 
-instance IsBoxContent (Box cnt) where
+instance IsBoxContent (Box brand cnt) where
   boxBuilder b@(Box cnt nested) = sB <> tB <> sExtB <> tExtB <> cntB <> nestedB
     where s = boxSize b
           t = toBoxType' b
@@ -109,30 +63,30 @@ instance IsBoxContent (Box cnt) where
           t = toBoxType' b
 
 -- | A heterogenous collection of boxes.
-data Boxes (boxTypes :: [Type]) where
-        NoBoxes :: Boxes '[]
-        (:.) :: Box l -> Boxes r -> Boxes (l ': r)
-        (:<>) :: Boxes l -> Boxes r -> Boxes (l :++ r)
+data Boxes brand (boxTypes :: [Type]) where
+        NoBoxes :: Boxes brand '[]
+        (:.) :: Box brand l -> Boxes brand r -> Boxes brand (l ': r)
+        (:<>) :: Boxes brand l -> Boxes brand r -> Boxes brand (l :++ r)
 
 infixr 2 :.
 
 -- | Create a 'Boxes' collection with a single 'Box'.
-singletonBox :: Box l -> Boxes '[l]
+singletonBox :: Box brand l -> Boxes brand '[l]
 singletonBox b = b :. NoBoxes
 
 -- | Create a 'Boxes' collection from two 'Box'es
-(.:.) :: Box l -> Box r -> Boxes '[l, r]
+(.:.) :: Box brand l -> Box brand r -> Boxes brand '[l, r]
 (.:.) l r = l :. r :. NoBoxes
 
 infixr 0 .:.
 
 -- | Apply a function to a 'Boxes' collection containing only a single 'Box'.
-($:) :: (Boxes '[l] -> r) -> Box l -> r
+($:) :: (Boxes brand '[l] -> r) -> Box brand l -> r
 ($:) f l = f $ l :. NoBoxes
 
 infixr 2 $:
 
-instance IsBoxContent (Boxes bs) where
+instance IsBoxContent (Boxes brand bs) where
   boxSize NoBoxes = 0
   boxSize (l :. r) = boxSize l + boxSize r
   boxSize (l :<> r) = boxSize l + boxSize r
@@ -141,13 +95,13 @@ instance IsBoxContent (Boxes bs) where
   boxBuilder (l :<> r) = boxBuilder l <> boxBuilder r
 
 -- | A box that contains no nested boxes.
-closedBox :: (IsBoxType' t,ValidBoxes t '[])
-          => BoxContent t -> Box t
+closedBox :: (IsBoxType' t, IsBrandConform brand ('Just t) '[])
+          => BoxContent t -> Box brand t
 closedBox c = Box c NoBoxes
 
 -- | A box that contains no fields, but nested boxes.
-containerBox :: (IsBoxType' t,ValidBoxes t ts,BoxContent t ~ ())
-             => Boxes ts -> Box t
+containerBox :: (IsBoxType' t,IsBrandConform brand ('Just t) ts,BoxContent t ~ ())
+             => Boxes brand ts -> Box brand t
 containerBox = Box ()
 
 -- * Box Size and Type
@@ -254,44 +208,6 @@ instance IsBoxContent BoxTypeExtension where
     mconcat (map (word8 . fromIntegral . fromEnum)
                  (take (16 * 4) str) ++
              repeat (word8 0))
-
--- * Type-safe box composition
--- * Type level consistency checks
--- | A type-level check that uses 'BoxRules' to check that the contained boxes
--- are standard conform.
-type ValidBoxes t ts =
-  (HasAllRequiredBoxes t (RequiredNestedBoxes t) ts ~ 'True)
-
--- | Check that all required boxes have been nested.
-type family HasAllRequiredBoxes (c :: k) (req :: [k])
-     (nested :: [k]) :: Bool where
-        HasAllRequiredBoxes c '[] nested = 'True
-        HasAllRequiredBoxes c (r ': restReq) nested =
-                                                    If (Find r nested)
-                                                      (HasAllRequiredBoxes c restReq nested)
-                                                      (TypeError (MissingRequired c r nested))
-
-type IsSubSet base sub = Intersection base sub == sub
-
--- | The custom (type-) error message for 'HasAllRequiredBoxes.
-type MissingRequired c r nested =
-  'Text "Boxes of type: " '(:<>:) 'ShowType c '(:<>:) 'Text " require these nested boxes: " '(:<>:) 'ShowType (RequiredNestedBoxes c) '(:$$:) 'Text "but only these box types were nested: " '(:<>:) 'ShowType nested '(:$$:) 'Text "e.g. this type is missing: " '(:<>:) 'ShowType r
-
--- | Check that all boxes may appear top-level.
-type family CheckAllTopLevelOk (ts :: [k]) :: Bool where
-        CheckAllTopLevelOk '[] = 'True
-        CheckAllTopLevelOk (t ': rest) =
-                                       CheckTopLevelOk t && CheckAllTopLevelOk rest
-
--- | Check that the box may appear top-level.
-type family CheckTopLevelOk (t :: k) :: Bool where
-        CheckTopLevelOk t =
-                          IsTopLevelBox t || TypeError (NotTopLevelError t)
-
--- | The custom (type-) error message indicating that a box may not appear
--- top-level.
-type NotTopLevelError c =
-  'Text "Boxes of type " '(:<>:) 'ShowType c '(:<>:) 'Text "have no meaning outside other boxes" '(:<>:) 'Text " and MUST be nested inside other boxes."
 
 -- * 'IsBoxContent' instances
 -- | An empty box content can by represented by @()@ (i.e. /unit/).

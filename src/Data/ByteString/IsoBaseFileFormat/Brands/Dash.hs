@@ -15,6 +15,15 @@ import Data.Kind (Type, Constraint)
 -- import Text.Printf
 import Control.Lens
 
+
+-- | TODO extract introduce typevariable into 'Box' etc
+instance KnownNat v => IsBrand ('Brand (Dash v)) where
+  type BoxLayoutRules ('Brand (Dash v)) =
+    '[OnceMandatory FileType '[]
+     ]
+    
+
+
 -- | A record which contains the stuff needed for the 'dash' brand. TODO incomplete
 data Dash (version :: Nat) =
   Dash {_mvhd :: MovieHeader version
