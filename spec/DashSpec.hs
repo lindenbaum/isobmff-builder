@@ -19,8 +19,8 @@ spec =
                    ct0 = (ct `shiftR` 0) .&. 255
                    cts :: [Word8]
                    cts = fromIntegral <$> [ct3,ct2,ct1,ct0]
-               let args = exampleDashFile createionTime
-                   doc = mkDash args
+               let args = exampleSingleTrackInit createionTime
+                   doc = mkSingleTrackInit args
                    rendered = BL.unpack $ packMediaFile doc
                    expected =
                      [0
@@ -280,13 +280,13 @@ spec =
                rendered `shouldBe`
                  expected
 
-exampleDashFile :: U32 "creation_time" -> Dash 0
-exampleDashFile creationTime =
-  Dash (MovieHeader $
-        V0 (creationTime :+ 0 :+ Default :+ durationFromSeconds Default 1) :+
-        def)
-       (TrackHeader $
-        V0 (0 :+ 0 :+ 1 :+ Constant :+ durationFromSeconds Default 1) :+
-        def)
-       (MediaHeader $ def)
-       (Handler $ def :+ AudioTrack :+ def :+ (Custom "Hello world!"))
+exampleSingleTrackInit :: U32 "creation_time" -> SingleTrackInit
+exampleSingleTrackInit creationTime =
+  SingleTrackInit (MovieHeader $
+                   V0 (creationTime :+ 0 :+ Default :+ durationFromSeconds Default 1) :+
+                   def)
+                  (TrackHeader $
+                   V0 (0 :+ 0 :+ 1 :+ Constant :+ durationFromSeconds Default 1) :+
+                   def)
+                  (MediaHeader $ def)
+                  (Handler $ def :+ AudioTrack :+ def :+ (Custom "Hello world!"))

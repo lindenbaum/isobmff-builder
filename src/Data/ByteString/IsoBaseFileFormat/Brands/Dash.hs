@@ -3,13 +3,16 @@
 -- educational, current need.
 -- This is a convenient way of building documents of that kind.
 module Data.ByteString.IsoBaseFileFormat.Brands.Dash
-       (Dash(..), mkDash, mvhd, tkhd, module X)
+       (Dash, SingleTrackInit(..), mkSingleTrackInit, module X)
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes as X
 import Data.Kind (Type, Constraint)
 import Control.Lens
 
+-- | A phantom type to indicate this branding. Version can be 0 or 1 it is used
+-- in some boxes to switch between 32/64 bits.
+data Dash (version :: Nat)
 
 -- | A 'BoxLayout' which contains the stuff needed for the 'dash' brand.
 -- TODO incomplete
@@ -73,22 +76,20 @@ instance KnownNat v => IsBrand (Dash v) where
 -- trun
 
 
--- | A record which contains the stuff needed for the 'dash' brand. TODO
--- incomplete
-data Dash (version :: Nat) =
-  Dash {_mvhd :: MovieHeader version
-       ,_tkhd :: TrackHeader version
-       ,_mdhd :: MediaHeader version
-       ,_hdlr :: Handler
-       }
+-- | A record which contains the stuff needed for a single track initialization
+-- document according to the 'Dash' brand. TODO incomplete
+data SingleTrackInit =
+  SingleTrackInit {_mvhd :: MovieHeader 0
+                  ,_tkhd :: TrackHeader 0
+                  ,_mdhd :: MediaHeader 0
+                  ,_hdlr :: Handler}
 
-makeLenses ''Dash
+makeLenses ''SingleTrackInit
 
--- | Convert a 'Dash' record to a generic 'Boxes' collection.
-mkDash
-  :: KnownNat v
-  => Dash v -> MediaFile (Dash v)
-mkDash doc =
+-- | Convert a 'SingleTrackInit' record to a generic 'Boxes' collection.
+mkSingleTrackInit
+  :: SingleTrackInit -> MediaFile (Dash 0)
+mkSingleTrackInit doc =
   MediaFile
       $  fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
      .:. movie
