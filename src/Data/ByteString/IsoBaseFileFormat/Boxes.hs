@@ -13,7 +13,6 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation as
 import Data.ByteString.IsoBaseFileFormat.Boxes.Skip as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Time as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox as X
-import Data.ByteString.IsoBaseFileFormat.Boxes.Brand as X
 import qualified Data.ByteString.Lazy as BL
 
 import Data.Int as X
@@ -24,20 +23,12 @@ import Data.Type.Equality as X
 import Text.Printf as X
 import Data.Default as X
 
--- * Modular builder
+-- * MediaFiles
 
--- | A complete media file 'Builder', consisting of top-level boxes.
-isobmffBuilder :: Boxes ts -> Builder
-isobmffBuilder = rawContentBuilder
+-- | The toplevel container for all boxes of a media file.
+data MediaFile brand where
+  MediaFile :: (ValidTopLevel brand ts) => Boxes brand ts -> MediaFile brand
 
--- | A complete media file 'ByteString', like 'isobmffBuilder'
-isobmff :: Boxes ts -> BL.ByteString
-isobmff = toLazyByteString . isobmffBuilder
-
--- | A builder for any 'IsBoxContent'.
-rawContentBuilder :: IsBoxContent c => c -> Builder
-rawContentBuilder = boxBuilder
-
--- | A complete raw file 'ByteString', like 'rawContentBuilder'
-rawContent :: IsBoxContent c => c -> BL.ByteString
-rawContent = toLazyByteString . rawContentBuilder
+-- | Generate a lazy 'ByteString' with the contents of a 'MediaFile'
+packMediaFile :: MediaFile brand -> BL.ByteString
+packMediaFile (MediaFile bs) = toLazyByteString (boxBuilder bs)

@@ -19,7 +19,7 @@ spec =
                    cts = fromIntegral <$> [ct3,ct2,ct1,ct0]
                let args = exampleDashFile createionTime
                    doc = mkDash args
-                   rendered = rawContent doc
+                   rendered = packMediaFile doc
                    expected =
                      BL.pack $
                      [0

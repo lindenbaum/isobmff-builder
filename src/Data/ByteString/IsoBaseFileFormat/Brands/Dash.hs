@@ -7,24 +7,28 @@ module Data.ByteString.IsoBaseFileFormat.Brands.Dash
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes as X
--- import Data.Int
 import Data.Kind (Type, Constraint)
--- import Data.Maybe
--- import Data.Type.Bool
--- import Data.Type.Equality
--- import Text.Printf
 import Control.Lens
 
 
--- | TODO extract introduce typevariable into 'Box' etc
-instance KnownNat v => IsBrand ('Brand (Dash v)) where
-  type BoxLayoutRules ('Brand (Dash v)) =
-    '[OnceMandatory FileType '[]
+-- | A 'BoxLayout' which contains the stuff needed for the 'dash' brand.
+-- TODO incomplete
+instance KnownNat v => IsBrand (Dash v) where
+  type GetVersion (Dash v) = v
+  type BoxLayout (Dash v) =
+    '[ OnceMandatory FileType '[]
+     , OnceMandatory (Movie v)
+         '[ OnceMandatory (MovieHeader v) '[]
+          , SomeMandatory (Track v)
+              '[OnceMandatory (TrackHeader v) '[]]
+          ]
+     , SomeOptional Skip '[]
      ]
-    
 
 
--- | A record which contains the stuff needed for the 'dash' brand. TODO incomplete
+
+-- | A record which contains the stuff needed for the 'dash' brand. TODO
+-- incomplete
 data Dash (version :: Nat) =
   Dash {_mvhd :: MovieHeader version
        ,_tkhd :: TrackHeader version
@@ -65,9 +69,12 @@ makeLenses ''Dash
 
 -- | Convert a 'Dash' record to a generic 'Boxes' collection.
 mkDash
-  :: KnownNat version
-  => Dash version -> Boxes '[FileType, Movie version]
+  :: KnownNat v
+  => Dash v -> MediaFile (Dash v)
 mkDash doc =
- fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
- .:. movie $
-  movieHeader (doc ^. mvhd) .:. track $: trackHeader (doc ^. tkhd)
+  MediaFile
+      $ fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
+     .:. movie
+           $ movieHeader (doc ^. mvhd)
+          .:. track
+                $: trackHeader (doc ^. tkhd)

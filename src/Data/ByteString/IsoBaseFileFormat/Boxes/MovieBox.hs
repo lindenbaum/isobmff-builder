@@ -21,8 +21,8 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox
 -- >              :. trackReferenceBox (TrackReference ...)
 -- >              :. trackGroupingIndication (TrackGroupingInd ...))
 --
-movie :: ValidBoxes (Movie version) ts
-         => Boxes ts -> Box (Movie version)
+movie :: (ValidContainerBox brand (Movie version) ts, version ~ GetVersion brand)
+      => Boxes brand ts -> Box brand (Movie version)
 movie = containerBox
 
 -- | The metadata for a presentation, a single 'Movie' which occurs only once
@@ -33,15 +33,12 @@ data Movie (version :: Nat)
 instance IsBoxType' (Movie version) where
   toBoxType' _ = StdType "moov"
 
-instance BoxRules (Movie version) where
-  type RequiredNestedBoxes (Movie version) = '[MovieHeader version]
-
 -- * @mvhd@ Box
 
 -- | Construct a 'MovieHeader' box.
 movieHeader
-  :: KnownNat version
-  => MovieHeader version -> Box (MovieHeader version)
+  :: (KnownNat version, ValidBox brand (MovieHeader version), version ~ GetVersion brand)
+  => MovieHeader version -> Box brand (MovieHeader version)
 movieHeader = closedFullBox Default 0
 
 -- | Movie meta data, indexed by a version.
@@ -95,7 +92,3 @@ instance IsBoxContent (MovieHeader version) where
 instance KnownNat version => IsBoxType' (MovieHeader version) where
   toBoxType' _ = StdType "mvhd"
   type BoxContent (MovieHeader version) = FullBox version (MovieHeader version)
-
-instance BoxRules (MovieHeader version) where
-  type IsTopLevelBox (MovieHeader version) = 'False
-  type GetCardinality (MovieHeader version) any = 'ExactlyOne

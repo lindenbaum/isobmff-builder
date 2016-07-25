@@ -2,6 +2,7 @@ module BoxSpec (spec) where
 
 import Test.Hspec
 import Data.ByteString.IsoBaseFileFormat.Boxes
+
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as Binary
@@ -33,24 +34,26 @@ spec =
                                reportedSize = boxSize b
                            in writtenSize `shouldBe` reportedSize
 
+data TestBrand
+
+instance IsBrand TestBrand where
+  type BoxLayout TestBrand =
+    '[ 'OnceMandatory TestParentBox1 '[ 'SomeOptional TestBox1 '[]] ]
 
 data TestBox1
-
-instance BoxRules TestBox1
 
 instance IsBoxType' TestBox1 where
   toBoxType' _ = StdType "tst1"
 
-testBox1 :: Box TestBox1
+testBox1 :: Box TestBrand TestBox1
 testBox1 = closedBox ()
 
-
 data TestParentBox1
-
-instance BoxRules TestParentBox1
 
 instance IsBoxType' TestParentBox1 where
   toBoxType' _ = StdType "par1"
 
-testParentBox1 :: Boxes ts -> Box TestParentBox1
+testParentBox1
+  :: ValidContainerBox TestBrand TestParentBox1 ts
+  => Boxes TestBrand ts -> Box TestBrand TestParentBox1
 testParentBox1 = containerBox

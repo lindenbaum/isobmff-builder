@@ -1,7 +1,7 @@
 -- | Brand/Box-validation
 {-# LANGUAGE UndecidableInstances #-}
 module Data.ByteString.IsoBaseFileFormat.Boxes.Brand
-        (Brand, IsBrand(..), ValidBox, ValidContainerBox, ValidTopLevel,
+        (IsBrand(..), ValidBox, ValidContainerBox, ValidTopLevel,
         IsBrandConform, BoxTree(..), BoxForrest) where
 
 import Data.Kind
@@ -12,24 +12,22 @@ import Data.Singletons (Apply, type (~>))
 import Data.Singletons.Prelude.List as S (Map, (:++))
 import Data.Type.List (Find)
 
--- | A phantom type that indicates a /brand/. A brand defines which subset of
--- boxes  is used in a media document.
-data Brand :: t -> Type
-
 -- | A class that describes (on the type level) how a box can be nested into
 -- other boxes (see 'Boxes).
-class IsBrand brand  where
-  type BoxLayoutRules brand :: BoxForrest
-  type BoxLayoutRules brand = '[]
+class KnownNat (GetVersion brand) => IsBrand brand  where
+  type BoxLayout brand :: BoxForrest
+  type BoxLayout brand = '[]
+  type GetVersion brand :: Nat
+  type GetVersion brand = 0
 
 -- | Boxes that valid according to the box structure defined in a 'IsBrand'
 -- instance, i.e. where 'IsBrandConform' holds.
 type family
   IsBrandConform (b :: Type) (parent :: Maybe Type) (ts :: [Type]) :: Constraint where
   IsBrandConform b 'Nothing ts =
-    IsBrandConformImpl b (TopLevel b) ts (BoxLayoutRules b)
+    IsBrandConformImpl b (TopLevel b) ts (BoxLayout b)
   IsBrandConform b ('Just parent) ts =
-    IsBrandConformImpl b parent ts (LookUpSubtrees parent (BoxLayoutRules b))
+    IsBrandConformImpl b parent ts (LookUpSubtrees parent (BoxLayout b))
 
 -- | Convenience wrapper around @(IsBrandConform b ('Just t) '[])@
 type ValidBox b t = IsBrandConform b ('Just t) '[]
@@ -75,7 +73,7 @@ type family
     LookUpSubtrees t ('SomeMandatory u sub ': rest) = LookUpSubtrees t (sub :++ rest)
 
 -- | A constraint that is solved if all 'Box'es layed out in accordance with the
--- 'BoxLayoutRules' if an 'IsBrand' instance.
+-- 'BoxLayout' if an 'IsBrand' instance.
 type IsBrandConformImpl b (info :: Type) (ts :: [Type]) (boxForrest :: BoxForrest) =
   ( IsBrand b
   , ReportIt '[AllRequiredBoxes
