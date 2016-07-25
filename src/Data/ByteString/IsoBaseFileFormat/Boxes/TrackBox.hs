@@ -8,14 +8,14 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
 -- * @trak@ Box
 -- | Compose a 'Track' box from the given boxes.
 track
-  :: (ValidContainerBox brand (Track version) ts, version ~ GetVersion brand)
-  => Boxes brand ts -> Box brand (Track version)
+  :: (ValidContainerBox brand Track ts)
+  => Boxes brand ts -> Box brand Track
 track = containerBox
 
 -- | Container box for tracks.
-data Track (version :: Nat)
+data Track
 
-instance IsBoxType' (Track version) where
+instance IsBoxType' Track where
   toBoxType' _ = StdType "trak"
 
 -- * @tkhd@ Box

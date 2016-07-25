@@ -16,42 +16,52 @@ import Control.Lens
 instance KnownNat v => IsBrand (Dash v) where
   type GetVersion (Dash v) = v
   type BoxLayout (Dash v) =
-    '[ OnceMandatory FileType '[]
-     , OnceMandatory (Movie v)
-         '[ OnceMandatory (MovieHeader v) '[]
-          , SomeMandatory (Track v)
-              '[OnceMandatory (TrackHeader v) '[]]
-          ]
-     , SomeOptional Skip '[]
+    '[ OM_ FileType
+     , OM  Movie
+          '[ OM_ (MovieHeader v)
+           , SM  Track
+                '[ OM_ (TrackHeader v)
+                 , OM_ Media
+                      -- '[ OM_ (MediaHeader v)
+                      --  , OM_ (MediaHandler v)
+                      --  , OM  (MediaInformation v)
+                      --       '[ OO_ (SoundMediaHeader v)
+                      --        , OM  (DataInformation v)
+                      --             '[ OM_ (DataReference v) ]
+                      --        , OM  (SampleTable v)
+                      --             '[ OM_ (SampleDescriptions v)
+                      --              , OM_ (TimeToSample v)
+                      --              , OM_ (SampleToChunk v)
+                      --              , OO_ (SampleSizes v)
+                      --              , OM_ (SampleChunkOffset v)
+                      --              ]
+                      --        ]
+                      --  ]
+                 ]
+           ]
+     , SO_ Skip
      ]
 
-
-
--- | A record which contains the stuff needed for the 'dash' brand. TODO
--- incomplete
-data Dash (version :: Nat) =
-  Dash {_mvhd :: MovieHeader version
-       ,_tkhd :: TrackHeader version
-       }
-
 -- Missing Boxes
+-- START 17:47:
 --  mdia
 --  mdhd
 --  hdlr
---  soun
 --  minf
 --  smhd
 --  dinf
 --  dref
---  url
+--  ??url
 --  stbl
 --  stsd
---  mp4a
---  esds
 --  stts
 --  stsc
 --  stsz
 --  stco
+
+--  soun
+--  mp4a
+--  esds
 --  mvex
 --  trex
 -- For media
@@ -63,6 +73,13 @@ data Dash (version :: Nat) =
 -- trun
 
 
+-- | A record which contains the stuff needed for the 'dash' brand. TODO
+-- incomplete
+data Dash (version :: Nat) =
+  Dash {_mvhd :: MovieHeader version
+       ,_tkhd :: TrackHeader version
+       }
+
 type Todo = ()
 
 makeLenses ''Dash
@@ -73,8 +90,9 @@ mkDash
   => Dash v -> MediaFile (Dash v)
 mkDash doc =
   MediaFile
-      $ fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
+      $  fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
      .:. movie
-           $ movieHeader (doc ^. mvhd)
+           $  movieHeader (doc ^. mvhd)
           .:. track
-                $: trackHeader (doc ^. tkhd)
+                $  trackHeader (doc ^. tkhd)
+               .:. media NoBoxes

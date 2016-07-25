@@ -21,6 +21,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Brand
                      , Data.ByteString.IsoBaseFileFormat.Boxes.FileType
                      , Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.Media
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaData
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MovieBox
                      , Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation

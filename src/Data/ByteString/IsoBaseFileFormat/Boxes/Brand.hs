@@ -2,7 +2,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.ByteString.IsoBaseFileFormat.Boxes.Brand
         (IsBrand(..), ValidBox, ValidContainerBox, ValidTopLevel,
-        IsBrandConform, BoxTree(..), BoxForrest) where
+        IsBrandConform, BoxTree(..), BoxForrest,
+        OM,OM_,OO,OO_,SM,SM_,SO,SO_)
+        where
 
 import Data.Kind
 import Data.Type.Bool
@@ -19,6 +21,24 @@ class KnownNat (GetVersion brand) => IsBrand brand  where
   type BoxLayout brand = '[]
   type GetVersion brand :: Nat
   type GetVersion brand = 0
+
+-- | Mandatory, container box, exactly one
+type OM b bs = 'OnceMandatory b bs
+-- | Optional, container box, zero or one
+type OO b bs = 'OnceOptional b bs
+-- | Mandatory, container box, one or more
+type SM b bs = 'SomeMandatory b bs
+-- | Optional, container box, zero or more
+type SO b bs = 'SomeOptional b bs
+
+-- | Mandatory, exactly one, no children
+type OM_ b = 'OnceMandatory b '[]
+-- | Optional, zero or one, no children
+type OO_ b = 'OnceOptional b '[]
+-- | Mandatory, one or more, no children
+type SM_ b = 'SomeMandatory b '[]
+-- | Optional, zero or more, no children
+type SO_ b = 'SomeOptional b '[]
 
 -- | Boxes that valid according to the box structure defined in a 'IsBrand'
 -- instance, i.e. where 'IsBrandConform' holds.

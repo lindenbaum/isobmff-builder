@@ -19,9 +19,8 @@ spec =
                    cts = fromIntegral <$> [ct3,ct2,ct1,ct0]
                let args = exampleDashFile createionTime
                    doc = mkDash args
-                   rendered = packMediaFile doc
+                   rendered = BL.unpack $ packMediaFile doc
                    expected =
-                     BL.pack $
                      [0
                      ,0
                      ,0
@@ -57,7 +56,7 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,216
+                     ,224
                      ,109
                      ,111
                      ,111
@@ -170,7 +169,7 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,100
+                     ,108
                      ,116
                      ,114
                      ,97
@@ -266,8 +265,9 @@ spec =
                      ,0
                      ,0
                      ,0
-                     ,0]
-               BL.writeFile "/tmp/xxx.mp4" rendered
+                     ,0
+                     ,0,0,0,8,109,100,105,97]
+               -- BL.writeFile "/tmp/xxx.mp4" (BL.pack rendered)
                rendered `shouldBe` expected
 
 exampleDashFile

@@ -7,7 +7,6 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
 import Data.ByteString.IsoBaseFileFormat.Boxes.Time
-import Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox
 
 -- | Compose a set of boxes into a 'MovieBox'
 --
@@ -21,23 +20,23 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.TrackBox
 -- >              :. trackReferenceBox (TrackReference ...)
 -- >              :. trackGroupingIndication (TrackGroupingInd ...))
 --
-movie :: (ValidContainerBox brand (Movie version) ts, version ~ GetVersion brand)
-      => Boxes brand ts -> Box brand (Movie version)
+movie :: (ValidContainerBox brand Movie ts)
+      => Boxes brand ts -> Box brand Movie
 movie = containerBox
 
 -- | The metadata for a presentation, a single 'Movie' which occurs only once
 -- and top-level. It is pretty empty on it's own, but it contains nested boxes
 -- with all the relevant meta data.
-data Movie (version :: Nat)
+data Movie
 
-instance IsBoxType' (Movie version) where
+instance IsBoxType' Movie where
   toBoxType' _ = StdType "moov"
 
 -- * @mvhd@ Box
 
 -- | Construct a 'MovieHeader' box.
 movieHeader
-  :: (KnownNat version, ValidBox brand (MovieHeader version), version ~ GetVersion brand)
+  :: (KnownNat version, ValidBox brand (MovieHeader version))
   => MovieHeader version -> Box brand (MovieHeader version)
 movieHeader = closedFullBox Default 0
 
