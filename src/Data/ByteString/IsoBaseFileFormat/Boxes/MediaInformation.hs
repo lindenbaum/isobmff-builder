@@ -7,7 +7,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 -- | Media information box phantom type.
 data MediaInformation
 
--- | Create a 'MediaInformation' from a strict 'ByteString'
+-- | Compose a 'MediaInformation' box.
 mediaInformation
   :: ValidContainerBox brand MediaInformation ts
   => Boxes brand ts -> Box brand MediaInformation

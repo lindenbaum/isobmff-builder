@@ -18,15 +18,31 @@ data Dash (version :: Nat)
 instance KnownNat v => IsBrand (Dash v) where
   type GetVersion (Dash v) = v
   type BoxLayout (Dash v) =
-    '[OM_ FileType,
-      OM Movie
-        '[OM_ (MovieHeader v),
-          SM Track
-            '[OM_ (TrackHeader v),
-              OM Media
-                '[OM_ (MediaHeader v), OM_ Handler,
-                  OM MediaInformation '[OO_ SpecificMediaHeader]]]],
-      SO_ Skip]
+    '[ OM_ FileType
+     , OM  Movie
+          '[ OM_ (MovieHeader v)
+           , SM  Track
+                '[ OM_ (TrackHeader v)
+                 , OM  Media
+                      '[ OM_ (MediaHeader v)
+                       , OM_ Handler
+                       , OM  MediaInformation
+                            '[ OO_ SpecificMediaHeader
+                             , OM  DataInformation
+                                  '[ OM_ DataReference ]
+                      --        , OM  (SampleTable v)               -- TODO
+                      --             '[ OM_ (SampleDescriptions v)
+                      --              , OM_ (TimeToSample v)
+                      --              , OM_ (SampleToChunk v)
+                      --              , OO_ (SampleSizes v)
+                      --              , OM_ (SampleChunkOffset v)
+                      --              ]
+                              ]
+                      ]
+                 ]
+           ]
+     , SO_ Skip
+     ]
 
 -- Missing Boxes
 -- START 17:47:
@@ -76,5 +92,7 @@ mkSingleTrackInit doc =
   movie (movieHeader (doc ^. mvhd) :|
          track (trackHeader (doc ^. tkhd) :|
                 media (mediaHeader (doc ^. mdhd) :. handler (doc ^. hdlr) :|
-                       mediaInformation $:
-                       specificMediaHeader (doc ^. xmhd))))
+                       mediaInformation (
+                         specificMediaHeader (doc ^. xmhd)
+                       :| dataInformation
+                            $: dataReference (DataReference LocalMediaEntry [])))))

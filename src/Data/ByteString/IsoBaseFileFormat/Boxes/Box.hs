@@ -106,6 +106,19 @@ containerBox :: (IsBoxType t,IsBrandConform brand ('Just t) ts,BoxContent t ~ ()
              => Boxes brand ts -> Box brand t
 containerBox = Box ()
 
+
+
+-- | Compose 'BoxContent' and 'Boxes' under the Constraint that they are
+-- composable.
+data BoxWithBoxes brand b (bs :: [Type]) where
+  BoxWithBoxes
+    :: (IsBoxType b, IsBrandConform brand ('Just b) bs)
+    => BoxContent b
+    -> Boxes brand bs
+    -> BoxWithBoxes brand b bs
+
+
+
 -- * Box Size and Type
 -- | The size of the box. If the size is limited to a (fixed) value, it can be
 -- provided as a 'Word64' which will be represented as either a 32bit compact

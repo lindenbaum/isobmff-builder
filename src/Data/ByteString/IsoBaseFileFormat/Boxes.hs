@@ -5,6 +5,8 @@ module Data.ByteString.IsoBaseFileFormat.Boxes
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.DataReference as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.FileType as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler as X
