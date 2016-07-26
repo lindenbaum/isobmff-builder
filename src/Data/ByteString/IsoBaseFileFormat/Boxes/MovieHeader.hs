@@ -10,9 +10,9 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Time
 
 -- | Construct a 'MovieHeader' box.
 movieHeader
-  :: (KnownNat version, ValidBox brand (MovieHeader version))
-  => MovieHeader version -> Box brand (MovieHeader version)
-movieHeader = closedFullBox Default 0
+  :: (KnownNat version)
+  => MovieHeader version -> Box (FullBox version (MovieHeader version))
+movieHeader = fullBox 0
 
 -- | Movie meta data, indexed by a version.
 --
@@ -61,6 +61,6 @@ instance IsBoxContent (MovieHeader version) where
   boxSize (MovieHeader c) = boxSize c
   boxBuilder (MovieHeader c) = boxBuilder c
 
-instance KnownNat version => IsBoxType (MovieHeader version) where
+instance IsBoxType (MovieHeader version) where
   toBoxType _ _ = StdType "mvhd"
-  type BoxContent (MovieHeader version) = FullBox version (MovieHeader version)
+  type BoxContent (MovieHeader version) = MovieHeader version

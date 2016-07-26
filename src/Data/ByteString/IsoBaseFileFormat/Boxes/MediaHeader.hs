@@ -16,12 +16,12 @@ data MediaHeader (v :: Nat) where
 
 -- | Create a 'MediaHeader' box.
 mediaHeader
-  :: (KnownNat v, ValidBox brand (MediaHeader v))
-  => MediaHeader v -> Box brand (MediaHeader v)
-mediaHeader = closedFullBox Default 0
+  :: (KnownNat v)
+  => MediaHeader v -> Box (FullBox v (MediaHeader v))
+mediaHeader = fullBox 0
 
-instance (KnownNat v) => IsBoxType (MediaHeader v) where
-  type BoxContent (MediaHeader v) = FullBox v (MediaHeader v)
+instance IsBoxType (MediaHeader v) where
+  type BoxContent (MediaHeader v) = MediaHeader v
   toBoxType _ _ = StdType "mdhd"
 
 instance IsBoxContent (MediaHeader v) where

@@ -1,11 +1,13 @@
 -- | Brand/Box-validation
 {-# LANGUAGE UndecidableInstances #-}
 module Data.ByteString.IsoBaseFileFormat.Boxes.Brand
-        (IsBrand(..), ValidBox, ValidContainerBox, ValidTopLevel,
-        IsBrandConform, BoxTree(..), BoxForrest,
+        (IsBrand(..),
+        IsBrandConform, BoxTree(..), BoxForrest,TopLevelCtx,
         OM,OM_,OO,OO_,SM,SM_,SO,SO_)
         where
 
+import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
 import Data.Kind
 import Data.Type.Bool
 import GHC.TypeLits
@@ -16,11 +18,9 @@ import Data.Type.List (Find)
 
 -- | A class that describes (on the type level) how a box can be nested into
 -- other boxes (see 'Boxes).
-class KnownNat (GetVersion brand) => IsBrand brand  where
+class IsBrand brand  where
   type BoxLayout brand :: BoxForrest
   type BoxLayout brand = '[]
-  type GetVersion brand :: Nat
-  type GetVersion brand = 0
 
 -- | Mandatory, container box, exactly one
 type OM b bs = 'OnceMandatory b bs
@@ -40,24 +40,10 @@ type SM_ b = 'SomeMandatory b '[]
 -- | Optional, zero or more, no children
 type SO_ b = 'SomeOptional b '[]
 
--- | Boxes that valid according to the box structure defined in a 'IsBrand'
--- instance, i.e. where 'IsBrandConform' holds.
-type family
-  IsBrandConform (b :: Type) (parent :: Maybe Type) (ts :: [Type]) :: Constraint where
-  IsBrandConform b 'Nothing ts =
-    IsBrandConformImpl b (TopLevel b) ts (BoxLayout b)
-  IsBrandConform b ('Just parent) ts =
-    IsBrandConformImpl b parent ts (LookUpSubtrees parent (BoxLayout b))
-
--- | Convenience wrapper around @(IsBrandConform b ('Just t) '[])@
-type ValidBox b t = IsBrandConform b ('Just t) '[]
-
--- | Convenience wrapper around @(IsBrandConform b ('Just t) ts)@
-type ValidContainerBox b t ts = IsBrandConform b ('Just t) ts
-
--- | Convenience wrapper around @(IsBrandConform b 'Nothing ts)@
-type ValidTopLevel b ts = IsBrandConform b 'Nothing ts
-
+  -- IsBrandConform b 'Nothing ts =
+  --   IsBrandConformImpl b (TopLevel b) ts (BoxLayout b)
+  -- IsBrandConform b ('Just parent) ts =
+  --   IsBrandConformImpl b parent ts (LookUpSubtrees parent (BoxLayout b))
 
 -- | Define the cardinality and valid child boxes of a box.
 data BoxTree
@@ -73,12 +59,17 @@ data BoxTree
 -- | A list of 'BoxTree's
 type BoxForrest = [BoxTree]
 
--- * Implementation
+-- * Valdiation Contexts for 'TypeError's
+
+-- | A type for marking the /brand/ in TypeError messages.
+data BrandCtx brand
 
 -- | A type for marking top-level boxes in TypeError messages, in the
 -- 'IsBrandConformImpl' constraint.
-data TopLevel :: t -> Type
+data TopLevelCtx a
 
+
+-- * Implementation
 
 type family
   LookUpSubtrees t (trees :: BoxForrest) :: BoxForrest where
@@ -91,19 +82,6 @@ type family
     LookUpSubtrees t ('SomeOptional u sub ': rest) = LookUpSubtrees t (sub :++ rest)
     LookUpSubtrees t ('SomeMandatory t sub ': rest) = sub
     LookUpSubtrees t ('SomeMandatory u sub ': rest) = LookUpSubtrees t (sub :++ rest)
-
--- | A constraint that is solved if all 'Box'es layed out in accordance with the
--- 'BoxLayout' if an 'IsBrand' instance.
-type IsBrandConformImpl b (info :: Type) (ts :: [Type]) (boxForrest :: BoxForrest) =
-  ( IsBrand b
-  , ReportIt '[AllRequiredBoxes
-                 boxForrest
-                 ts]
-  , ReportIt '[OnlyValidBoxes info
-                 boxForrest
-                 ts]
-  , ReportIt (Map (RuleAppliesFun info ts)
-                  boxForrest))
 
 type family
   ReportIt (es :: [Maybe ErrorMessage]) :: Constraint where
@@ -215,3 +193,25 @@ type family
            ':<>: 'Text "' in '"
            ':<>: 'ShowType parent
            ':<>: 'Text "'.")
+
+
+
+
+
+
+
+
+
+-- instance, i.e. where 'IsBrandConform' holds.
+type family IsBrandConform ctx b (rules :: BoxForrest) :: Constraint
+
+type instance IsBrandConform ctx (Boxes ts) rules =
+  ( ReportIt '[AllRequiredBoxes
+                 rules
+                 ts]
+  , ReportIt '[OnlyValidBoxes ctx
+                 rules
+                 ts]
+  , ReportIt (Map (RuleAppliesFun ctx ts)
+                  rules)
+  )

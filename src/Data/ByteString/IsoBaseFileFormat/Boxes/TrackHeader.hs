@@ -9,9 +9,9 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
 -- * @tkhd@ Box
 -- | Create a 'TrackHeader' box.
 trackHeader
-  :: (ValidBox brand (TrackHeader version), version ~ GetVersion brand)
-  => TrackHeader version -> Box brand (TrackHeader version)
-trackHeader = closedFullBox Default 0
+  :: KnownNat version
+  => TrackHeader version -> Box (FullBox version (TrackHeader version))
+trackHeader = fullBox 0
 
 -- | Track meta data, indexed by a version.
 data TrackHeader (version :: Nat) where
@@ -46,6 +46,6 @@ instance IsBoxContent (TrackHeader version) where
   boxSize (TrackHeader c) = boxSize c
   boxBuilder (TrackHeader c) = boxBuilder c
 
-instance KnownNat version => IsBoxType (TrackHeader version) where
-  type BoxContent (TrackHeader version) = FullBox version (TrackHeader version)
+instance IsBoxType (TrackHeader version) where
+  type BoxContent (TrackHeader version) = TrackHeader version
   toBoxType _ _ = StdType "tkhd"

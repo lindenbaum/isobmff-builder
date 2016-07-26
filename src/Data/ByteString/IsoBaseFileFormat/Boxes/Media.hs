@@ -10,6 +10,5 @@ instance IsBoxType Media where
   toBoxType _ _ = StdType "mdia"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
-media :: ValidContainerBox brand Media ts
-      => Boxes brand ts -> Box brand Media
+media :: Boxes ts -> Box (ContainerBox Media ts)
 media = containerBox

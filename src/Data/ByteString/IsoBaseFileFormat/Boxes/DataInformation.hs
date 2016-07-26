@@ -9,8 +9,7 @@ data DataInformation
 
 -- | Compose a 'DataInformation' box.
 dataInformation
-  :: ValidContainerBox brand DataInformation ts
-  => Boxes brand ts -> Box brand DataInformation
+  :: Boxes ts -> Box (ContainerBox DataInformation ts)
 dataInformation = containerBox
 
 instance IsBoxType DataInformation where

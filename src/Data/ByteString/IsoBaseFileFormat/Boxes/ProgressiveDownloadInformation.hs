@@ -9,7 +9,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
 data ProgressiveDownload
 
 instance IsBoxType ProgressiveDownload where
-  type BoxContent ProgressiveDownload = FullBox 0 ProgressiveDownloadContent
+  type BoxContent ProgressiveDownload = ProgressiveDownloadContent
   toBoxType _ _ = StdType "pdin"
 
 -- | Information for progressive media data download/playback encompasses the
@@ -18,6 +18,5 @@ type ProgressiveDownloadContent = U32 "rate" :+ U32 "delay"
 
 -- | Construct a @pdin@ box.
 pdinBox
-  :: ValidBox brand ProgressiveDownload
-  => ProgressiveDownloadContent -> Box brand ProgressiveDownload
-pdinBox = closedFullBox Default 0
+  :: ProgressiveDownloadContent -> Box (FullBox 0 ProgressiveDownload)
+pdinBox = fullBox 0

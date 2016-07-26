@@ -1,6 +1,6 @@
 -- | Full Boxes
 module Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-       (FullBox(..), fullBox, closedFullBox, BoxVersion, BoxFlags(..))
+       (FullBox(..), fullBox, BoxVersion, BoxFlags(..))
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
@@ -11,24 +11,27 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 -- enforces that the 'FullBox' header fields are always at the beginning - at
 -- least as long as this module hides the 'FullBox' constructor ;)
 data FullBox version t where
-        FullBox ::
-          BoxVersion version -> BoxFlags 24 -> t -> FullBox version t
+  FullBox :: (KnownNat version, IsBoxType t)
+          => BoxFlags 24
+          -> BoxContent t
+          -> FullBox version t
 
-instance (KnownNat version,IsBoxContent t) => IsBoxContent (FullBox version t) where
-  boxSize (FullBox _ f c) = 1 + boxSize f + boxSize c
-  boxBuilder (FullBox v f c) = boxBuilder v <> boxBuilder f <> boxBuilder c
+instance (KnownNat v, IsBoxType t) => IsBoxType (FullBox v t) where
+  type BoxContent (FullBox v t) = FullBox v t
+  toBoxType _ (FullBox _ t) = toBoxType (Proxy :: Proxy t) t
+
+instance (KnownNat v, IsBoxType t) => IsBoxContent (FullBox v t) where
+  boxSize (FullBox f c) = 1 + boxSize f + boxSize c
+  boxBuilder (FullBox f c) =
+       word8 (fromIntegral (natVal (Proxy :: Proxy v)))
+    <> boxBuilder f
+    <> boxBuilder c
 
 -- | Create a 'FullBox' from a 'BoxVersion' and 'BoxFlags'
 fullBox
-  :: (IsBoxType t,ValidContainerBox brand t ts,BoxContent t ~ FullBox version c)
-  => BoxVersion version -> BoxFlags 24 -> c -> Boxes brand ts -> Box brand t
-fullBox version fs cnt = Box (FullBox version fs cnt)
-
--- | Create a 'FullBox' from a 'BoxVersion' and 'BoxFlags' without nested boxes.
-closedFullBox
-  :: (IsBoxType t,ValidBox brand t,BoxContent t ~ FullBox version c)
-  => BoxVersion version -> BoxFlags 24 -> c -> Box brand t
-closedFullBox version fs cnt = closedBox (FullBox version fs cnt)
+  :: (KnownNat v, IsBoxType t)
+  => BoxFlags 24 -> BoxContent t -> Box (FullBox v t)
+fullBox f c = Box (FullBox f c)
 
 -- | The box version (in a 'FullBox') is a single byte
 type BoxVersion v = Template (U8 "fullbox-version") v

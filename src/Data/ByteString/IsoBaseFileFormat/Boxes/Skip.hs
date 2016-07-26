@@ -11,8 +11,8 @@ instance IsBoxType Skip where
   toBoxType _ _ = StdType "skip"
 
 -- | Create a 'Skip' with a given size.
-skipBox :: ValidBox brand Skip => Skip -> Box brand Skip
-skipBox = closedBox
+skipBox :: Skip -> Box Skip
+skipBox = Box
 
 instance IsBoxContent Skip where
   boxSize (Skip bs) = fromIntegral bs

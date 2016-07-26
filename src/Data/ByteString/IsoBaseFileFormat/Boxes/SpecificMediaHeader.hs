@@ -28,17 +28,16 @@ data SpecificMediaHeader where
 
 -- | Create a 'SpecificMediaHeader' box.
 specificMediaHeader
-  :: ValidBox brand SpecificMediaHeader
-  => SpecificMediaHeader -> Box brand SpecificMediaHeader
-specificMediaHeader h@(VideoMediaHeader _) = closedFullBox Default 1 h
-specificMediaHeader h                      = closedFullBox Default 0 h
+  :: SpecificMediaHeader -> Box (FullBox 0 SpecificMediaHeader)
+specificMediaHeader h@(VideoMediaHeader _) = fullBox 1 h
+specificMediaHeader h                      = fullBox 0 h
 
 instance IsBoxType SpecificMediaHeader where
-  type BoxContent SpecificMediaHeader = FullBox 0 SpecificMediaHeader
-  toBoxType _ (FullBox _ _ (VideoMediaHeader _)) = StdType "vmhd"
-  toBoxType _ (FullBox _ _ (SoundMediaHeader _)) = StdType "smhd"
-  toBoxType _ (FullBox _ _ (HintMediaHeader  _)) = StdType "hmhd"
-  toBoxType _ (FullBox _ _ NullMediaHeader)      = StdType "nmhd"
+  type BoxContent SpecificMediaHeader = SpecificMediaHeader
+  toBoxType _ (VideoMediaHeader _) = StdType "vmhd"
+  toBoxType _ (SoundMediaHeader _) = StdType "smhd"
+  toBoxType _ (HintMediaHeader  _) = StdType "hmhd"
+  toBoxType _ NullMediaHeader      = StdType "nmhd"
 
 instance IsBoxContent SpecificMediaHeader where
   boxSize (VideoMediaHeader c) = boxSize c

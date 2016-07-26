@@ -4,8 +4,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Movie where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | Compose a set of boxes into a 'Movie'
-movie :: (ValidContainerBox brand Movie ts)
-      => Boxes brand ts -> Box brand Movie
+movie :: Boxes ts -> Box (ContainerBox Movie ts)
 movie = containerBox
 
 -- | The metadata for a presentation, a single 'Movie' which occurs only once

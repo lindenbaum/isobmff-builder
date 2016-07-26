@@ -245,17 +245,3 @@ instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromT
 
 instance KnownSymbol str => FromTypeLit T.Text (str :: Symbol) where
   fromTypeLit = T.pack . symbolVal
-
--- * Box concatenation
-
--- | Box content composition
-data a :+ b = a :+ b
-
-infixr 3 :+
-
-instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (p :+ c) where
-  boxSize (p :+ c) = boxSize p + boxSize c
-  boxBuilder (p :+ c) = boxBuilder p <> boxBuilder c
-
-instance (Default a, Default b) => Default (a :+ b) where
-  def = def :+ def

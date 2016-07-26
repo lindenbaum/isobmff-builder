@@ -4,6 +4,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes
   where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.Brand as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.DataReference as X
@@ -37,9 +38,10 @@ import Data.Default as X
 -- * MediaFiles
 
 -- | The toplevel container for all boxes of a media file.
-data MediaFile brand where
-  MediaFile :: (ValidTopLevel brand ts) => Boxes brand ts -> MediaFile brand
+data MediaFile b where
+  MediaFile :: (IsBoxContent t, IsBrand b, IsBrandConform (TopLevelCtx b) t (BoxLayout b))
+            => t -> MediaFile b
 
 -- | Generate a lazy 'ByteString' with the contents of a 'MediaFile'
-packMediaFile :: MediaFile brand -> BL.ByteString
-packMediaFile (MediaFile bs) = toLazyByteString (boxBuilder bs)
+packMediaFile :: MediaFile b -> BL.ByteString
+packMediaFile (MediaFile t) = toLazyByteString (boxBuilder t)

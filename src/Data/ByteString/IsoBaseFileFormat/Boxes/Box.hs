@@ -12,7 +12,6 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
        where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Brand as X
 import Data.Bits as X
 import Data.ByteString.Builder as X
 import Data.Monoid as X
@@ -21,6 +20,8 @@ import Data.Word as X
 import Data.Kind
 import GHC.TypeLits as X
 import Data.String
+import Data.Singletons.Prelude.List (Length)
+import Data.Default
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Singletons.Prelude.List ((:++))
@@ -41,14 +42,15 @@ class IsBoxContent a  where
   boxBuilder :: a -> Builder
 
 -- * Data types
--- | A type that wraps the contents of a box and the box type.
-data Box brand b where
-        Box ::
-            (IsBoxType b, IsBrandConform brand ('Just b) ts) =>
-            BoxContent b -> Boxes brand ts -> Box brand b
 
-instance IsBoxContent (Box brand cnt) where
-  boxBuilder b@(Box cnt nested) = sB <> tB <> sExtB <> tExtB <> cntB <> nestedB
+-- | A type that wraps the contents of a box and the box type.
+data Box b where
+        Box ::
+            (IsBoxType b) =>
+            BoxContent b -> Box b
+
+instance IsBoxContent (Box cnt) where
+  boxBuilder b@(Box cnt) = sB <> tB <> sExtB <> tExtB <> cntB
     where s = boxSize b
           t = toBoxType b cnt
           sB = boxBuilder s
@@ -56,21 +58,45 @@ instance IsBoxContent (Box brand cnt) where
           tB = boxBuilder t
           tExtB = boxBuilder (BoxTypeExtension t)
           cntB = boxBuilder cnt
-          nestedB = boxBuilder nested
-  boxSize b@(Box cnt nested) = sPayload + boxSize (BoxSizeExtension sPayload)
+  boxSize b@(Box cnt) = sPayload + boxSize (BoxSizeExtension sPayload)
     where sPayload =
             boxSize (BoxSize undefined) + boxSize t + boxSize cnt +
-            boxSize (BoxTypeExtension t) +
-            boxSize nested
+            boxSize (BoxTypeExtension t)
           t = toBoxType b cnt
 
+-- | Compose 'BoxContent' and 'Boxes' under the Constraint that they are
+-- composable.
+data ContainerBox b (bs :: [Type])
+
+instance (IsBoxType b, IsBoxContent (Boxes bs)) => IsBoxType (ContainerBox b bs) where
+  type BoxContent (ContainerBox b bs) = BoxContent b :+ Boxes bs
+  toBoxType _ (bCnt :+ _) = toBoxType (Proxy :: Proxy b) bCnt
+
+-- | Container box wich includes a length field
+data SizedContainerBox b (bs :: [Type]) where
+  SizedContainerBox
+    :: (KnownNat (Length bs), IsBoxType b)
+    => (Integer -> BoxContent b)
+    -> Boxes bs
+    -> SizedContainerBox b bs
+
+instance (IsBoxType (ContainerBox b bs)) => IsBoxType (SizedContainerBox b bs) where
+    type BoxContent (SizedContainerBox b bs) = SizedContainerBox b bs
+    toBoxType _ (SizedContainerBox f bs) =
+      toBoxType (Proxy :: Proxy (ContainerBox b bs))
+                (f (typeListLength bs) :+ bs)
+
+instance (IsBoxType (ContainerBox b bs)) => IsBoxContent (SizedContainerBox b bs) where
+    boxSize (SizedContainerBox f bs) = boxSize (f (typeListLength bs) :+ bs)
+    boxBuilder (SizedContainerBox f bs) = boxBuilder (f (typeListLength bs) :+ bs)
+
 -- | A heterogenous collection of boxes.
-data Boxes brand (boxTypes :: [Type]) where
-        NoBoxes :: Boxes brand '[]
-        (:.) :: Box brand l -> Boxes brand r -> Boxes brand (l ': r)
-        -- | Create a 'Boxes' collection from two 'Box'es
-        (:|) :: Box brand l -> Box brand r -> Boxes brand '[l, r]
-        (:<>) :: Boxes brand l -> Boxes brand r -> Boxes brand (l :++ r)
+data Boxes (boxTypes :: [Type]) where
+    NoBoxes :: Boxes '[]
+    (:.) :: Box l -> Boxes r -> Boxes (l ': r)
+    -- | Create a 'Boxes' collection from two 'Box'es
+    (:|) :: Box l -> Box r -> Boxes '[l, r]
+    (:<>) :: Boxes l -> Boxes r -> Boxes (l :++ r)
 
 infixr 1 :<>
 infixr 2 :.
@@ -78,15 +104,19 @@ infixr 2 :|
 infixr 3 $:
 
 -- | Apply a function to a 'Boxes' collection containing only a single 'Box'.
-($:) :: (Boxes brand '[l] -> r) -> Box brand l -> r
+($:) :: (Boxes '[l] -> r) -> Box l -> r
 ($:) f = f . singletonBox
 
 -- | Create a 'Boxes' collection with a single 'Box'.
-singletonBox :: Box brand l -> Boxes brand '[l]
+singletonBox :: Box l -> Boxes '[l]
 singletonBox b = b :. NoBoxes
 
+-- | Get the elements in a type level array
+typeListLength :: forall a proxy (ts :: [k]) . (KnownNat (Length ts), Num a)
+               => proxy ts -> a
+typeListLength _ = fromIntegral (natVal (Proxy :: Proxy (Length ts)))
 
-instance IsBoxContent (Boxes brand bs) where
+instance IsBoxContent (Boxes bs) where
   boxSize NoBoxes = 0
   boxSize (l :. r) = boxSize l + boxSize r
   boxSize (l :| r) = boxSize l + boxSize r
@@ -96,28 +126,10 @@ instance IsBoxContent (Boxes brand bs) where
   boxBuilder (l :| r) = boxBuilder l <> boxBuilder r
   boxBuilder (l :<> r) = boxBuilder l <> boxBuilder r
 
--- | A box that contains no nested boxes.
-closedBox :: (IsBoxType t, IsBrandConform brand ('Just t) '[])
-          => BoxContent t -> Box brand t
-closedBox c = Box c NoBoxes
-
 -- | A box that contains no fields, but nested boxes.
-containerBox :: (IsBoxType t,IsBrandConform brand ('Just t) ts,BoxContent t ~ ())
-             => Boxes brand ts -> Box brand t
-containerBox = Box ()
-
-
-
--- | Compose 'BoxContent' and 'Boxes' under the Constraint that they are
--- composable.
-data BoxWithBoxes brand b (bs :: [Type]) where
-  BoxWithBoxes
-    :: (IsBoxType b, IsBrandConform brand ('Just b) bs)
-    => BoxContent b
-    -> Boxes brand bs
-    -> BoxWithBoxes brand b bs
-
-
+containerBox :: (IsBoxType t, BoxContent t ~ ())
+             => Boxes ts -> Box (ContainerBox t ts)
+containerBox bs = Box (() :+ bs)
 
 -- * Box Size and Type
 -- | The size of the box. If the size is limited to a (fixed) value, it can be
@@ -243,3 +255,17 @@ instance IsBoxContent T.Text where
   boxSize = (1+) . fromIntegral . T.length
   boxBuilder txt = boxBuilder (T.encodeUtf8 txtNoNulls) <> word8 0
     where txtNoNulls = T.map (\c -> if c == '\0' then ' ' else c) txt
+
+-- * Box concatenation
+
+-- | Box content composition
+data a :+ b = a :+ b
+
+infixr 3 :+
+
+instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (p :+ c) where
+  boxSize (p :+ c) = boxSize p + boxSize c
+  boxBuilder (p :+ c) = boxBuilder p <> boxBuilder c
+
+instance (Default a, Default b) => Default (a :+ b) where
+  def = def :+ def

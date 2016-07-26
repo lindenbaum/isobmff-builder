@@ -26,14 +26,13 @@ data HandlerType =
   | TimedMetadataTrack
   | AuxilliaryVideoTrack
 
--- | Create a 'MediaDataBox' from a strict 'ByteString'
+-- | Create a 'Handler' box.
 handler
-  :: (ValidBox brand Handler)
-  => Handler -> Box brand Handler
-handler = closedFullBox Default 0
+  :: Handler -> Box (FullBox 0 Handler)
+handler = fullBox 0
 
 instance IsBoxType Handler where
-  type BoxContent Handler = FullBox 0 Handler
+  type BoxContent Handler = Handler
   toBoxType _ _ = StdType "hdlr"
 
 instance Default HandlerType where

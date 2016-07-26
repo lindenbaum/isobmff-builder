@@ -5,13 +5,14 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import qualified Data.ByteString as B
 
 -- | Media data box phantom type
-data MediaData
+newtype MediaData = MediaData B.ByteString
+  deriving (Show, IsBoxContent)
 
 instance IsBoxType MediaData where
   -- | Contents of a 'mdat' box are just bytes from a strict 'ByteString'
-  type BoxContent MediaData = B.ByteString
+  type BoxContent MediaData = MediaData
   toBoxType _ _ = StdType "mdat"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
-mediaData :: ValidBox b MediaData => B.ByteString -> Box b MediaData
-mediaData = closedBox
+mediaData :: MediaData -> Box MediaData
+mediaData = Box

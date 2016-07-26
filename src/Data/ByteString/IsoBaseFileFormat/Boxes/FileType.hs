@@ -9,9 +9,8 @@ instance IsBoxType FileType where
 
 -- | Create a 'FileTypeBox' from a major brand, a minor version and a list of
 -- compatible brands
-fileTypeBox :: (ValidBox b FileType)
-            => FileType -> Box b FileType
-fileTypeBox = closedBox
+fileTypeBox :: FileType -> Box FileType
+fileTypeBox = Box
 
 -- | Contents of a 'ftyp' box are some 'FourCc' /brands/ and a version.
 data FileType =
