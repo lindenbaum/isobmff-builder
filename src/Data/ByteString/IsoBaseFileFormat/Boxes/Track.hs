@@ -13,5 +13,5 @@ track = containerBox
 -- | Container box for tracks.
 data Track
 
-instance IsBoxType' Track where
-  toBoxType' _ = StdType "trak"
+instance IsBoxType Track where
+  toBoxType _ _ = StdType "trak"

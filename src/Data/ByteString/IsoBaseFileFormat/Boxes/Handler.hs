@@ -32,9 +32,9 @@ handler
   => Handler -> Box brand Handler
 handler = closedFullBox Default 0
 
-instance IsBoxType' Handler where
+instance IsBoxType Handler where
   type BoxContent Handler = FullBox 0 Handler
-  toBoxType' _ = StdType "hdlr"
+  toBoxType _ _ = StdType "hdlr"
 
 instance Default HandlerType where
   def = AudioTrack

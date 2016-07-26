@@ -28,10 +28,10 @@ import qualified Data.ByteString as B
 
 -- * Box Type Classes
 -- | Base class for all (abstract/phantom/normal-) types that represent boxes
-class (IsBoxContent (BoxContent t)) => IsBoxType' t  where
+class (IsBoxContent (BoxContent t)) => IsBoxType t  where
   type BoxContent t
   type BoxContent t = ()
-  toBoxType' :: proxy t -> BoxType
+  toBoxType :: proxy t -> BoxContent t -> BoxType
 
 -- | Types that go into a box. A box content is a piece of data that can be
 -- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
@@ -44,13 +44,13 @@ class IsBoxContent a  where
 -- | A type that wraps the contents of a box and the box type.
 data Box brand b where
         Box ::
-            (IsBoxType' b, IsBrandConform brand ('Just b) ts) =>
+            (IsBoxType b, IsBrandConform brand ('Just b) ts) =>
             BoxContent b -> Boxes brand ts -> Box brand b
 
 instance IsBoxContent (Box brand cnt) where
   boxBuilder b@(Box cnt nested) = sB <> tB <> sExtB <> tExtB <> cntB <> nestedB
     where s = boxSize b
-          t = toBoxType' b
+          t = toBoxType b cnt
           sB = boxBuilder s
           sExtB = boxBuilder (BoxSizeExtension s)
           tB = boxBuilder t
@@ -62,7 +62,7 @@ instance IsBoxContent (Box brand cnt) where
             boxSize (BoxSize undefined) + boxSize t + boxSize cnt +
             boxSize (BoxTypeExtension t) +
             boxSize nested
-          t = toBoxType' b
+          t = toBoxType b cnt
 
 -- | A heterogenous collection of boxes.
 data Boxes brand (boxTypes :: [Type]) where
@@ -97,12 +97,12 @@ instance IsBoxContent (Boxes brand bs) where
   boxBuilder (l :<> r) = boxBuilder l <> boxBuilder r
 
 -- | A box that contains no nested boxes.
-closedBox :: (IsBoxType' t, IsBrandConform brand ('Just t) '[])
+closedBox :: (IsBoxType t, IsBrandConform brand ('Just t) '[])
           => BoxContent t -> Box brand t
 closedBox c = Box c NoBoxes
 
 -- | A box that contains no fields, but nested boxes.
-containerBox :: (IsBoxType' t,IsBrandConform brand ('Just t) ts,BoxContent t ~ ())
+containerBox :: (IsBoxType t,IsBrandConform brand ('Just t) ts,BoxContent t ~ ())
              => Boxes brand ts -> Box brand t
 containerBox = Box ()
 

@@ -6,8 +6,8 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 -- | Media data box
 data Media
 
-instance IsBoxType' Media where
-  toBoxType' _ = StdType "mdia"
+instance IsBoxType Media where
+  toBoxType _ _ = StdType "mdia"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
 media :: ValidContainerBox brand Media ts

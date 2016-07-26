@@ -7,10 +7,10 @@ import qualified Data.ByteString as B
 -- | Media data box phantom type
 data MediaData
 
-instance IsBoxType' MediaData where
+instance IsBoxType MediaData where
   -- | Contents of a 'mdat' box are just bytes from a strict 'ByteString'
   type BoxContent MediaData = B.ByteString
-  toBoxType' _ = StdType "mdat"
+  toBoxType _ _ = StdType "mdat"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
 mediaData :: ValidBox b MediaData => B.ByteString -> Box b MediaData

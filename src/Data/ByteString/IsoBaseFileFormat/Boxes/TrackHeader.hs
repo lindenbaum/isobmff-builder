@@ -46,6 +46,6 @@ instance IsBoxContent (TrackHeader version) where
   boxSize (TrackHeader c) = boxSize c
   boxBuilder (TrackHeader c) = boxBuilder c
 
-instance KnownNat version => IsBoxType' (TrackHeader version) where
+instance KnownNat version => IsBoxType (TrackHeader version) where
   type BoxContent (TrackHeader version) = FullBox version (TrackHeader version)
-  toBoxType' _ = StdType "tkhd"
+  toBoxType _ _ = StdType "tkhd"

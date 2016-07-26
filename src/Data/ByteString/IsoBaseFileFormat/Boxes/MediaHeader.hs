@@ -19,9 +19,9 @@ mediaHeader
   => MediaHeader v -> Box brand (MediaHeader v)
 mediaHeader = closedFullBox Default 0
 
-instance (KnownNat v) => IsBoxType' (MediaHeader v) where
+instance (KnownNat v) => IsBoxType (MediaHeader v) where
   type BoxContent (MediaHeader v) = FullBox v (MediaHeader v)
-  toBoxType' _ = StdType "mdhd"
+  toBoxType _ _ = StdType "mdhd"
 
 instance IsBoxContent (MediaHeader v) where
   boxSize (MediaHeader c) = boxSize c

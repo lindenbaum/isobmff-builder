@@ -61,6 +61,6 @@ instance IsBoxContent (MovieHeader version) where
   boxSize (MovieHeader c) = boxSize c
   boxBuilder (MovieHeader c) = boxBuilder c
 
-instance KnownNat version => IsBoxType' (MovieHeader version) where
-  toBoxType' _ = StdType "mvhd"
+instance KnownNat version => IsBoxType (MovieHeader version) where
+  toBoxType _ _ = StdType "mvhd"
   type BoxContent (MovieHeader version) = FullBox version (MovieHeader version)

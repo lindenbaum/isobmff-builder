@@ -13,5 +13,5 @@ movie = containerBox
 -- with all the relevant meta data.
 data Movie
 
-instance IsBoxType' Movie where
-  toBoxType' _ = StdType "moov"
+instance IsBoxType Movie where
+  toBoxType _ _ = StdType "moov"

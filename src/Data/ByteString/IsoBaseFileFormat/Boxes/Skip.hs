@@ -6,9 +6,9 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 -- | Contents of a 'skip' box are just any number of filler bytes.
 newtype Skip = Skip Int
 
-instance IsBoxType' Skip where
+instance IsBoxType Skip where
   type BoxContent Skip = Skip
-  toBoxType' _ = StdType "skip"
+  toBoxType _ _ = StdType "skip"
 
 -- | Create a 'Skip' with a given size.
 skipBox :: ValidBox brand Skip => Skip -> Box brand Skip

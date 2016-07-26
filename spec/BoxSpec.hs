@@ -42,16 +42,16 @@ instance IsBrand TestBrand where
 
 data TestBox1
 
-instance IsBoxType' TestBox1 where
-  toBoxType' _ = StdType "tst1"
+instance IsBoxType TestBox1 where
+  toBoxType _ _ = StdType "tst1"
 
 testBox1 :: Box TestBrand TestBox1
 testBox1 = closedBox ()
 
 data TestParentBox1
 
-instance IsBoxType' TestParentBox1 where
-  toBoxType' _ = StdType "par1"
+instance IsBoxType TestParentBox1 where
+  toBoxType _ _ = StdType "par1"
 
 testParentBox1
   :: ValidContainerBox TestBrand TestParentBox1 ts
