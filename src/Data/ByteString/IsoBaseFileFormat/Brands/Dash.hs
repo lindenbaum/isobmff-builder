@@ -3,8 +3,7 @@
 -- educational, current need.
 -- This is a convenient way of building documents of that kind.
 module Data.ByteString.IsoBaseFileFormat.Brands.Dash
-       (Dash, SingleTrackInit(..), mkSingleTrackInit, module X)
-       where
+       (Dash, SingleTrackInit(..), mkSingleTrackInit, module X) where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes as X
 import Data.Kind (Type, Constraint)
@@ -19,31 +18,15 @@ data Dash (version :: Nat)
 instance KnownNat v => IsBrand (Dash v) where
   type GetVersion (Dash v) = v
   type BoxLayout (Dash v) =
-    '[ OM_ FileType
-     , OM  Movie
-          '[ OM_ (MovieHeader v)
-           , SM  Track
-                '[ OM_ (TrackHeader v)
-                 , OM  Media
-                      '[ OM_ (MediaHeader v)
-                       , OM_ Handler
-                      --  , OM  (MediaInformation v)   -- TODO
-                      --       '[ OO_ (SoundMediaHeader v)
-                      --        , OM  (DataInformation v)
-                      --             '[ OM_ (DataReference v) ]
-                      --        , OM  (SampleTable v)
-                      --             '[ OM_ (SampleDescriptions v)
-                      --              , OM_ (TimeToSample v)
-                      --              , OM_ (SampleToChunk v)
-                      --              , OO_ (SampleSizes v)
-                      --              , OM_ (SampleChunkOffset v)
-                      --              ]
-                      --        ]
-                      ]
-                 ]
-           ]
-     , SO_ Skip
-     ]
+    '[OM_ FileType,
+      OM Movie
+        '[OM_ (MovieHeader v),
+          SM Track
+            '[OM_ (TrackHeader v),
+              OM Media
+                '[OM_ (MediaHeader v), OM_ Handler,
+                  OM MediaInformation '[OO_ SpecificMediaHeader]]]],
+      SO_ Skip]
 
 -- Missing Boxes
 -- START 17:47:
@@ -61,7 +44,6 @@ instance KnownNat v => IsBrand (Dash v) where
 --  stsc
 --  stsz
 --  stco
-
 --  soun
 --  mp4a
 --  esds
@@ -74,15 +56,14 @@ instance KnownNat v => IsBrand (Dash v) where
 -- traf
 -- tfhd
 -- trun
-
-
 -- | A record which contains the stuff needed for a single track initialization
 -- document according to the 'Dash' brand. TODO incomplete
 data SingleTrackInit =
   SingleTrackInit {_mvhd :: MovieHeader 0
                   ,_tkhd :: TrackHeader 0
                   ,_mdhd :: MediaHeader 0
-                  ,_hdlr :: Handler}
+                  ,_hdlr :: Handler
+                  ,_xmhd :: SpecificMediaHeader}
 
 makeLenses ''SingleTrackInit
 
@@ -90,12 +71,10 @@ makeLenses ''SingleTrackInit
 mkSingleTrackInit
   :: SingleTrackInit -> MediaFile (Dash 0)
 mkSingleTrackInit doc =
-  MediaFile
-      $  fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
-     .:. movie
-           $  movieHeader (doc ^. mvhd)
-          .:. track
-                $  trackHeader (doc ^. tkhd)
-               .:. media
-                     $  mediaHeader (doc ^. mdhd)
-                    .:. handler (doc ^. hdlr)
+  MediaFile $
+  fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"]) :|
+  movie (movieHeader (doc ^. mvhd) :|
+         track (trackHeader (doc ^. tkhd) :|
+                media (mediaHeader (doc ^. mdhd) :. handler (doc ^. hdlr) :|
+                       mediaInformation $:
+                       specificMediaHeader (doc ^. xmhd))))

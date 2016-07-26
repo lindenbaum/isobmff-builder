@@ -1,6 +1,6 @@
 -- | Full Boxes
 module Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-       (FullBox(), fullBox, closedFullBox, BoxVersion, BoxFlags(..))
+       (FullBox(..), fullBox, closedFullBox, BoxVersion, BoxFlags(..))
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box

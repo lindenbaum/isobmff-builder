@@ -11,11 +11,13 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Handler as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Media as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MediaData as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MediaHeader as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.MediaInformation as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Movie as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Language as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Skip as X
+import Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Time as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Track as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader as X

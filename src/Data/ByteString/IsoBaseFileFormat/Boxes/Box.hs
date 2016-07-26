@@ -68,32 +68,32 @@ instance IsBoxContent (Box brand cnt) where
 data Boxes brand (boxTypes :: [Type]) where
         NoBoxes :: Boxes brand '[]
         (:.) :: Box brand l -> Boxes brand r -> Boxes brand (l ': r)
+        -- | Create a 'Boxes' collection from two 'Box'es
+        (:|) :: Box brand l -> Box brand r -> Boxes brand '[l, r]
         (:<>) :: Boxes brand l -> Boxes brand r -> Boxes brand (l :++ r)
 
+infixr 1 :<>
 infixr 2 :.
+infixr 2 :|
+infixr 3 $:
+
+-- | Apply a function to a 'Boxes' collection containing only a single 'Box'.
+($:) :: (Boxes brand '[l] -> r) -> Box brand l -> r
+($:) f = f . singletonBox
 
 -- | Create a 'Boxes' collection with a single 'Box'.
 singletonBox :: Box brand l -> Boxes brand '[l]
 singletonBox b = b :. NoBoxes
 
--- | Create a 'Boxes' collection from two 'Box'es
-(.:.) :: Box brand l -> Box brand r -> Boxes brand '[l, r]
-(.:.) l r = l :. r :. NoBoxes
-
-infixr 0 .:.
-
--- | Apply a function to a 'Boxes' collection containing only a single 'Box'.
-($:) :: (Boxes brand '[l] -> r) -> Box brand l -> r
-($:) f l = f $ l :. NoBoxes
-
-infixr 2 $:
 
 instance IsBoxContent (Boxes brand bs) where
   boxSize NoBoxes = 0
   boxSize (l :. r) = boxSize l + boxSize r
+  boxSize (l :| r) = boxSize l + boxSize r
   boxSize (l :<> r) = boxSize l + boxSize r
   boxBuilder NoBoxes = mempty
   boxBuilder (l :. r) = boxBuilder l <> boxBuilder r
+  boxBuilder (l :| r) = boxBuilder l <> boxBuilder r
   boxBuilder (l :<> r) = boxBuilder l <> boxBuilder r
 
 -- | A box that contains no nested boxes.
