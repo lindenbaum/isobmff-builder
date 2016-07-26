@@ -6,7 +6,7 @@
 # ISO-14496-12 Base Media File Format Builder
 
 This project contains a bytestring-builder for the media data container file
-format defined as part of the MPEG-4 (ISO-14496) family of standards, calles the
+format defined as part of the MPEG-4 (ISO-14496) family of standards, called the
 Iso Base Media File Format, or ISOBMFF.
 
 It is a container format for both stored and transfered media data.
