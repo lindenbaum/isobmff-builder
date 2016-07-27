@@ -31,9 +31,10 @@ handler
   :: Handler -> Box (FullBox 0 Handler)
 handler = fullBox 0
 
-instance IsBoxType Handler where
+instance IsBox Handler where
   type BoxContent Handler = Handler
-  toBoxType _ _ = StdType "hdlr"
+
+type instance BoxTypeSymbol Handler = "hdlr"
 
 instance Default HandlerType where
   def = AudioTrack

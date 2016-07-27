@@ -20,9 +20,9 @@ mediaHeader
   => MediaHeader v -> Box (FullBox v (MediaHeader v))
 mediaHeader = fullBox 0
 
-instance IsBoxType (MediaHeader v) where
-  type BoxContent (MediaHeader v) = MediaHeader v
-  toBoxType _ _ = StdType "mdhd"
+instance IsBox (MediaHeader v)
+
+type instance BoxTypeSymbol (MediaHeader v) = "mdhd"
 
 instance IsBoxContent (MediaHeader v) where
   boxSize (MediaHeader c) = boxSize c

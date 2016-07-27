@@ -8,9 +8,10 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
 -- | A Box with progressive download information
 data ProgressiveDownload
 
-instance IsBoxType ProgressiveDownload where
+instance IsBox ProgressiveDownload where
   type BoxContent ProgressiveDownload = ProgressiveDownloadContent
-  toBoxType _ _ = StdType "pdin"
+
+type instance BoxTypeSymbol ProgressiveDownload = "pdin"
 
 -- | Information for progressive media data download/playback encompasses the
 -- delay for initial playback and expected download bit rate.

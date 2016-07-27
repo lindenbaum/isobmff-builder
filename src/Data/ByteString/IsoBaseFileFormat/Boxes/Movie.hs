@@ -5,12 +5,14 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | Compose a set of boxes into a 'Movie'
 movie :: Boxes ts -> Box (ContainerBox Movie ts)
-movie = containerBox
+movie = containerBox ()
 
 -- | The metadata for a presentation, a single 'Movie' which occurs only once
 -- and top-level. It is pretty empty on it's own, but it contains nested boxes
 -- with all the relevant meta data.
 data Movie
 
-instance IsBoxType Movie where
-  toBoxType _ _ = StdType "moov"
+instance IsBox Movie where
+  type BoxContent Movie = ()
+
+type instance BoxTypeSymbol Movie = "moov"

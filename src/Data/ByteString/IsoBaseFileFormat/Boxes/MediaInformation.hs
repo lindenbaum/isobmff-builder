@@ -4,13 +4,15 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.MediaInformation where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
--- | Media information box phantom type.
+-- | Media information box type.
 data MediaInformation
 
 -- | Compose a 'MediaInformation' box.
 mediaInformation
   :: Boxes ts -> Box (ContainerBox MediaInformation ts)
-mediaInformation = containerBox
+mediaInformation = containerBox ()
 
-instance IsBoxType MediaInformation where
-  toBoxType _ _ = StdType "minf"
+instance IsBox MediaInformation where
+  type BoxContent MediaInformation = ()
+
+type instance BoxTypeSymbol MediaInformation = "minf"

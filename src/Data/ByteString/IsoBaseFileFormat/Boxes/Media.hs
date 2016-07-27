@@ -6,9 +6,11 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 -- | Media data box
 data Media
 
-instance IsBoxType Media where
-  toBoxType _ _ = StdType "mdia"
+instance IsBox Media where
+  type BoxContent Media = ()
+
+type instance BoxTypeSymbol Media = "mdia"
 
 -- | Create a 'MediaDataBox' from a strict 'ByteString'
 media :: Boxes ts -> Box (ContainerBox Media ts)
-media = containerBox
+media = containerBox ()

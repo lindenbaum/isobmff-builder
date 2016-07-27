@@ -11,16 +11,17 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 -- enforces that the 'FullBox' header fields are always at the beginning - at
 -- least as long as this module hides the 'FullBox' constructor ;)
 data FullBox version t where
-  FullBox :: (KnownNat version, IsBoxType t)
+  FullBox :: (KnownNat version, IsBox t)
           => BoxFlags 24
           -> BoxContent t
           -> FullBox version t
 
-instance (KnownNat v, IsBoxType t) => IsBoxType (FullBox v t) where
+instance (KnownNat v, IsBox t) => IsBox (FullBox v t) where
   type BoxContent (FullBox v t) = FullBox v t
-  toBoxType _ (FullBox _ t) = toBoxType (Proxy :: Proxy t) t
 
-instance (KnownNat v, IsBoxType t) => IsBoxContent (FullBox v t) where
+type instance BoxTypeSymbol (FullBox v t) = BoxTypeSymbol t
+
+instance (KnownNat v, IsBox t) => IsBoxContent (FullBox v t) where
   boxSize (FullBox f c) = 1 + boxSize f + boxSize c
   boxBuilder (FullBox f c) =
        word8 (fromIntegral (natVal (Proxy :: Proxy v)))
@@ -29,7 +30,7 @@ instance (KnownNat v, IsBoxType t) => IsBoxContent (FullBox v t) where
 
 -- | Create a 'FullBox' from a 'BoxVersion' and 'BoxFlags'
 fullBox
-  :: (KnownNat v, IsBoxType t)
+  :: (KnownNat v, IsBox t)
   => BoxFlags 24 -> BoxContent t -> Box (FullBox v t)
 fullBox f c = Box (FullBox f c)
 

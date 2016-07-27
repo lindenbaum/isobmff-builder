@@ -7,10 +7,12 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 -- | Compose a 'Track' box from the given boxes.
 track
   :: Boxes ts -> Box (ContainerBox Track ts)
-track = containerBox
+track = containerBox ()
 
 -- | Container box for tracks.
 data Track
 
-instance IsBoxType Track where
-  toBoxType _ _ = StdType "trak"
+instance IsBox Track where
+  type BoxContent Track = ()
+
+type instance BoxTypeSymbol Track = "trak"

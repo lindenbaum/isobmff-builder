@@ -1,10 +1,9 @@
 -- | This module re-exports all modules needed to build /ISOBMFF/ documents.
 module Data.ByteString.IsoBaseFileFormat.Boxes
-  (module Data.ByteString.IsoBaseFileFormat.Boxes, module X)
+  ( module X)
   where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box as X
-import Data.ByteString.IsoBaseFileFormat.Boxes.Brand as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.DataReference as X
@@ -25,7 +24,6 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Time as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Track as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned as X
-import qualified Data.ByteString.Lazy as BL
 
 import Data.Int as X
 import Data.Kind as X  (Type, Constraint)
@@ -34,14 +32,3 @@ import Data.Type.Bool as X
 import Data.Type.Equality as X
 import Text.Printf as X
 import Data.Default as X
-
--- * MediaFiles
-
--- | The toplevel container for all boxes of a media file.
-data MediaFile b where
-  MediaFile :: (IsBoxContent t, IsBrand b, IsBrandConform (TopLevelCtx b) t (BoxLayout b))
-            => t -> MediaFile b
-
--- | Generate a lazy 'ByteString' with the contents of a 'MediaFile'
-packMediaFile :: MediaFile b -> BL.ByteString
-packMediaFile (MediaFile t) = toLazyByteString (boxBuilder t)

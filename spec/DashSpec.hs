@@ -8,7 +8,7 @@ import Data.Text ()
 
 spec :: Spec
 spec =
-  do describe "minimalIsobmff version 0" $
+  do describe "SingleAudioTrackInit version 0" $
        do it "renders some output at all" $
             do createionTime <- mp4CurrentTime
                let ct :: Word32
@@ -21,7 +21,7 @@ spec =
                    cts = fromIntegral <$> [ct3,ct2,ct1,ct0]
                let args = exampleSingleTrackInit createionTime
                    doc = mkSingleTrackInit args
-                   rendered = BL.unpack $ packMediaFile doc
+                   rendered = BL.unpack $ toLazyByteString $ doc
                    expected =
                      [0
                      ,0
@@ -284,9 +284,10 @@ spec =
                rendered `shouldBe`
                  expected
 
-exampleSingleTrackInit :: U32 "creation_time" -> SingleTrackInit
+exampleSingleTrackInit :: U32 "creation_time" -> SingleAudioTrackInit
 exampleSingleTrackInit creationTime =
-  SingleTrackInit (MovieHeader $
+  SingleAudioTrackInit
+                  (MovieHeader $
                    V0 (creationTime :+ 0 :+ Default :+ durationFromSeconds Default 1) :+
                    def)
                   (TrackHeader $

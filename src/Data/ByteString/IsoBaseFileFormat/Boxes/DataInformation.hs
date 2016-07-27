@@ -10,7 +10,9 @@ data DataInformation
 -- | Compose a 'DataInformation' box.
 dataInformation
   :: Boxes ts -> Box (ContainerBox DataInformation ts)
-dataInformation = containerBox
+dataInformation = containerBox ()
 
-instance IsBoxType DataInformation where
-  toBoxType _ _ = StdType "dinf"
+instance IsBox DataInformation where
+  type BoxContent DataInformation = ()
+
+type instance BoxTypeSymbol DataInformation = "dinf"

@@ -46,6 +46,6 @@ instance IsBoxContent (TrackHeader version) where
   boxSize (TrackHeader c) = boxSize c
   boxBuilder (TrackHeader c) = boxBuilder c
 
-instance IsBoxType (TrackHeader version) where
-  type BoxContent (TrackHeader version) = TrackHeader version
-  toBoxType _ _ = StdType "tkhd"
+instance IsBox (TrackHeader version)
+
+type instance BoxTypeSymbol (TrackHeader version) = "tkhd"

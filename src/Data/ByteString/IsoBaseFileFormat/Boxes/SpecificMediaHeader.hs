@@ -4,47 +4,76 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+import Data.Default
 
--- | Media header data box. The actual box type is determined by the claused
--- used to construct the record.
-data SpecificMediaHeader where
+-- * Videos
+
+-- | Video header data box.
+newtype VideoMediaHeader where
   VideoMediaHeader
    :: Template (U16 "graphicsmode") 0
    :+ Template (U16 "reserved") 0
-   -> SpecificMediaHeader
+   -> VideoMediaHeader
+   deriving (Default, IsBoxContent)
+
+-- | Create a video media header data box.
+videoMediaHeader :: VideoMediaHeader -> Box (FullBox 0 VideoMediaHeader)
+videoMediaHeader = fullBox 1
+
+instance IsBox VideoMediaHeader
+type instance BoxTypeSymbol VideoMediaHeader = "vmhd"
+
+-- * Sounds
+
+-- | Sound header data box.
+newtype SoundMediaHeader where
   SoundMediaHeader
    :: Template (I16 "balance") 0
    :+ Constant (U16Arr "opcolor" 3) '[0,0,0]
-   -> SpecificMediaHeader
+   -> SoundMediaHeader
+   deriving (Default, IsBoxContent)
+
+-- | Create a sound media header data box.
+soundMediaHeader :: SoundMediaHeader -> Box (FullBox 0 SoundMediaHeader)
+soundMediaHeader = fullBox 0
+
+instance IsBox SoundMediaHeader
+type instance BoxTypeSymbol SoundMediaHeader = "smhd"
+
+-- * Hints
+
+-- | Hint data box.
+newtype HintMediaHeader where
   HintMediaHeader
    :: U16 "maxPDUsize"
    :+ U16 "avgPDUsize"
    :+ U16 "maxbitrate"
    :+ U16 "avgbitrate"
    :+ U32 "reserved"
-   -> SpecificMediaHeader
-  NullMediaHeader
-   :: SpecificMediaHeader
+   -> HintMediaHeader
+   deriving (Default, IsBoxContent)
 
--- | Create a 'SpecificMediaHeader' box.
-specificMediaHeader
-  :: SpecificMediaHeader -> Box (FullBox 0 SpecificMediaHeader)
-specificMediaHeader h@(VideoMediaHeader _) = fullBox 1 h
-specificMediaHeader h                      = fullBox 0 h
+-- | Create a hint media header data box.
+hintMediaHeader :: HintMediaHeader -> Box (FullBox 0 HintMediaHeader)
+hintMediaHeader = fullBox 0
 
-instance IsBoxType SpecificMediaHeader where
-  type BoxContent SpecificMediaHeader = SpecificMediaHeader
-  toBoxType _ (VideoMediaHeader _) = StdType "vmhd"
-  toBoxType _ (SoundMediaHeader _) = StdType "smhd"
-  toBoxType _ (HintMediaHeader  _) = StdType "hmhd"
-  toBoxType _ NullMediaHeader      = StdType "nmhd"
+instance IsBox HintMediaHeader
+type instance BoxTypeSymbol HintMediaHeader = "hmhd"
 
-instance IsBoxContent SpecificMediaHeader where
-  boxSize (VideoMediaHeader c) = boxSize c
-  boxSize (SoundMediaHeader c) = boxSize c
-  boxSize (HintMediaHeader  c) = boxSize c
-  boxSize NullMediaHeader      = boxSize ()
-  boxBuilder (VideoMediaHeader c) = boxBuilder c
-  boxBuilder (SoundMediaHeader c) = boxBuilder c
-  boxBuilder (HintMediaHeader  c) = boxBuilder c
-  boxBuilder NullMediaHeader      = boxBuilder ()
+-- * Dummy/Null media
+
+-- | Null header data box.
+data NullMediaHeader = NullMediaHeader
+
+-- | Create a null media header data box.
+nullMediaHeader :: Box (FullBox 0 NullMediaHeader)
+nullMediaHeader = fullBox 0 NullMediaHeader
+
+instance IsBox NullMediaHeader
+type instance BoxTypeSymbol NullMediaHeader = "nmhd"
+
+instance Default NullMediaHeader where
+  def = NullMediaHeader
+instance IsBoxContent NullMediaHeader where
+  boxSize _ = 0
+  boxBuilder _ = mempty

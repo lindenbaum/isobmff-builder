@@ -3,9 +3,9 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.FileType where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | File Type Box
-instance IsBoxType FileType where
+instance IsBox FileType where
   type BoxContent FileType = FileType
-  toBoxType _ _ = StdType "ftyp"
+type instance BoxTypeSymbol FileType = "ftyp"
 
 -- | Create a 'FileTypeBox' from a major brand, a minor version and a list of
 -- compatible brands

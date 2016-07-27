@@ -61,6 +61,6 @@ instance IsBoxContent (MovieHeader version) where
   boxSize (MovieHeader c) = boxSize c
   boxBuilder (MovieHeader c) = boxBuilder c
 
-instance IsBoxType (MovieHeader version) where
-  toBoxType _ _ = StdType "mvhd"
-  type BoxContent (MovieHeader version) = MovieHeader version
+instance IsBox (MovieHeader version)
+
+type instance BoxTypeSymbol (MovieHeader v) = "mvhd"

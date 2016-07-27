@@ -12,6 +12,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
        where
 
+import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout as X
 import Data.Bits as X
 import Data.ByteString.Builder as X
 import Data.Monoid as X
@@ -22,6 +23,8 @@ import GHC.TypeLits as X
 import Data.String
 import Data.Singletons.Prelude.List (Length)
 import Data.Default
+import Data.Type.Equality
+import Data.Type.Bool
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Singletons.Prelude.List ((:++))
@@ -29,10 +32,17 @@ import qualified Data.ByteString as B
 
 -- * Box Type Classes
 -- | Base class for all (abstract/phantom/normal-) types that represent boxes
-class (IsBoxContent (BoxContent t)) => IsBoxType t  where
+class (KnownSymbol (BoxTypeSymbol t), IsBoxContent (BoxContent t)) => IsBox t  where
   type BoxContent t
-  type BoxContent t = ()
-  toBoxType :: proxy t -> BoxContent t -> BoxType
+  type BoxContent t = t
+  toBoxType :: proxy t -> BoxType
+  toBoxType _ = parseBoxType (Proxy :: Proxy (BoxTypeSymbol t))
+
+-- | A type family used by the type-level consistency checks. It is required
+-- that  an instance of this type family exists for every 'IsBox' instance.
+-- This family could not be associative since it is used by type families that
+-- cannot have type class constraints.
+type family BoxTypeSymbol t :: Symbol
 
 -- | Types that go into a box. A box content is a piece of data that can be
 -- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
@@ -43,16 +53,23 @@ class IsBoxContent a  where
 
 -- * Data types
 
+
 -- | A type that wraps the contents of a box and the box type.
 data Box b where
         Box ::
-            (IsBoxType b) =>
+            (IsBox b) =>
             BoxContent b -> Box b
+
+instance IsBox b => IsBox (Box b) where
+  type BoxContent (Box b) = BoxContent b
+  toBoxType _ = toBoxType (Proxy :: Proxy b)
+
+type instance BoxTypeSymbol (Box b) = BoxTypeSymbol b
 
 instance IsBoxContent (Box cnt) where
   boxBuilder b@(Box cnt) = sB <> tB <> sExtB <> tExtB <> cntB
     where s = boxSize b
-          t = toBoxType b cnt
+          t = toBoxType b
           sB = boxBuilder s
           sExtB = boxBuilder (BoxSizeExtension s)
           tB = boxBuilder t
@@ -62,41 +79,44 @@ instance IsBoxContent (Box cnt) where
     where sPayload =
             boxSize (BoxSize undefined) + boxSize t + boxSize cnt +
             boxSize (BoxTypeExtension t)
-          t = toBoxType b cnt
+          t = toBoxType b
 
 -- | Compose 'BoxContent' and 'Boxes' under the Constraint that they are
 -- composable.
-data ContainerBox b (bs :: [Type])
+data ContainerBox b (bs :: [Type]) where
+  ContainerBox :: IsBox b => BoxContent b -> Boxes bs -> ContainerBox b bs
 
-instance (IsBoxType b, IsBoxContent (Boxes bs)) => IsBoxType (ContainerBox b bs) where
-  type BoxContent (ContainerBox b bs) = BoxContent b :+ Boxes bs
-  toBoxType _ (bCnt :+ _) = toBoxType (Proxy :: Proxy b) bCnt
+instance (IsBox b) => IsBox (ContainerBox b bs)
+
+type instance BoxTypeSymbol (ContainerBox b bs) = BoxTypeSymbol b
+
+instance IsBoxContent (ContainerBox b bs) where
+    boxSize (ContainerBox c bs) = boxSize (c :+ bs)
+    boxBuilder (ContainerBox c bs) = boxBuilder (c :+ bs)
 
 -- | Container box wich includes a length field
 data SizedContainerBox b (bs :: [Type]) where
   SizedContainerBox
-    :: (KnownNat (Length bs), IsBoxType b)
+    :: (KnownNat (Length bs), IsBox b)
     => (Integer -> BoxContent b)
     -> Boxes bs
     -> SizedContainerBox b bs
 
-instance (IsBoxType (ContainerBox b bs)) => IsBoxType (SizedContainerBox b bs) where
-    type BoxContent (SizedContainerBox b bs) = SizedContainerBox b bs
-    toBoxType _ (SizedContainerBox f bs) =
-      toBoxType (Proxy :: Proxy (ContainerBox b bs))
-                (f (typeListLength bs) :+ bs)
+instance (IsBox (ContainerBox b bs)) => IsBox (SizedContainerBox b bs)
 
-instance (IsBoxType (ContainerBox b bs)) => IsBoxContent (SizedContainerBox b bs) where
+type instance BoxTypeSymbol (SizedContainerBox b bs) = BoxTypeSymbol b
+
+instance IsBoxContent (SizedContainerBox b bs) where
     boxSize (SizedContainerBox f bs) = boxSize (f (typeListLength bs) :+ bs)
     boxBuilder (SizedContainerBox f bs) = boxBuilder (f (typeListLength bs) :+ bs)
 
 -- | A heterogenous collection of boxes.
 data Boxes (boxTypes :: [Type]) where
     NoBoxes :: Boxes '[]
-    (:.) :: Box l -> Boxes r -> Boxes (l ': r)
+    (:.) :: Box l -> Boxes r -> Boxes (Box l ': r)
     -- | Create a 'Boxes' collection from two 'Box'es
-    (:|) :: Box l -> Box r -> Boxes '[l, r]
     (:<>) :: Boxes l -> Boxes r -> Boxes (l :++ r)
+    (:|) :: Box l -> Box r -> Boxes '[Box l, Box r]
 
 infixr 1 :<>
 infixr 2 :.
@@ -104,11 +124,11 @@ infixr 2 :|
 infixr 3 $:
 
 -- | Apply a function to a 'Boxes' collection containing only a single 'Box'.
-($:) :: (Boxes '[l] -> r) -> Box l -> r
+($:) :: (Boxes '[Box l] -> r) -> Box l -> r
 ($:) f = f . singletonBox
 
 -- | Create a 'Boxes' collection with a single 'Box'.
-singletonBox :: Box l -> Boxes '[l]
+singletonBox :: Box l -> Boxes '[Box l]
 singletonBox b = b :. NoBoxes
 
 -- | Get the elements in a type level array
@@ -127,9 +147,9 @@ instance IsBoxContent (Boxes bs) where
   boxBuilder (l :<> r) = boxBuilder l <> boxBuilder r
 
 -- | A box that contains no fields, but nested boxes.
-containerBox :: (IsBoxType t, BoxContent t ~ ())
-             => Boxes ts -> Box (ContainerBox t ts)
-containerBox bs = Box (() :+ bs)
+containerBox :: (IsBox t)
+             => BoxContent t -> Boxes ts -> Box (ContainerBox t ts)
+containerBox c bs = Box (ContainerBox c bs)
 
 -- * Box Size and Type
 -- | The size of the box. If the size is limited to a (fixed) value, it can be
@@ -194,6 +214,12 @@ data BoxType
     -- | CustomBoxType defines custom @boxType@s in `Box`es.
     CustomBoxType String
   deriving (Show,Eq)
+
+-- | Create a box type from a 'Symbol'. Parse the  symbol value, if it's a four
+-- charachter code, then return that as 'StdType' otherwise parse a UUID (TODO)
+-- and return a 'CustomBoxType'.
+parseBoxType :: KnownSymbol t => proxy t -> BoxType
+parseBoxType px = StdType (fromString (symbolVal px))
 
 -- | A type containin a printable four letter character code.
 newtype FourCc =
@@ -269,3 +295,40 @@ instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (p :+ c) where
 
 instance (Default a, Default b) => Default (a :+ b) where
   def = def :+ def
+
+
+
+
+
+-- | Mandatory, container box, exactly one
+type OM b bs = ContainerBox b bs
+-- | Optional, container box, zero or one
+type OO b bs = OnceOptionalX (ContainerBox b bs)
+-- | Mandatory, container box, one or more
+type SM b bs = SomeMandatoryX (ContainerBox b bs)
+-- | Optional, container box, zero or more
+type SO b bs = SomeOptionalX (ContainerBox b bs)
+
+-- | Mandatory, exactly one, no children
+type OM_ b = Box b
+-- | Optional, zero or one, no children
+type OO_ b = OnceOptionalX (Box b)
+-- | Mandatory, one or more, no children
+type SM_ b = SomeMandatoryX (Box b)
+-- | Optional, zero or more, no children
+type SO_ b = SomeOptionalX (Box b)
+
+----
+type instance IsRuleConform (Box b) (Box r) = BoxTypeSymbol b == BoxTypeSymbol r
+----
+type instance IsRuleConform (Boxes bs) (Boxes rs) = IsRuleConform bs rs
+----
+type instance IsRuleConform (Box b) (ContainerBox b' rules)
+  = IsContainerBox b
+    && IsRuleConform (Box b) (Box b')
+    && IsRuleConform (ChildBoxes b) (Boxes rules)
+type family IsContainerBox t :: Bool where
+  IsContainerBox (ContainerBox a as) = 'True
+  IsContainerBox b = 'False
+type family ChildBoxes c where
+  ChildBoxes (ContainerBox a as) = Boxes as
