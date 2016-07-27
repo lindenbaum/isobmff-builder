@@ -106,6 +106,15 @@ type family
     ReportIt 'Nothing = ()
     ReportIt ('Just e) = TypeError e
 ----
+data (payload :: payloadK) <@ (info :: infoK)
+type Dress payload info = payload <@ info
+infixr 4 <@
+type family
+  Naked w
+  where
+    Naked (payload <@ info) = payload
+    Naked payload           = payload
+----
 type family IsRuleConform (b :: k) (r :: l) :: Bool
 data IsRuleConform0 :: k ~> l ~> Bool
 type instance Apply IsRuleConform0 ts = IsRuleConform1 ts
@@ -113,42 +122,58 @@ data IsRuleConform1 :: k -> l ~> Bool
 type instance Apply (IsRuleConform1 ts) rule = IsRuleConform ts rule
 ----
 data TopLevel  :: Type -> Type
-type instance IsRuleConform t (TopLevel rule)
-  = IsRuleConform  t rule
+type instance IsRuleConform t (TopLevel rule) = IsRuleConform t rule
 ----
-data IsBox (fourcc :: Symbol)
-type instance IsRuleConform t (IsBox fourcc) = ToFourCc t == fourcc
+type instance IsRuleConform b (Box fourcc) = IsBox b && ToFourCc b == fourcc
+type family IsBox t :: Bool where
+  IsBox (Box a) = 'True
+  IsBox b = 'False
 type family ToFourCc t :: Symbol
+type instance ToFourCc (Box t) = ToFourCc t
+type instance ToFourCc (ContainerBox t ts) = ToFourCc t
 data ToFourCc0 :: Type ~> Symbol
 type instance Apply ToFourCc0 t = ToFourCc t
 ----
-data IsContainerBox (fourcc :: Symbol) (ts :: [ContainmentRule])
-type instance IsRuleConform (ContainerBox b bs) (IsContainerBox fourcc ts)
-  = ToFourCc b == fourcc && IsContainerBoxConform (Map ToFourCc0 bs) ts
+type family IsContainerBox t :: Bool where
+  IsContainerBox (ContainerBox a as) = 'True
+  IsContainerBox b = 'False
+type family ContainerBoxChildren c :: [Type] where
+  ContainerBoxChildren (ContainerBox a as) = as
+type instance IsRuleConform b (ContainerBox fourcc ts)
+  = IsContainerBox b
+    && ToFourCc b == fourcc
+    && IsContainerBoxConform (ContainerBoxChildren b) ts
 ----
-data ContainmentRule
-   = OnceOptionalX Symbol
-   | OnceMandatoryX Symbol
-   | SomeOptionalX Symbol
-   | SomeMandatoryX Symbol
+data OnceOptionalX t
+data SomeOptionalX t
+data SomeMandatoryX t
+----
 type family
-  IsContainerBoxConform (bs :: [Symbol]) (rs :: [ContainmentRule]) :: Bool where
+  IsContainerBoxConform (bs :: [k]) (rs :: [j]) :: Bool
+  where
    IsContainerBoxConform '[]       '[]                      = 'True
    IsContainerBoxConform (b ': bs) '[]                      = 'False
    --
    IsContainerBoxConform '[]       (OnceOptionalX r ': rs)  = IsContainerBoxConform '[] rs
-   IsContainerBoxConform (r ': bs) (OnceOptionalX r ': rs)  = IsContainerBoxConform  bs rs
-   IsContainerBoxConform bs        (OnceOptionalX r ': rs)  = IsContainerBoxConform  bs rs
+   IsContainerBoxConform (b ': bs) (OnceOptionalX r ': rs)  =
+     If (IsRuleConform b r)
+        (IsContainerBoxConform bs        rs)
+        (IsContainerBoxConform (b ': bs) rs)
    --
    IsContainerBoxConform '[]       (SomeOptionalX r ': rs)  = IsContainerBoxConform '[] rs
-   IsContainerBoxConform (r ': bs) (SomeOptionalX r ': rs)  = IsContainerBoxConform  bs (SomeOptionalX r ': rs)
-   IsContainerBoxConform bs        (SomeOptionalX r ': rs)  = IsContainerBoxConform  bs rs
+   IsContainerBoxConform (b ': bs) (SomeOptionalX r ': rs)  =
+     If (IsRuleConform b r)
+        (IsContainerBoxConform bs        (SomeOptionalX r ': rs))
+        (IsContainerBoxConform (b ': bs) rs                     )
    --
-   IsContainerBoxConform (r ': bs) (OnceMandatoryX r ': rs)  = IsContainerBoxConform  bs rs
-   IsContainerBoxConform bs        (OnceMandatoryX r ': rs)  = 'False
+   IsContainerBoxConform '[]       (SomeMandatoryX r ': rs)  = 'False
+   IsContainerBoxConform (b ': bs) (SomeMandatoryX r ': rs)  =
+     IsRuleConform b r && IsContainerBoxConform  bs (SomeOptionalX r ': rs)
    --
-   IsContainerBoxConform (r ': bs) (SomeMandatoryX r ': rs)  = IsContainerBoxConform  bs (SomeOptionalX r ': rs)
-   IsContainerBoxConform bs        (SomeMandatoryX r ': rs)  = 'False
+   IsContainerBoxConform '[]       (r ': rs)  = 'False
+   IsContainerBoxConform (b ': bs) (r ': rs)  =
+     IsRuleConform b r && IsContainerBoxConform bs rs
+
 ----
 ----
 data Foo
@@ -160,52 +185,101 @@ type instance ToFourCc Bar = "bar "
 data Baz
 type instance ToFourCc Baz = "baz "
 ----
-type TestRule1 = TopLevel (IsBox "foo ")
-type TestType1 = Foo
+type TestRule1 = TopLevel (Box "foo ")
+type TestType1 = Box Foo
 test1 :: (IsRuleConform TestType1 TestRule1 ~ 'True) => ()
 test1 = ()
 ----
-type TestRule2 = TopLevel (IsContainerBox "foo " '[OnceOptionalX "bar "])
+type TestRule2 = TopLevel (ContainerBox "foo " '[OnceOptionalX (Box "bar ")])
 type TestType2a = ContainerBox Foo '[]
 test2a :: (IsRuleConform TestType2a TestRule2 ~ 'True) => ()
 test2a = ()
 --
-type TestType2b = ContainerBox Foo '[Bar]
+type TestType2b = ContainerBox Foo '[Box Bar]
 test2b :: (IsRuleConform TestType2b TestRule2 ~ 'True) => ()
 test2b = ()
 ----
-type TestRule3 = TopLevel (IsContainerBox "foo " '[SomeOptionalX "bar "])
+type TestRule3 = TopLevel (ContainerBox "foo " '[SomeOptionalX (Box "bar ")])
 type TestType3a = ContainerBox Foo '[]
 test3a :: (IsRuleConform TestType3a TestRule3 ~ 'True) => ()
 test3a = ()
 --
-type TestType3b = ContainerBox Foo '[Bar]
+type TestType3b = ContainerBox Foo '[Box Bar]
 test3b :: (IsRuleConform TestType3b TestRule3 ~ 'True) => ()
 test3b = ()
 --
-type TestType3c = ContainerBox Foo '[Bar,Bar]
+type TestType3c = ContainerBox Foo '[Box Bar, Box Bar]
 test3c :: (IsRuleConform TestType3c TestRule3 ~ 'True) => ()
 test3c = ()
 ----
-type TestRule4 = TopLevel (IsContainerBox "foo " '[OnceMandatoryX "bar "])
-type TestType4 = ContainerBox Foo '[Bar]
+type TestRule4 = TopLevel (ContainerBox "foo " '[Box "bar "])
+type TestType4 = ContainerBox Foo '[Box Bar]
 test4 :: (IsRuleConform TestType4 TestRule4 ~ 'True) => ()
 test4 = ()
 ----
-type TestRule5 = TopLevel (IsContainerBox "foo " '[SomeMandatoryX "bar "])
-type TestType5 = ContainerBox Foo '[Bar,Bar]
+type TestRule5 = TopLevel (ContainerBox "foo " '[SomeMandatoryX (Box "bar ")])
+type TestType5 = ContainerBox Foo '[Box Bar,Box Bar]
 test5 :: (IsRuleConform TestType5 TestRule5 ~ 'True) => ()
 test5 = ()
-type TestType5b = ContainerBox Foo '[Bar]
+type TestType5b = ContainerBox Foo '[Box Bar]
 test5b :: (IsRuleConform TestType5b TestRule5 ~ 'True) => ()
 test5b = ()
 ----
 type TestRule6 =
-  TopLevel (IsContainerBox "foo "
-           '[ OnceOptionalX "baz "
-            , SomeMandatoryX "bar "
-            , SomeOptionalX "fov "
-            , OnceMandatoryX "foo "])
-type TestType6a = ContainerBox Foo '[Baz,Bar,Bar,Bar,Fov,Fov,Foo]
+  TopLevel (ContainerBox "foo "
+           '[ OnceOptionalX (Box "baz ")
+            , SomeMandatoryX (Box "bar ")
+            , SomeOptionalX (Box "fov ")
+            , Box "foo "])
+type TestType6a =
+  ContainerBox Foo '[Box Baz,Box Bar,Box Bar,Box Bar,Box Fov,Box Fov,Box Foo]
 test6a :: (IsRuleConform TestType6a TestRule6 ~ 'True) => ()
 test6a = ()
+type TestType6b =
+  ContainerBox Foo '[Box Bar,Box Bar,Box Bar,Box Fov,Box Fov,Box Foo]
+test6b :: (IsRuleConform TestType6b TestRule6 ~ 'True) => ()
+test6b = ()
+type TestType6c =
+  ContainerBox Foo '[Box Bar,Box Fov,Box Fov,Box Foo]
+test6c :: (IsRuleConform TestType6c TestRule6 ~ 'True) => ()
+test6c = ()
+type TestType6d = ContainerBox Foo '[Box Bar,Box Foo]
+test6d :: (IsRuleConform TestType6d TestRule6 ~ 'True) => ()
+test6d = ()
+----
+type TestRule7 =
+  TopLevel (ContainerBox "foo "
+           '[ SomeOptionalX (ContainerBox "fov "
+              '[ OnceOptionalX (ContainerBox "baz "
+                               '[Box "foo "])
+               , SomeMandatoryX (Box "bar ")
+               ])])
+type TestType7a = ContainerBox Foo
+                    '[ ]
+test7a :: (IsRuleConform TestType7a TestRule7 ~ 'True) => ()
+test7a = ()
+type TestType7b = ContainerBox Foo
+                    '[ ContainerBox Fov
+                         '[ContainerBox Baz
+                             '[Box Foo]
+                          , Box Bar]]
+test7b :: (IsRuleConform TestType7b TestRule7 ~ 'True) => ()
+test7b = ()
+type TestType7c = ContainerBox Foo
+                    '[ ContainerBox Fov
+                         '[ ContainerBox Baz
+                             '[Box Foo]
+                          , Box Bar
+                          , Box Bar
+                          , Box Bar
+                          ]
+                     , ContainerBox Fov
+                          '[ ContainerBox Baz
+                              '[Box Foo]
+                           , Box Bar
+                           , Box Bar
+                           , Box Bar
+                           ]
+                     ]
+test7c :: (IsRuleConform TestType7c TestRule7 ~ 'True) => ()
+test7c = ()

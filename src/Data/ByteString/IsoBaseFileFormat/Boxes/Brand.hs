@@ -19,17 +19,22 @@ import Data.Type.List (Find)
 -- | A class that describes (on the type level) how a box can be nested into
 -- other boxes (see 'Boxes).
 class IsBrand brand  where
-  type BoxLayout brand :: BoxForrest
-  type BoxLayout brand = '[]
+  type BoxLayout brand :: rules
+  type BoxLayout brand =
+    TypeError
+      ('Text "No box layout rules defined for '"
+      ':<>: 'ShowType brand ':<>: 'Text "'."
+      ':$$: 'Text "Please define a 'BoxLayout (" '
+            :<>: 'ShowType brand ':<>: 'Text ")'")
 
 -- | Mandatory, container box, exactly one
-type OM b bs = 'OnceMandatory b bs
+type OM b bs = ContainerBox b bs
 -- | Optional, container box, zero or one
-type OO b bs = 'OnceOptional b bs
+type OO b bs = OnceOptionalX (ContainerBox b bs)
 -- | Mandatory, container box, one or more
-type SM b bs = 'SomeMandatory b bs
+type SM b bs = SomeMandatoryX (ContainerBox b bs)
 -- | Optional, container box, zero or more
-type SO b bs = 'SomeOptional b bs
+type SO b bs = SomeOptionalX (ContainerBox b bs)
 
 -- | Mandatory, exactly one, no children
 type OM_ b = 'OnceMandatory b '[]
