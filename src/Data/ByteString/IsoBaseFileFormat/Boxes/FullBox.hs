@@ -1,6 +1,6 @@
 -- | Full Boxes
 module Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-       (FullBox(..), fullBox, BoxVersion, BoxFlags(..))
+       (FullBox(..), fullBox, BoxFlags(..))
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
@@ -10,18 +10,18 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 -- implementation it is wrapped around the rest of the box content. This
 -- enforces that the 'FullBox' header fields are always at the beginning - at
 -- least as long as this module hides the 'FullBox' constructor ;)
-data FullBox version t where
+data FullBox t (version :: Nat) where
   FullBox :: (KnownNat version, IsBox t)
           => BoxFlags 24
           -> BoxContent t
-          -> FullBox version t
+          -> FullBox t version
 
-instance (KnownNat v, IsBox t) => IsBox (FullBox v t) where
-  type BoxContent (FullBox v t) = FullBox v t
+instance (KnownNat v, IsBox t) => IsBox (FullBox t v) where
+  type BoxContent (FullBox t v) = FullBox t v
 
-type instance BoxTypeSymbol (FullBox v t) = BoxTypeSymbol t
+type instance BoxTypeSymbol (FullBox t v) = BoxTypeSymbol t
 
-instance (KnownNat v, IsBox t) => IsBoxContent (FullBox v t) where
+instance (IsBox t, KnownNat v) => IsBoxContent (FullBox t v) where
   boxSize (FullBox f c) = 1 + boxSize f + boxSize c
   boxBuilder (FullBox f c) =
        word8 (fromIntegral (natVal (Proxy :: Proxy v)))
@@ -31,13 +31,10 @@ instance (KnownNat v, IsBox t) => IsBoxContent (FullBox v t) where
 -- | Create a 'FullBox' from a 'BoxVersion' and 'BoxFlags'
 fullBox
   :: (KnownNat v, IsBox t)
-  => BoxFlags 24 -> BoxContent t -> Box (FullBox v t)
+  => BoxFlags 24 -> BoxContent t -> Box (FullBox t v)
 fullBox f c = Box (FullBox f c)
 
--- | The box version (in a 'FullBox') is a single byte
-type BoxVersion v = Template (U8 "fullbox-version") v
-
--- | In addition to a 'BoxVersion' there can be 24 bits for custom flags etc in
+-- | In addition to a version there can be 24 bits for custom flags etc in
 -- a 'FullBox'.
 newtype BoxFlags bits =
   BoxFlags Integer

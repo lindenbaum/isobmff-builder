@@ -296,9 +296,7 @@ instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (p :+ c) where
 instance (Default a, Default b) => Default (a :+ b) where
   def = def :+ def
 
-
-
-
+-- * Type Layout Rule Matchers
 
 -- | Mandatory, container box, exactly one
 type OM b bs = ContainerBox b bs

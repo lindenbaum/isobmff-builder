@@ -17,7 +17,7 @@ data MediaHeader (v :: Nat) where
 -- | Create a 'MediaHeader' box.
 mediaHeader
   :: (KnownNat v)
-  => MediaHeader v -> Box (FullBox v (MediaHeader v))
+  => MediaHeader v -> Box (FullBox (MediaHeader v) v)
 mediaHeader = fullBox 0
 
 instance IsBox (MediaHeader v)

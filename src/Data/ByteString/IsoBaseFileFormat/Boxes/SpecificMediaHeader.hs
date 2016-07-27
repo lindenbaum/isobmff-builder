@@ -17,7 +17,7 @@ newtype VideoMediaHeader where
    deriving (Default, IsBoxContent)
 
 -- | Create a video media header data box.
-videoMediaHeader :: VideoMediaHeader -> Box (FullBox 0 VideoMediaHeader)
+videoMediaHeader :: VideoMediaHeader -> Box (FullBox VideoMediaHeader 0)
 videoMediaHeader = fullBox 1
 
 instance IsBox VideoMediaHeader
@@ -34,7 +34,7 @@ newtype SoundMediaHeader where
    deriving (Default, IsBoxContent)
 
 -- | Create a sound media header data box.
-soundMediaHeader :: SoundMediaHeader -> Box (FullBox 0 SoundMediaHeader)
+soundMediaHeader :: SoundMediaHeader -> Box (FullBox SoundMediaHeader 0)
 soundMediaHeader = fullBox 0
 
 instance IsBox SoundMediaHeader
@@ -54,7 +54,7 @@ newtype HintMediaHeader where
    deriving (Default, IsBoxContent)
 
 -- | Create a hint media header data box.
-hintMediaHeader :: HintMediaHeader -> Box (FullBox 0 HintMediaHeader)
+hintMediaHeader :: HintMediaHeader -> Box (FullBox HintMediaHeader 0)
 hintMediaHeader = fullBox 0
 
 instance IsBox HintMediaHeader
@@ -66,7 +66,7 @@ type instance BoxTypeSymbol HintMediaHeader = "hmhd"
 data NullMediaHeader = NullMediaHeader
 
 -- | Create a null media header data box.
-nullMediaHeader :: Box (FullBox 0 NullMediaHeader)
+nullMediaHeader :: Box (FullBox NullMediaHeader 0)
 nullMediaHeader = fullBox 0 NullMediaHeader
 
 instance IsBox NullMediaHeader

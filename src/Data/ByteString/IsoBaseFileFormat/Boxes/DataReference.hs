@@ -12,12 +12,12 @@ data DataReference
 
 -- | Create a 'DataReference' box.
 dataReference
-  :: Box (FullBox 0 DataReference)
+  :: Box (FullBox DataReference 0)
 dataReference = fullBox 0 ()
 
 -- | Create a 'DataReference' box with a single local media entry.
 localMediaDataReference
-  :: Box (FullBox 0 DataReference)
+  :: Box (FullBox DataReference 0)
 localMediaDataReference = undefined
 
 instance IsBox DataReference where

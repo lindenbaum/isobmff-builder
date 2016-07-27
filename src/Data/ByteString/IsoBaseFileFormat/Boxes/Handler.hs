@@ -28,7 +28,7 @@ data HandlerType =
 
 -- | Create a 'Handler' box.
 handler
-  :: Handler -> Box (FullBox 0 Handler)
+  :: Handler -> Box (FullBox Handler 0)
 handler = fullBox 0
 
 instance IsBox Handler where

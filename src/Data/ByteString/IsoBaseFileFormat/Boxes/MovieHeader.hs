@@ -11,7 +11,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Time
 -- | Construct a 'MovieHeader' box.
 movieHeader
   :: (KnownNat version)
-  => MovieHeader version -> Box (FullBox version (MovieHeader version))
+  => MovieHeader version -> Box (FullBox (MovieHeader version) version)
 movieHeader = fullBox 0
 
 -- | Movie meta data, indexed by a version.

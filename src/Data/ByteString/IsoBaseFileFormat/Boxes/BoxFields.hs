@@ -4,6 +4,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
 import Data.Default
 import Data.Int
 import Data.Maybe
@@ -245,3 +246,10 @@ instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromT
 
 instance KnownSymbol str => FromTypeLit T.Text (str :: Symbol) where
   fromTypeLit = T.pack . symbolVal
+
+-- * Versioned support
+
+-- | A utility for 'Versioned' to apply a type constructor to  either a
+-- @('Scalar' Word32)@ or a @('Scalar' Word64)@ depending on the type level
+-- version. This uses 'SelectByVersion'. 
+type U32U64 c = SelectByVersion c (Scalar Word32) (Scalar Word64)

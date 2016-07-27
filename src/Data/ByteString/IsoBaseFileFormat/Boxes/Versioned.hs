@@ -1,12 +1,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- | A binary version 0/1 field with seperate content for each version.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
-       (Versioned(..))
+       (Versioned(..), ApplyVersioned(..), SelectByVersion)
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.Default
 import Data.Kind
+import Data.Singletons
 
 -- | Two alternative representations based on a /version/ index.
 --   Use this for box content that can be either 32 or 64 bit.
@@ -35,3 +36,26 @@ instance IsBoxContent (VersionedBox c) where
   boxSize (BoxV1 c) = boxSize c
   boxBuilder (BoxV0 c) = boxBuilder c
   boxBuilder (BoxV1 c) = boxBuilder c
+
+-- * Versions based on type level arrows
+
+-- | Two alternative representations based on a /version/ index.
+--   Use this for box content that can be either 32 or 64 bit.
+data ApplyVersioned (v' :: Nat ~> Type) where
+  OnV0 :: forall (v :: Nat ~> Type). IsBoxContent (v @@ 0) => v @@ 0 -> ApplyVersioned v
+  OnV1 :: forall (v :: Nat ~> Type). IsBoxContent (v @@ 1) => v @@ 1 -> ApplyVersioned v
+
+instance (IsBoxContent (b @@ 0), Default (b @@ 0)) => Default (ApplyVersioned b) where
+  def = OnV0 def
+
+instance IsBoxContent (ApplyVersioned c) where
+  boxSize (OnV0 c) = boxSize c
+  boxSize (OnV1 c) = boxSize c
+  boxBuilder (OnV0 c) = boxBuilder c
+  boxBuilder (OnV1 c) = boxBuilder c
+
+-- | A type level arrow that applys the type constructor to one of the two
+-- versions depending on the /version/ parameter.
+data SelectByVersion :: (a -> Type) -> a -> a -> Nat ~> Type
+type instance Apply (SelectByVersion f v0 v1) 0 = f v0
+type instance Apply (SelectByVersion f v0 v1) 1 = f v1

@@ -10,7 +10,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
 -- | Create a 'TrackHeader' box.
 trackHeader
   :: KnownNat version
-  => TrackHeader version -> Box (FullBox version (TrackHeader version))
+  => TrackHeader version -> Box (FullBox (TrackHeader version) version)
 trackHeader = fullBox 0
 
 -- | Track meta data, indexed by a version.
