@@ -4,7 +4,6 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 
 -- | A 'FullBox' contains an extra version and a flags field. In this
 -- implementation it is wrapped around the rest of the box content. This

@@ -12,7 +12,7 @@ import Data.Default
 newtype VideoMediaHeader where
   VideoMediaHeader
    :: Template (U16 "graphicsmode") 0
-   :+ Template (U16 "reserved") 0
+   :+ Template (U16Arr "opcolor" 3) '[0,0,0]
    -> VideoMediaHeader
    deriving (Default, IsBoxContent)
 
@@ -29,7 +29,7 @@ type instance BoxTypeSymbol VideoMediaHeader = "vmhd"
 newtype SoundMediaHeader where
   SoundMediaHeader
    :: Template (I16 "balance") 0
-   :+ Constant (U16Arr "opcolor" 3) '[0,0,0]
+   :+ Constant (U16 "reserved") 0
    -> SoundMediaHeader
    deriving (Default, IsBoxContent)
 

@@ -1,5 +1,5 @@
 name:                isobmff-builder
-version:             0.9.0.1
+version:             0.10.0.0
 synopsis:            A (bytestring-) builder for the ISO-14496-12 base media file format
 description:         Please see README.md
 homepage:            https://github.com/sheyll/isobmff-builder#readme
@@ -18,10 +18,8 @@ library
   exposed-modules:     Data.ByteString.IsoBaseFileFormat.Boxes
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Box
                      , Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
-                     , Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation
-                     , Data.ByteString.IsoBaseFileFormat.Boxes.DataReference
-                     , Data.ByteString.IsoBaseFileFormat.Boxes.FileType
-                     , Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+                     , Data.ByteString.IsoBaseF        test7d `shouldBe` ()
+ileFormat.Boxes.FullBox
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Handler
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Media
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaData

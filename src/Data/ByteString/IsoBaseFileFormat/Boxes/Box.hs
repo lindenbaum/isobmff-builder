@@ -21,8 +21,8 @@ import Data.Word as X
 import Data.Kind
 import GHC.TypeLits as X
 import Data.String
-import Data.Singletons.Prelude.List (Length)
 import Data.Default
+import Data.Singletons.Prelude.List (Length)
 import Data.Type.Equality
 import Data.Type.Bool
 import qualified Data.Text as T
@@ -93,22 +93,6 @@ type instance BoxTypeSymbol (ContainerBox b bs) = BoxTypeSymbol b
 instance IsBoxContent (ContainerBox b bs) where
     boxSize (ContainerBox c bs) = boxSize (c :+ bs)
     boxBuilder (ContainerBox c bs) = boxBuilder (c :+ bs)
-
--- | Container box wich includes a length field
-data SizedContainerBox b (bs :: [Type]) where
-  SizedContainerBox
-    :: (KnownNat (Length bs), IsBox b)
-    => (Integer -> BoxContent b)
-    -> Boxes bs
-    -> SizedContainerBox b bs
-
-instance (IsBox (ContainerBox b bs)) => IsBox (SizedContainerBox b bs)
-
-type instance BoxTypeSymbol (SizedContainerBox b bs) = BoxTypeSymbol b
-
-instance IsBoxContent (SizedContainerBox b bs) where
-    boxSize (SizedContainerBox f bs) = boxSize (f (typeListLength bs) :+ bs)
-    boxBuilder (SizedContainerBox f bs) = boxBuilder (f (typeListLength bs) :+ bs)
 
 -- | A heterogenous collection of boxes.
 data Boxes (boxTypes :: [Type]) where
@@ -282,6 +266,11 @@ instance IsBoxContent T.Text where
   boxBuilder txt = boxBuilder (T.encodeUtf8 txtNoNulls) <> word8 0
     where txtNoNulls = T.map (\c -> if c == '\0' then ' ' else c) txt
 
+-- | This instance writes zero bytes for 'Nothing' and delegates on 'Just'.
+instance IsBoxContent a => IsBoxContent (Maybe a) where
+  boxSize = maybe 0 boxSize
+  boxBuilder = maybe mempty boxBuilder
+
 -- * Box concatenation
 
 -- | Box content composition
@@ -319,7 +308,7 @@ type SO_ b = SomeOptionalX (Box b)
 ----
 type instance IsRuleConform (Box b) (Box r) = BoxTypeSymbol b == BoxTypeSymbol r
 ----
-type instance IsRuleConform (Boxes bs) (Boxes rs) = IsRuleConform bs rs
+type instance IsRuleConform (Boxes bs) (Boxes rs) = IsRuleConform bs rs -- TODO
 ----
 type instance IsRuleConform (Box b) (ContainerBox b' rules)
   = IsContainerBox b

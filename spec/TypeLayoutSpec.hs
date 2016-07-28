@@ -25,6 +25,15 @@ spec =
       describe "SomeMandatory" $ do
         it "validates a singleton container" $ test5a `shouldBe` ()
         it "validates a multi-element container" $ test5b `shouldBe` ()
+      it "validates a Mix of SomeMandatory, OnceOptional, SomeOptional" $ do
+        test6a `shouldBe` ()
+        test6b `shouldBe` ()
+        test6c `shouldBe` ()
+        test6d `shouldBe` ()
+      it "validates deeply nested container" $ do
+        test7a `shouldBe` ()
+        test7b `shouldBe` ()
+        test7c `shouldBe` ()
 
 ----
 data Foo
@@ -102,34 +111,34 @@ type TestRule7 =
   TopLevel (ContainerBox Foo
            '[ SomeOptionalX (ContainerBox Fov
               '[ OnceOptionalX (ContainerBox Baz
-                               '[MatchSymbol "foo "])
+                                '[MatchSymbol "foo "])
                , SomeMandatoryX (MatchSymbol "bar ")
                ])])
 type TestType7a = Box (ContainerBox Foo '[ ])
 test7a :: (IsRuleConform TestType7a TestRule7 ~ 'True) => ()
 test7a = ()
 type TestType7b = Box (ContainerBox Foo
-                      '[ ContainerBox Fov
-                           '[ContainerBox Baz
-                               '[Foo]
-                            , Bar]])
+                      '[ Box (ContainerBox Fov
+                              '[Box (ContainerBox Baz
+                               '[Foo])
+                             , Bar])])
 test7b :: (IsRuleConform TestType7b TestRule7 ~ 'True) => ()
 test7b = ()
 type TestType7c = Box (ContainerBox Foo
-                      '[ ContainerBox Fov
-                           '[ ContainerBox Baz
-                               '[Foo]
+                      '[ Box (ContainerBox Fov
+                           '[ Box (ContainerBox Baz
+                               '[Foo])
                             , Bar
                             , Bar
                             , Bar
-                            ]
-                       , ContainerBox Fov
-                            '[ ContainerBox Baz
-                                '[Foo]
+                            ])
+                       , Box (ContainerBox Fov
+                            '[ Box (ContainerBox Baz
+                                '[Foo])
                              , Bar
                              , Bar
                              , Bar
-                             ]
+                             ])
                        ])
 test7c :: (IsRuleConform TestType7c TestRule7 ~ 'True) => ()
 test7c = ()

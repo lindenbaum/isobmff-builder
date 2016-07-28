@@ -40,7 +40,12 @@ instance IsBrand (Dash v) where
                                        , OM_ HintMediaHeader
                                        , OM_ NullMediaHeader]
                               , OM  DataInformation
-                                   '[ OM_ DataReference ]
+                                   '[ OM  DataReference
+                                         '[ OneOf '[ OM_ DataEntryUrl
+                                                   , OM_ DataEntryUrn]
+                                          , SomeOptionalX
+                                             (OneOf '[ OM_ DataEntryUrl
+                                                     , OM_ DataEntryUrn])]]
                               -- , OM  (SampleTable v)               -- TODO
                               --      '[ OM_ (SampleDescriptions v)
                               --       , OM_ (TimeToSample v)
@@ -104,4 +109,4 @@ mkSingleTrackInit doc = mediaBuilder dash $
           track (trackHeader (doc ^. tkhd) :|
                  media (mediaHeader (doc ^. mdhd) :. handler (doc ^. hdlr) :|
                         mediaInformation
-                            (soundMediaHeader (doc ^. smhd) :| dataInformation $: dataReference ))))
+                            (soundMediaHeader (doc ^. smhd) :| dataInformation $: localMediaDataReference ))))
