@@ -1,0 +1,22 @@
+-- | Media-independent properties of a tracks video content.
+module Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader where
+
+import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+import Data.Default
+
+-- | Video header data box.
+newtype VideoMediaHeader where
+  VideoMediaHeader
+   :: Template (U16 "graphicsmode") 0
+   :+ Template (U16Arr "opcolor" 3) '[0,0,0]
+   -> VideoMediaHeader
+   deriving (Default, IsBoxContent)
+
+-- | Create a video media header data box.
+videoMediaHeader :: VideoMediaHeader -> Box (FullBox VideoMediaHeader 0)
+videoMediaHeader = fullBox 1
+
+instance IsBox VideoMediaHeader
+type instance BoxTypeSymbol VideoMediaHeader = "vmhd"

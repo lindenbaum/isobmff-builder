@@ -9,17 +9,16 @@ import qualified Data.Binary.Get as Binary
 import qualified Data.Text as T
 
 spec :: Spec
-spec = return ()
---   describe "IsBoxContent" $ do
---     describe "LocalMediaEntry" $ do
---       describe "boxSize" $ do
---         it "returns 0" $
---           let actual = boxSize (localMediaDataReference :: DRef)
---               --         dref: size+fourcc+fullbox+entries -> 4 * 4bytes
---               expected = 4 + 4 + 4 + 4 + (4 + 4 + boxSize ("xxxx" :+ FullBox Default 0 () :: DEntryLocal))
---           in actual `shouldBe` expected
---
--- -- type DRef = Box (Dash 0) DataReference
--- type DEntryLocal = FourCc :+ FullBox 0 ()
--- type DEntryUrl = FourCc :+ FullBox 0 (T.Text)
--- type DEntryUrn = FourCc :+ FullBox 0 (T.Text :+ T.Text)
+spec =
+   describe "IsBoxContent" $ do
+     describe "LocalMediaEntry" $ do
+       describe "boxSize" $ do
+         it "returns 0" $
+           let actual = boxSize localMediaDataReference
+               expected = drefHeader + entryField + durlHeader
+               drefHeader = boxHeader + fullHeader
+               entryField = 4
+               durlHeader = boxHeader + fullHeader
+               boxHeader = 4 + 4
+               fullHeader = 4
+           in actual `shouldBe` expected

@@ -10,8 +10,6 @@ import Data.ByteString.IsoBaseFileFormat.Brands.Types
 import Data.ByteString.IsoBaseFileFormat.Boxes as X hiding (All)
 import Data.Kind (Type, Constraint)
 import Control.Lens
-import Data.Promotion.Prelude.List
-import Data.Singletons
 
 -- | A phantom type to indicate this branding. Version can be 0 or 1 it is used
 -- in some boxes to switch between 32/64 bits.
