@@ -18,8 +18,10 @@ library
   exposed-modules:     Data.ByteString.IsoBaseFileFormat.Boxes
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Box
                      , Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
-                     , Data.ByteString.IsoBaseF        test7d `shouldBe` ()
-ileFormat.Boxes.FullBox
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.DataReference
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.FileType
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Handler
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Media
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaData
