@@ -65,7 +65,7 @@ type ExampleContent = Scalar Word8 "bla" :+ Constant (Scalar Word8 "blub") 123 :
 type ExampleContentShort = U8 "bla" :+ Constant (U8 "blub") 123 :+ Template (I64Arr "foos" 3) '[1, 2, 3] :+ U64Arr "baz" 7
 
 example1 :: ExampleContent
-example1 = Scalar 100 :+ Constant :+ Default :+ u64Arr [1,2,3]
+example1 = Scalar 100 :+ Constant :+ Template :+ u64Arr [1,2,3]
 
 example1' :: ExampleContentShort
 example1' = example1
@@ -74,7 +74,7 @@ type Example2 isAudio = Constant (I32Arr "reserved" 2) '[0, 0] :+ Template (I16 
 
 example2 :: Example2 'True
 example2 =
-  Constant :+ Custom 65 :+ Custom 66 :+ Default :+ Constant :+
+  Constant :+ Custom 65 :+ Custom 66 :+ Template :+ Constant :+
   Custom (i32Arr [67 .. 75]) :+
   i32 76 :+
   i32 77

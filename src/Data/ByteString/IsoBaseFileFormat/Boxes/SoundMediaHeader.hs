@@ -4,7 +4,10 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.SoundMediaHeader where
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-import Data.Default
+import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
+import Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader
+
+type instance MediaHeaderFor 'AudioTrack = SoundMediaHeader
 
 -- | Sound header data box.
 newtype SoundMediaHeader where

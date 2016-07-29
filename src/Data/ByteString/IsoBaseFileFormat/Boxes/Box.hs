@@ -13,26 +13,29 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Box
        where
 
 import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout as X
+import Data.Default as X
+import Data.Foldable as X (fold)
+import Data.Int as X
+import Data.Maybe as X
+import Data.Tagged as X
+import Data.Proxy as X
+import Data.Word as X
 import Data.Bits as X
 import Data.ByteString.Builder as X
 import Data.Monoid as X
-import Data.Proxy as X
-import Data.Word as X
 import Data.Kind
 import GHC.TypeLits as X
-import Data.String
-import Data.Default
-import Data.Singletons.Prelude.List (Length)
-import Data.Type.Equality
-import Data.Type.Bool
+import Data.String as X
+import Data.Singletons.Prelude.List (Length, (:++))
+import Data.Type.Equality as X
+import Data.Type.Bool as X
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import Data.Singletons.Prelude.List ((:++))
 import qualified Data.ByteString as B
 
 -- * Box Type Classes
 -- | Base class for all (abstract/phantom/normal-) types that represent boxes
-class (KnownSymbol (BoxTypeSymbol t), IsBoxContent (BoxContent t)) => IsBox t  where
+class (KnownSymbol (BoxTypeSymbol t), IsBoxContent (BoxContent t)) => IsBox (t :: Type) where
   type BoxContent t
   type BoxContent t = t
   toBoxType :: proxy t -> BoxType
@@ -42,7 +45,7 @@ class (KnownSymbol (BoxTypeSymbol t), IsBoxContent (BoxContent t)) => IsBox t  w
 -- that  an instance of this type family exists for every 'IsBox' instance.
 -- This family could not be associative since it is used by type families that
 -- cannot have type class constraints.
-type family BoxTypeSymbol t :: Symbol
+type family BoxTypeSymbol (t :: k) :: Symbol
 
 -- | Types that go into a box. A box content is a piece of data that can be
 -- reused in different instances of 'IsBox'. It has no 'BoxType' and hence
@@ -50,9 +53,10 @@ type family BoxTypeSymbol t :: Symbol
 class IsBoxContent a  where
   boxSize :: a -> BoxSize
   boxBuilder :: a -> Builder
+--  TODO rename IsBoxContent to IsBoxField
 
--- * Data types
-
+-- * Box Contents
+--  TODO move all IsBoxContent stuff to BoxFields.hs
 
 -- | A type that wraps the contents of a box and the box type.
 data Box b where
@@ -279,7 +283,7 @@ data a :+ b = a :+ b
 infixr 3 :+
 
 instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (p :+ c) where
-  boxSize (p :+ c) = boxSize p + boxSize c
+  boxSize    (p :+ c) = boxSize    p +  boxSize    c
   boxBuilder (p :+ c) = boxBuilder p <> boxBuilder c
 
 instance (Default a, Default b) => Default (a :+ b) where

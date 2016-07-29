@@ -56,15 +56,15 @@ testParentBox1 = containerBox ()
 
 data TestBrandEmpty
 
-instance IsBrand TestBrandEmpty where
+instance IsMediaFileFormat TestBrandEmpty where
   type BoxLayout TestBrandEmpty = Boxes '[]
 
 data TestBrandSingle
 
-instance IsBrand TestBrandSingle where
+instance IsMediaFileFormat TestBrandSingle where
   type BoxLayout TestBrandSingle = Boxes '[OM_ TestBox1]
 
 data TestBrandNested
 
-instance IsBrand TestBrandNested where
+instance IsMediaFileFormat TestBrandNested where
   type BoxLayout TestBrandNested = Boxes '[OM TestParentBox1 '[OM_ TestBox1]]

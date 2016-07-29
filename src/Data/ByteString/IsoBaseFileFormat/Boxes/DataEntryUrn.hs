@@ -7,7 +7,6 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrn
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-       hiding (Default)
 import qualified Data.Text as T
 
 -- | A container for a URN and optionally a URL

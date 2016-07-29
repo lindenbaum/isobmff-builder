@@ -9,7 +9,6 @@ module Data.ByteString.IsoBaseFileFormat.Brands.Dash
 import Data.ByteString.IsoBaseFileFormat.Brands.Types
 import Data.ByteString.IsoBaseFileFormat.Boxes as X hiding (All)
 import Data.Kind (Type, Constraint)
-import Control.Lens
 
 -- | A phantom type to indicate this branding. Version can be 0 or 1 it is used
 -- in some boxes to switch between 32/64 bits.
@@ -21,60 +20,55 @@ dash = Proxy
 
 -- | A 'BoxLayout' which contains the stuff needed for the 'dash' brand.
 -- TODO incomplete
-instance IsBrand (Dash v) where
+instance IsMediaFileFormat (Dash v) where
   type BoxLayout (Dash v) =
     Boxes
-    '[ OM_ FileType
+     '[ OM_ FileType
       , OM  Movie
            '[ OM_ (MovieHeader v)
-            , SM  Track
-                 '[ OM_ (TrackHeader v)
-                  , OM  Media
-                       '[ OM_ (MediaHeader v)
-                        , OM_ Handler
-                        , OM  MediaInformation
-                             '[ OneOf '[ OM_ VideoMediaHeader
-                                       , OM_ SoundMediaHeader
-                                       , OM_ HintMediaHeader
-                                       , OM_ NullMediaHeader]
-                              , OM  DataInformation
-                                   '[ OM  DataReference
-                                         '[ OneOf '[ OM_ DataEntryUrl
-                                                   , OM_ DataEntryUrn]
-                                          , SomeOptionalX
-                                             (OneOf '[ OM_ DataEntryUrl
-                                                     , OM_ DataEntryUrn])]]
-                              -- , OM  (SampleTable v)               -- TODO
-                              --      '[ OM_ (SampleDescriptions v)
-                              --       , OM_ (TimeToSample v)
-                              --       , OM_ (SampleToChunk v)
-                              --       , OO_ (SampleSizes v)
-                              --       , OM_ (SampleChunkOffset v)
-                              --       ]
-                              ]
-                       ]
-                  ]
+            , SomeMandatoryX
+               (OneOf '[ TrackLayout v 'VideoTrack
+                       , TrackLayout v 'AudioTrack
+                       , TrackLayout v 'HintTrack
+                       , TrackLayout v 'TimedMetadataTrack
+                       , TrackLayout v 'AuxilliaryVideoTrack])
             ]
      , SO_ Skip
      ]
 
+type TrackLayout version handlerType =
+  (ContainerBox Track
+   '[ OM_ (TrackHeader version)
+    , OM  Media
+         '[ OM_ (MediaHeader version)
+          , OM_ (Handler handlerType)
+          , OM  MediaInformation
+               '[ OneOf '[ OM_ (MediaHeaderFor handlerType)
+                         , OM_ NullMediaHeader]
+                , OM  DataInformation
+                     '[ OM  DataReference
+                           '[ SomeMandatoryX
+                               (OneOf '[ OM_ DataEntryUrl
+                                       , OM_ DataEntryUrn])]]
+                , OM  SampleTable
+                      '[ OM  (SampleDescription handlerType)
+                            '[ SomeMandatoryX (MatchSampleEntry handlerType) ]
+                --       , OM_ (TimeToSample version)
+                --       , OM_ (SampleToChunk version)
+                --       , OO_ (SampleSizes version)
+                --       , OM_ (SampleChunkOffset version)
+                       ]
+                ]
+         ]
+    ])
+
+
 -- Missing Boxes
--- START 17:47:
---  mdia
---  mdhd
---  hdlr
---  minf
---  smhd
---  dinf
---  dref
---  ??url
---  stbl
 --  stsd
 --  stts
 --  stsc
 --  stsz
 --  stco
---  soun
 --  mp4a
 --  esds
 --  mvex
@@ -89,22 +83,28 @@ instance IsBrand (Dash v) where
 -- | A record which contains the stuff needed for a single track initialization
 -- document according to the 'Dash' brand. TODO incomplete
 data SingleAudioTrackInit =
-  SingleAudioTrackInit {_mvhd :: MovieHeader 0
-                       ,_tkhd :: TrackHeader 0
-                       ,_mdhd :: MediaHeader 0
-                       ,_hdlr :: Handler
-                       ,_smhd :: SoundMediaHeader}
-
-makeLenses ''SingleAudioTrackInit
+  SingleAudioTrackInit {mvhd :: MovieHeader 0
+                       ,tkhd :: TrackHeader 0
+                       ,mdhd :: MediaHeader 0
+                       ,hdlr :: Handler 'AudioTrack
+                       ,smhd :: SoundMediaHeader}
 
 -- | Convert a 'SingleAudioTrackInit' record to a generic 'Boxes' collection.
 mkSingleTrackInit
   :: SingleAudioTrackInit -> Builder
 mkSingleTrackInit doc = mediaBuilder dash $
-  fileTypeBox (FileType "dash" 0 ["isom","iso5","mp42"])
-  :|
-   movie (movieHeader (doc ^. mvhd) :|
-          track (trackHeader (doc ^. tkhd) :|
-                 media (mediaHeader (doc ^. mdhd) :. handler (doc ^. hdlr) :|
-                        mediaInformation
-                            (soundMediaHeader (doc ^. smhd) :| dataInformation $: localMediaDataReference ))))
+     fileTypeBox (FileType "dash" 0 ["isom","iso5","mp42"])
+  :| movie
+      ( movieHeader (mvhd doc)
+      :| track
+          ( trackHeader (tkhd doc)
+          :| media
+              ( mediaHeader (mdhd doc)
+              :. handler (hdlr doc)
+              :| mediaInformation
+                   ( soundMediaHeader (smhd doc)
+                   :. (dataInformation $: localMediaDataReference)
+                   :| sampleTable
+                       $: sampleDescription
+                           $: audioSampleEntry Mpeg4Aac 1 def
+                           ))))

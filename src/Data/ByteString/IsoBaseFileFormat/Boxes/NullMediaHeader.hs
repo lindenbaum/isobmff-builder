@@ -3,7 +3,6 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.NullMediaHeader where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-import Data.Default
 
 -- | Null header data box.
 data NullMediaHeader = NullMediaHeader

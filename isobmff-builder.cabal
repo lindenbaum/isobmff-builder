@@ -1,5 +1,5 @@
 name:                isobmff-builder
-version:             0.10.1.0
+version:             0.10.3.0
 synopsis:            A (bytestring-) builder for the ISO-14496-12 base media file format
 description:         Please see README.md
 homepage:            https://github.com/sheyll/isobmff-builder#readme
@@ -16,6 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Data.ByteString.IsoBaseFileFormat.Boxes
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.AudioSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Box
                      , Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
                      , Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrl
@@ -26,22 +27,29 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Handler
                      , Data.ByteString.IsoBaseFileFormat.Boxes.HintMediaHeader
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.HintSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Media
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaData
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaInformation
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.MetadataSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Movie
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.NullMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Language
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.SampleDescription
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.SampleTable
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Skip
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SoundMediaHeader
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Time
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Track
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Brands.Dash
                      , Data.ByteString.IsoBaseFileFormat.Brands.Types
                      , Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
@@ -51,7 +59,7 @@ library
                      , data-default >= 0.7.1.1 && < 0.8
                      , vector-sized >= 0.3.2.0 && < 0.4
                      , singletons >= 2.2 && < 3
-                     , lens >= 4.14 && < 5
+                     , tagged >= 0.8 && < 1
                      , time >= 1.6.0.1 && < 2
                      , text >= 1.2.2.1 && < 2
   default-language:    Haskell2010

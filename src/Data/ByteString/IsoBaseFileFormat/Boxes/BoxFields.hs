@@ -4,15 +4,14 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
        where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
-import Data.Default
-import Data.Int
-import Data.Maybe
 import Text.Printf
 import Data.Singletons
 import Data.Singletons.Prelude.List
 import qualified Data.Vector.Sized as Vec
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.ByteString as B
+
 
 -- * Scalar box fields
 
@@ -27,7 +26,6 @@ i64 :: Int64 -> I64 label
 i64 = Scalar
 
 type U32 label = Scalar Word32 label
-
 type I32 label = Scalar Int32 label
 
 u32 :: Word32 -> U32 label
@@ -214,15 +212,15 @@ instance Default (Constant o v) where
 -- 'ScalarArray', with a type level default value. The wrapped content must
 -- implement 'FromTypeLit'.
 data Template o v where
-        Default :: Template o v
+        Template :: Template o v
         Custom :: o -> Template o v
 
 instance Default (Template o v) where
-  def = Default
+  def = Template
 
 -- | Get a value from a 'Template'.
 templateValue :: FromTypeLit o v => Template o v -> o
-templateValue d@Default = fromTypeLit d
+templateValue d@Template = fromTypeLit d
 templateValue (Custom v) = v
 
 instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Template o v) where
@@ -247,9 +245,54 @@ instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromT
 instance KnownSymbol str => FromTypeLit T.Text (str :: Symbol) where
   fromTypeLit = T.pack . symbolVal
 
--- * Versioned support
+-- * String/Text field types
 
--- | A utility for 'Versioned' to apply a type constructor to  either a
--- @('Scalar' Word32)@ or a @('Scalar' Word64)@ depending on the type level
--- version. This uses 'SelectByVersion'. 
-type U32U64 c = SelectByVersion c (Scalar Word32) (Scalar Word64)
+-- | A fixed size string, the first byte is the string length, after the String,
+-- the field is padded with @0@ bytes. The string must be in UTF8 format.
+newtype FixSizeText (len :: Nat) (label :: Symbol) where
+  FixSizeText :: T.Text -> FixSizeText len label
+
+-- | A constraint that matches type level numbers that are valid text sizes for
+--  'FixSizeText's.
+type IsTextSize len = (KnownNat len, 1 <= len, len <= 255)
+
+instance IsTextSize len => IsBoxContent (FixSizeText len label) where
+  boxSize    _               = fromIntegral (natVal (Proxy :: Proxy len))
+  boxBuilder (FixSizeText t) =
+    let
+      --                                         leave room for the size byte
+      maxSize             = fromIntegral (natVal (Proxy :: Proxy len) - 1)
+      displayableText     = B.take maxSize (T.encodeUtf8 t)
+      displayableTextSize = B.length displayableText
+      paddingSize         = max 0 (maxSize - displayableTextSize)
+      in
+               word8      (fromIntegral displayableTextSize)
+            <> byteString displayableText
+            <> fold       (replicate paddingSize (word8 0))
+
+instance IsTextSize len => Default (FixSizeText len label) where
+  def = FixSizeText ""
+
+-- | Four character strings embedded in a uint32.
+newtype U32Text (label :: Symbol) where
+  U32Text :: Word32 -> U32Text label
+
+instance IsString (U32Text label) where
+  fromString str = U32Text $
+    let cw s c = (0xFF .&. (fromIntegral (fromEnum c))) `shiftL` s
+        in case str of
+             []          -> 0x20202020
+             [a]         -> (cw 24 a .|. 0x00202020)
+             [a,b]       -> (cw 24 a .|. cw 16 b  .|. 0x00002020)
+             [a,b,c]     -> (cw 24 a .|. cw 16 b  .|. cw 8 c  .|. 0x20)
+             (a:b:c:d:_) -> (cw 24 a .|. cw 16 b  .|. cw 8 c  .|. cw 0 d)
+
+instance IsBoxContent (U32Text label) where
+  boxSize _ = 4
+  boxBuilder (U32Text t) = word32BE t
+
+instance KnownSymbol str => FromTypeLit (U32Text label) (str :: Symbol) where
+  fromTypeLit = fromString . symbolVal
+
+instance Default (U32Text label) where
+  def = U32Text 0x20202020
