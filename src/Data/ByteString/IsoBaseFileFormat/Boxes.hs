@@ -19,7 +19,6 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Media as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MediaData as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MediaHeader as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MediaInformation as X
-import Data.ByteString.IsoBaseFileFormat.Boxes.MetadataSampleEntry as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.Movie as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.NullMediaHeader as X
@@ -38,10 +37,5 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader as X
 import Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry as X
 
-import Data.Int as X
 import Data.Kind as X  (Type, Constraint)
-import Data.Maybe as X
-import Data.Type.Bool as X
-import Data.Type.Equality as X
 import Text.Printf as X
-import Data.Default as X

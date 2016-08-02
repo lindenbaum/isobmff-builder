@@ -5,7 +5,6 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.SampleDescription where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
 import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
 import Data.Singletons.Prelude.List (Length)
 
