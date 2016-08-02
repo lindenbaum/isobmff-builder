@@ -1,5 +1,5 @@
 name:                isobmff-builder
-version:             0.10.3.0
+version:             0.10.4.0
 synopsis:            A (bytestring-) builder for the ISO-14496-12 base media file format
 description:         Please see README.md
 homepage:            https://github.com/sheyll/isobmff-builder#readme
