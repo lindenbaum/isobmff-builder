@@ -28,6 +28,7 @@ import           Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInfo
 import           Data.ByteString.IsoBaseFileFormat.Boxes.SampleDescription              as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry                    as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.SampleTable                    as X
+import           Data.ByteString.IsoBaseFileFormat.Boxes.SampleToChunk                  as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.Skip                           as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.SoundMediaHeader               as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader            as X
