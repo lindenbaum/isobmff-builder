@@ -8,9 +8,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
 
 -- | Construct an audio sample entry box.
 audioSampleEntry ::
-     (KnownSymbol
-       (BoxTypeSymbol (SampleEntry 'AudioTrack (AudioCoding c))))
-  => AudioCoding c
+     AudioCoding c
   -> U16 "data_reference_index"
   -> SampleEntry 'AudioTrack (AudioCoding c)
   -> Box (SampleEntry 'AudioTrack (AudioCoding c))
