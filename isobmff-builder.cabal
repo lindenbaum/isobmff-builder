@@ -27,6 +27,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.AudioSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Box
                      , Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.ChunkOffset
                      , Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrl
                      , Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrn
                      , Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation

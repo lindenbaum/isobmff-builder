@@ -6,6 +6,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes
 import           Data.ByteString.IsoBaseFileFormat.Boxes.AudioSampleEntry               as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.Box                            as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields                      as X
+import           Data.ByteString.IsoBaseFileFormat.Boxes.ChunkOffset                    as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrl                   as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrn                   as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation                as X

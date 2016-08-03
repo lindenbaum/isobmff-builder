@@ -56,8 +56,9 @@ type TrackLayout version handlerType =
                             '[ SomeMandatoryX (MatchSampleEntry handlerType) ]
                        , OM_ TimeToSample
                        , OM_ SampleToChunk
-                --       , OO_ (SampleSizes version)
-                --       , OM_ (SampleChunkOffset version)
+                       , OneOf '[ OM_ ChunkOffset32
+                                , OM_ ChunkOffset64 ]
+                      --       , OO_ (SampleSizes version)
                        ]
                 ]
          ]
@@ -65,10 +66,7 @@ type TrackLayout version handlerType =
 
 
 -- Missing Boxes
---  stts
---  stsc
 --  stsz
---  stco
 --  esds
 --  mvex
 --  trex
@@ -107,4 +105,5 @@ mkSingleTrackInit doc = mediaBuilder dash $
                    :| sampleTable
                        ((sampleDescription $: audioSampleEntry Mpeg4Aac 1 def)
                         :. timeToSample []
-                        :| sampleToChunk [] )))))
+                        :. sampleToChunk []
+                        :| chunkOffset32 [])))))
