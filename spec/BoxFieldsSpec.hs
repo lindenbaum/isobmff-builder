@@ -4,7 +4,6 @@ import Test.Hspec
 import Data.ByteString.IsoBaseFileFormat.Boxes
 import qualified Data.ByteString.Lazy as BL
 import Control.Exception (evaluate)
-import qualified Data.Text as T
 
 -- import qualified Data.ByteString.Builder as B import qualified Data.ByteString.Lazy as BL import
 -- qualified Data.Binary.Get as Binary
@@ -58,21 +57,23 @@ renderBox :: IsBoxContent c
           => c -> BL.ByteString
 renderBox = toLazyByteString . boxBuilder
 
-type ExampleContent = Scalar Word8 "bla"
+type ExampleContent =
+     Scalar Word8 "bla"
   :+ Constant (Scalar Word8 "blub") 123
   :+ Template (ScalarArray "foos" 3 Int64) '[1, 2, 3]
   :+ ScalarArray "baz" 7 Word64
 
-type ExampleContentShort = U8 "bla"
+type ExampleContentShort =
+     U8 "bla"
   :+ Constant (U8 "blub") 123
   :+ Template (I64Arr "foos" 3) '[1, 2, 3]
   :+ U64Arr "baz" 7
 
 example1 :: ExampleContent
-example1 = Scalar 100 :+ Constant :+ Template :+ u64Arr [1,2,3]
+example1 = Scalar 100 :+ Constant :+ Template :+ u64Arr [1,2,3,4,5,6,7]
 
 example1' :: ExampleContentShort
-example1' = example1
+example1' = Scalar 100 :+ Constant :+ Template :+ u64Arr [6,6,6]
 
 type Example2 isAudio =
   Constant (I32Arr "reserved" 2) '[0, 0]

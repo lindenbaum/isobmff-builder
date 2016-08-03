@@ -41,14 +41,14 @@ data HandlerType
   = VideoTrack
   | AudioTrack
   | HintTrack
-  | TimedMetadataTrack
+  | TimedMetaDataTrack
   | AuxilliaryVideoTrack
 
 type family HandlerTypeCode (handlertype :: HandlerType) :: Symbol where
   HandlerTypeCode 'VideoTrack           = "vide"
   HandlerTypeCode 'AudioTrack           = "soun"
   HandlerTypeCode 'HintTrack            = "hint"
-  HandlerTypeCode 'TimedMetadataTrack   = "meta"
+  HandlerTypeCode 'TimedMetaDataTrack   = "meta"
   HandlerTypeCode 'AuxilliaryVideoTrack = "auxv"
 
 -- | Create a 'Handler' box.
@@ -83,12 +83,12 @@ namedHintTrackHandler txt = Handler (def :+ def :+ def :+ Custom txt)
 
 -- | Create 'Handler' fields for 'TimedMetadataTrack's with @"TimedMetadata
 -- Track"@ as @name@.
-timedMetadataTrackHandler :: Handler 'TimedMetadataTrack
+timedMetadataTrackHandler :: Handler 'TimedMetaDataTrack
 timedMetadataTrackHandler =
   namedTimedMetadataTrackHandler "Timed Metadata Track"
 
 -- | Create 'Handler' fields for 'TimedMetadataTrack's, with the given name.
-namedTimedMetadataTrackHandler :: T.Text -> Handler 'TimedMetadataTrack
+namedTimedMetadataTrackHandler :: T.Text -> Handler 'TimedMetaDataTrack
 namedTimedMetadataTrackHandler txt =
   Handler (def :+ def :+ def :+ Custom txt)
 

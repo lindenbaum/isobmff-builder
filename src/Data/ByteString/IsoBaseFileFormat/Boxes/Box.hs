@@ -53,16 +53,14 @@ type family BoxTypeSymbol (t :: k) :: Symbol
 class IsBoxContent a  where
   boxSize :: a -> BoxSize
   boxBuilder :: a -> Builder
---  TODO rename IsBoxContent to IsBoxField
 
 -- * Box Contents
---  TODO move all IsBoxContent stuff to BoxFields.hs
+--  TODO move all IsBoxContent stuff to BoxContent.hs
 
 -- | A type that wraps the contents of a box and the box type.
 data Box b where
         Box ::
-            (IsBox b) =>
-            BoxContent b -> Box b
+            !(BoxContent b) -> Box b
 
 instance IsBox b => IsBox (Box b) where
   type BoxContent (Box b) = BoxContent b
@@ -70,7 +68,7 @@ instance IsBox b => IsBox (Box b) where
 
 type instance BoxTypeSymbol (Box b) = BoxTypeSymbol b
 
-instance IsBoxContent (Box cnt) where
+instance IsBox cnt => IsBoxContent (Box cnt) where
   boxBuilder b@(Box cnt) = sB <> tB <> sExtB <> tExtB <> cntB
     where s = boxSize b
           t = toBoxType b
@@ -85,10 +83,13 @@ instance IsBoxContent (Box cnt) where
             boxSize (BoxTypeExtension t)
           t = toBoxType b
 
+instance (Default (BoxContent b)) => Default (Box b) where
+  def = Box def
+
 -- | Compose 'BoxContent' and 'Boxes' under the Constraint that they are
 -- composable.
 data ContainerBox b (bs :: [Type]) where
-  ContainerBox :: IsBox b => BoxContent b -> Boxes bs -> ContainerBox b bs
+  ContainerBox :: IsBox b => !(BoxContent b) -> !(Boxes bs) -> ContainerBox b bs
 
 instance (IsBox b) => IsBox (ContainerBox b bs)
 
@@ -101,10 +102,10 @@ instance IsBoxContent (ContainerBox b bs) where
 -- | A heterogenous collection of boxes.
 data Boxes (boxTypes :: [Type]) where
     NoBoxes :: Boxes '[]
-    (:.) :: Box l -> Boxes r -> Boxes (Box l ': r)
+    (:.) :: IsBox l => !(Box l) -> !(Boxes r) -> Boxes (Box l ': r)
     -- | Create a 'Boxes' collection from two 'Box'es
-    (:<>) :: Boxes l -> Boxes r -> Boxes (l :++ r)
-    (:|) :: Box l -> Box r -> Boxes '[Box l, Box r]
+    (:<>) :: !(Boxes l) -> !(Boxes r) -> Boxes (l :++ r)
+    (:|) :: (IsBox l, IsBox r) => !(Box l) -> !(Box r) -> Boxes '[Box l, Box r]
 
 infixr 1 :<>
 infixr 2 :.
@@ -112,11 +113,11 @@ infixr 2 :|
 infixr 3 $:
 
 -- | Apply a function to a 'Boxes' collection containing only a single 'Box'.
-($:) :: (Boxes '[Box l] -> r) -> Box l -> r
+($:) :: IsBox l => (Boxes '[Box l] -> r) -> Box l -> r
 ($:) f = f . singletonBox
 
 -- | Create a 'Boxes' collection with a single 'Box'.
-singletonBox :: Box l -> Boxes '[Box l]
+singletonBox :: IsBox l =>  Box l -> Boxes '[Box l]
 singletonBox b = b :. NoBoxes
 
 -- | Get the elements in a type level array
@@ -146,7 +147,7 @@ containerBox c bs = Box (ContainerBox c bs)
 -- the end of the file.
 data BoxSize
   = UnlimitedSize
-  | BoxSize Word64
+  | BoxSize !Word64
   deriving (Show,Eq)
 
 instance IsBoxContent BoxSize where
@@ -176,7 +177,7 @@ instance Num BoxSize where
 
 -- | The 'BoxSize' can be > 2^32 in which case an 'BoxSizeExtension' must be
 -- added after the type field.
-data BoxSizeExtension =
+newtype BoxSizeExtension =
   BoxSizeExtension BoxSize
 
 instance IsBoxContent BoxSizeExtension where
@@ -197,10 +198,10 @@ data BoxType
   =
     -- | `FourCc` can be used as @boxType@ in `Box`, standard four letter character
     -- code, e.g. @ftyp@
-    StdType FourCc
+    StdType !FourCc
   |
     -- | CustomBoxType defines custom @boxType@s in `Box`es.
-    CustomBoxType String
+    CustomBoxType !String
   deriving (Show,Eq)
 
 -- | Create a box type from a 'Symbol'. Parse the  symbol value, if it's a four
@@ -209,7 +210,7 @@ data BoxType
 parseBoxType :: KnownSymbol t => proxy t -> BoxType
 parseBoxType px = StdType (fromString (symbolVal px))
 
--- | A type containin a printable four letter character code.
+-- | A type containin a printable four letter character code. TODO replace impl with U32Text
 newtype FourCc =
   FourCc (Char,Char,Char,Char)
   deriving (Show,Eq)
@@ -238,7 +239,7 @@ instance IsBoxContent BoxType where
 -- | When using custom types extra data must be written after the extra size
 -- information. Since the box type and the optional custom box type are not
 -- guaranteed to be consequtive, this type handles the /second/ part seperately.
-data BoxTypeExtension =
+newtype BoxTypeExtension =
   BoxTypeExtension BoxType
 
 instance IsBoxContent BoxTypeExtension where
@@ -264,11 +265,18 @@ instance IsBoxContent B.ByteString where
                          --   boxSize = foldr' (\e acc -> acc + boxSize e) 0
                          --   boxBuilder = foldMap boxBuilder
 
+instance Default B.ByteString where
+  def = mempty
+
 -- | This 'Text' instance writes a null terminated UTF-8 string.
 instance IsBoxContent T.Text where
   boxSize = (1+) . fromIntegral . T.length
   boxBuilder txt = boxBuilder (T.encodeUtf8 txtNoNulls) <> word8 0
     where txtNoNulls = T.map (\c -> if c == '\0' then ' ' else c) txt
+
+instance Default T.Text where
+  def = ""
+
 
 -- | This instance writes zero bytes for 'Nothing' and delegates on 'Just'.
 instance IsBoxContent a => IsBoxContent (Maybe a) where
@@ -278,7 +286,7 @@ instance IsBoxContent a => IsBoxContent (Maybe a) where
 -- * Box concatenation
 
 -- | Box content composition
-data a :+ b = a :+ b
+data a :+ b = !a :+ !b
 
 infixr 3 :+
 
@@ -288,6 +296,33 @@ instance (IsBoxContent p,IsBoxContent c) => IsBoxContent (p :+ c) where
 
 instance (Default a, Default b) => Default (a :+ b) where
   def = def :+ def
+
+-- * Tagged boxes
+
+instance IsBoxContent c => IsBoxContent (Tagged s c) where
+  boxSize = boxSize . untag
+  boxBuilder = boxBuilder . untag
+
+instance Default c => Default (Tagged s c) where
+  def = Tagged def
+
+-- * List Box Content
+
+-- | A list of things that renders to a size field with the number of elements
+-- and the sequence of elements. This type is index with the size field type.
+newtype ListContent sizeType contentType =
+  ListContent [contentType]
+
+instance (Num sizeType, IsBoxContent sizeType, IsBoxContent contentType)
+  => IsBoxContent (ListContent sizeType contentType) where
+    boxSize (ListContent es) =
+      boxSize (fromIntegral (length es) :: sizeType) + sum (boxSize <$> es)
+    boxBuilder (ListContent es) =
+      boxBuilder (fromIntegral (length es) :: sizeType)
+      <> fold (boxBuilder <$> es)
+
+instance Default (ListContent sizeTupe contentType) where
+  def = ListContent []
 
 -- * Type Layout Rule Matchers
 

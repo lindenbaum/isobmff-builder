@@ -6,10 +6,12 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
--- | Protocol specific data
+-- | Protocol specific data. To create 'HintSampleEntry's a protocol specific
+-- 'HintFields' instance must be provided
 data instance SampleEntry 'HintTrack protocol where
   HintSampleEntry
     :: (IsBoxContent (HintFields protocol), Default (HintFields protocol))
      => HintFields protocol -> SampleEntry 'HintTrack protocol
 
-data family HintFields (protocol :: Symbol)
+-- | Family of protocol specific contents for 'HintTrack's.
+type family HintFields (protocol :: Symbol)

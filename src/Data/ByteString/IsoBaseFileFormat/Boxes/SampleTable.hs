@@ -1,5 +1,8 @@
 -- | Time and indexing information for the media samples in a track,a sample
 -- table can reference 'DataReference' boxes via a 'SampleTableDescription'.
+--
+-- **NOTE** A /sample/ referes to a **frame** e.g. a video frame frame or a
+-- block of audio samples.
 module Data.ByteString.IsoBaseFileFormat.Boxes.SampleTable where
 
 import Data.ByteString.IsoBaseFileFormat.Boxes.Box

@@ -4,7 +4,8 @@
 -- educational, current need.
 -- This is a convenient way of building documents of that kind.
 module Data.ByteString.IsoBaseFileFormat.Brands.Dash
-       (Dash, SingleAudioTrackInit(..), mkSingleTrackInit, module X) where
+       (Dash, SingleAudioTrackInit(..), mkSingleTrackInit, module X)
+       where
 
 import Data.ByteString.IsoBaseFileFormat.Brands.Types
 import Data.ByteString.IsoBaseFileFormat.Boxes as X hiding (All)
@@ -30,7 +31,7 @@ instance IsMediaFileFormat (Dash v) where
                (OneOf '[ TrackLayout v 'VideoTrack
                        , TrackLayout v 'AudioTrack
                        , TrackLayout v 'HintTrack
-                       , TrackLayout v 'TimedMetadataTrack
+                       , TrackLayout v 'TimedMetaDataTrack
                        , TrackLayout v 'AuxilliaryVideoTrack])
             ]
      , SO_ Skip
@@ -53,7 +54,7 @@ type TrackLayout version handlerType =
                 , OM  SampleTable
                       '[ OM  (SampleDescription handlerType)
                             '[ SomeMandatoryX (MatchSampleEntry handlerType) ]
-                --       , OM_ (TimeToSample version)
+                       , OM_ TimeToSample
                 --       , OM_ (SampleToChunk version)
                 --       , OO_ (SampleSizes version)
                 --       , OM_ (SampleChunkOffset version)
@@ -64,12 +65,10 @@ type TrackLayout version handlerType =
 
 
 -- Missing Boxes
---  stsd
 --  stts
 --  stsc
 --  stsz
 --  stco
---  mp4a
 --  esds
 --  mvex
 --  trex
@@ -82,6 +81,7 @@ type TrackLayout version handlerType =
 -- trun
 -- | A record which contains the stuff needed for a single track initialization
 -- document according to the 'Dash' brand. TODO incomplete
+-- TODO take this out into its own module, make a new package for specific file formats
 data SingleAudioTrackInit =
   SingleAudioTrackInit {mvhd :: MovieHeader 0
                        ,tkhd :: TrackHeader 0
@@ -105,6 +105,5 @@ mkSingleTrackInit doc = mediaBuilder dash $
                    ( soundMediaHeader (smhd doc)
                    :. (dataInformation $: localMediaDataReference)
                    :| sampleTable
-                       $: sampleDescription
-                           $: audioSampleEntry Mpeg4Aac 1 def
-                           ))))
+                       ((sampleDescription $: audioSampleEntry Mpeg4Aac 1 def)
+                        :| timeToSample [] )))))

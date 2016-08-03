@@ -15,9 +15,7 @@ data family SampleEntry (handlertype :: HandlerType) (format :: k)
 -- 'HandlerType' specific 'SampleEntry' instance.
 sampleEntry
   :: forall (handlertype :: HandlerType) (format :: k)
-  .  ( KnownSymbol (BoxTypeSymbol (SampleEntry handlertype format))
-     , IsBoxContent (SampleEntry handlertype format))
-  => U16 "data_reference_index"
+  .  U16 "data_reference_index"
   -> SampleEntry handlertype format
   -> Box (SampleEntry handlertype format)
 sampleEntry i c = Box (SampleEntryFields (Constant :+ i :+ c))

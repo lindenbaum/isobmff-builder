@@ -7,6 +7,7 @@ import Data.Type.Bool
 import Data.Singletons (Apply, type (~>))
 import Data.Type.Equality
 import GHC.TypeLits
+
 ----
 type family IsRuleConform (b :: k) (r :: l) :: Bool
 data IsRuleConform0 :: k ~> l ~> Bool

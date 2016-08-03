@@ -15,6 +15,10 @@ data FullBox t (version :: Nat) where
           -> BoxContent t
           -> FullBox t version
 
+instance (KnownNat version, IsBox t, Default (BoxContent t))
+  => Default (FullBox t version) where
+  def = FullBox 0 def
+
 instance (KnownNat v, IsBox t) => IsBox (FullBox t v) where
   type BoxContent (FullBox t v) = FullBox t v
 

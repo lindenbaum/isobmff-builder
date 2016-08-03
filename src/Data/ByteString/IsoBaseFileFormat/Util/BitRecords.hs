@@ -9,11 +9,12 @@ import Data.Bits
 import Data.Proxy
 import Test.TypeSpecCrazy
 
-data Flag :: Type
 data Field :: Nat -> Type
 data (:=>) :: k -> Type -> Type
 data (:*:) :: Type -> Type -> Type
 type FieldPosition = (Nat, Nat)
+
+type Flag = Field 1
 
 infixr 6 :=>
 infixl 5 :*:
@@ -26,7 +27,6 @@ infixr 7 :/
 type family
   GetFieldSize (f :: l) :: Nat where
   GetFieldSize (label :=> f) = GetFieldSize f
-  GetFieldSize Flag = 1
   GetFieldSize (Field n ) = n
   GetFieldSize (l :*: r) = GetFieldSize l + GetFieldSize r
 
@@ -209,11 +209,6 @@ type IsFieldC name field first last =
      , 'Right '(first, last) ~ (GetFieldPosition field name)
      )
 
-
 getFooField :: IsFieldC name Foo first last
    => proxy name -> Word64 -> Word64
 getFooField px = getField px (Proxy :: Proxy Foo)
-
--- -----------------------------------------------------------------------------
--- -----------------------------------------------------------------------------
--- -----------------------------------------------------------------------------
