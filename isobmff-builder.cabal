@@ -49,6 +49,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SampleDescription
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SampleTable
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.SampleToChunk
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Skip
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SoundMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader

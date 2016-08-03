@@ -55,7 +55,7 @@ type TrackLayout version handlerType =
                       '[ OM  (SampleDescription handlerType)
                             '[ SomeMandatoryX (MatchSampleEntry handlerType) ]
                        , OM_ TimeToSample
-                --       , OM_ (SampleToChunk version)
+                       , OM_ SampleToChunk
                 --       , OO_ (SampleSizes version)
                 --       , OM_ (SampleChunkOffset version)
                        ]
@@ -106,4 +106,5 @@ mkSingleTrackInit doc = mediaBuilder dash $
                    :. (dataInformation $: localMediaDataReference)
                    :| sampleTable
                        ((sampleDescription $: audioSampleEntry Mpeg4Aac 1 def)
-                        :| timeToSample [] )))))
+                        :. timeToSample []
+                        :| sampleToChunk [] )))))
