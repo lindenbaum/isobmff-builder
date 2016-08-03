@@ -1,22 +1,22 @@
 -- | Boxfield indicating an ISO 639-2 alpha-3 language code.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Language (Language, mkLanguage) where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import           Data.ByteString.IsoBaseFileFormat.Boxes.Box
 
 -- | A Boxfield contains an ISO 639-2-T alpha-3 language code,  which is encoded
 -- as a single bit followed by three 5 bit words, each representing the
 -- lower-case character from the language code subtracted by 0x60.
 -- If available, the code for /terminoligy/ purposes should be used (T-code).
-data Language = Language Word16
+newtype Language = Language Word16 -- TODO use bitrecords
 
 -- | Create a 'Language', throw a runtime error when bad characters were given.
 -- The characters must be in @a - z@ (lower-case!), there must be exactly three
 -- characters.
 mkLanguage :: String -> Language
 mkLanguage  [c0,c1,c2] |
-  (c0 > toEnum 0x60 && c0 < toEnum 0x7b &&
+   c0 > toEnum 0x60 && c0 < toEnum 0x7b &&
    c1 > toEnum 0x60 && c1 < toEnum 0x7b &&
-   c2 > toEnum 0x60 && c2 < toEnum 0x7b) =
+   c2 > toEnum 0x60 && c2 < toEnum 0x7b =
      let
          s :: Char -> Word16
          s c = fromIntegral (fromEnum c) - 0x60

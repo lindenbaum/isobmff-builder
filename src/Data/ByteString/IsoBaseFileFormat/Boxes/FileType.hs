@@ -14,9 +14,9 @@ fileTypeBox = Box
 
 -- | Contents of a 'ftyp' box are some 'FourCc' /brands/ and a version.
 data FileType =
-  FileType {majorBrand :: FourCc
-           ,minorVersion :: Word32
-           ,compatibleBrands :: [FourCc]}
+  FileType {majorBrand :: !FourCc -- TODO use U32String
+           ,minorVersion :: !Word32 -- TODO use U32String
+           ,compatibleBrands :: ![FourCc]}  -- TODO use U32String
 
 instance IsBoxContent FileType where
   boxSize (FileType maj _ver comps) = boxSize maj + 4 + sum (boxSize <$> comps)

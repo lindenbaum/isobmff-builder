@@ -19,5 +19,6 @@ type ProgressiveDownloadContent = U32 "rate" :+ U32 "delay"
 
 -- | Construct a @pdin@ box.
 pdinBox
-  :: ProgressiveDownloadContent -> Box (FullBox ProgressiveDownload 0)
+  :: ProgressiveDownloadContent
+  -> Box (FullBox ProgressiveDownload 0)
 pdinBox = fullBox 0

@@ -9,10 +9,10 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 -- implementation it is wrapped around the rest of the box content. This
 -- enforces that the 'FullBox' header fields are always at the beginning - at
 -- least as long as this module hides the 'FullBox' constructor ;)
-data FullBox t (version :: Nat) where
+data FullBox t (version :: Nat) where 
   FullBox :: (KnownNat version, IsBox t)
-          => BoxFlags 24
-          -> BoxContent t
+          => !(BoxFlags 24)
+          -> !(BoxContent t)
           -> FullBox t version
 
 instance (KnownNat version, IsBox t, Default (BoxContent t))

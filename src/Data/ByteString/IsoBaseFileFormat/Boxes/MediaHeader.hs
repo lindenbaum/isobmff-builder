@@ -8,10 +8,9 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Language
 import Data.ByteString.IsoBaseFileFormat.Boxes.Time
 
 -- | Media header data box.
-data MediaHeader (v :: Nat) where
+newtype MediaHeader (v :: Nat) where
   MediaHeader
-   :: KnownNat v
-   => Timing v :+ Language :+ Constant (I16 "pre_defined") 0
+   :: Timing v :+ Language :+ Constant (I16 "pre_defined") 0
    -> MediaHeader v
 
 -- | Create a 'MediaHeader' box.

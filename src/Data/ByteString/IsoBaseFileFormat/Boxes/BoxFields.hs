@@ -213,7 +213,7 @@ instance Default (Constant o v) where
 -- implement 'FromTypeLit'.
 data Template o v where
         Template :: Template o v
-        Custom :: o -> Template o v
+        Custom :: !o -> Template o v
 
 instance Default (Template o v) where
   def = Template

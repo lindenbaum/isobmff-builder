@@ -23,9 +23,8 @@ movieHeader = fullBox 0
 -- available track id, if the track ID is (0xFFFFFFFF) then the system must
 -- search through all tracks associated with this presentation and figure it
 -- out, 0 is not allowed.
-data MovieHeader (version :: Nat) where
+newtype MovieHeader (version :: Nat) where
         MovieHeader ::
-            KnownNat version =>
                Timing version
             :+ Template (I32 "rate") 0x00010000
             :+ Template (I16 "volume") 0x0100
@@ -36,6 +35,7 @@ data MovieHeader (version :: Nat) where
             :+ Template (U32Arr "pre_defined" 6) '[0,0,0,0,0,0]
             :+ Template (U32 "next_track_ID") 0xFFFFFFFF
             -> MovieHeader version
+    deriving (IsBoxContent)
 
 -- | Time and timing information about a movie (32bit version).
 type MovieHeaderTimesV0 = MovieHeaderTimes (Scalar Word32)
@@ -55,11 +55,6 @@ type MovieHeaderTimes uint =
    :+ uint "modification_time"
    :+ TimeScale
    :+ uint "duration"
-
-
-instance IsBoxContent (MovieHeader version) where
-  boxSize (MovieHeader c) = boxSize c
-  boxBuilder (MovieHeader c) = boxBuilder c
 
 instance IsBox (MovieHeader version)
 

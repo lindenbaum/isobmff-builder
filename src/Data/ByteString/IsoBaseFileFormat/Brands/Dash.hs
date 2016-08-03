@@ -83,11 +83,11 @@ type TrackLayout version handlerType =
 -- document according to the 'Dash' brand. TODO incomplete
 -- TODO take this out into its own module, make a new package for specific file formats
 data SingleAudioTrackInit =
-  SingleAudioTrackInit {mvhd :: MovieHeader 0
-                       ,tkhd :: TrackHeader 0
-                       ,mdhd :: MediaHeader 0
-                       ,hdlr :: Handler 'AudioTrack
-                       ,smhd :: SoundMediaHeader}
+  SingleAudioTrackInit {mvhd :: !(MovieHeader 0)
+                       ,tkhd :: !(TrackHeader 0)
+                       ,mdhd :: !(MediaHeader 0)
+                       ,hdlr :: !(Handler 'AudioTrack)
+                       ,smhd :: !(SoundMediaHeader)}
 
 -- | Convert a 'SingleAudioTrackInit' record to a generic 'Boxes' collection.
 mkSingleTrackInit

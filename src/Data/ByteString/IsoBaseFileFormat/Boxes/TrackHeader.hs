@@ -14,7 +14,7 @@ trackHeader
 trackHeader = fullBox 0
 
 -- | Track meta data, indexed by a version.
-data TrackHeader (version :: Nat) where
+newtype TrackHeader (version :: Nat) where
         TrackHeader ::
           Versioned TrackHeaderTimesV0 TrackHeaderTimesV1 version
             :+ Constant (I32Arr "reserved" 2) '[0, 0]
@@ -27,6 +27,7 @@ data TrackHeader (version :: Nat) where
             :+ I32 "width"
             :+ I32 "height"
             -> TrackHeader version
+  deriving (IsBoxContent)
 
 -- | Time and timing information about a track (32bit version).
 type TrackHeaderTimesV0 = TrackHeaderTimes (Scalar Word32)
@@ -41,10 +42,6 @@ type TrackHeaderTimes uint =
   :+ U32 "track_ID"
   :+ Constant (U32 "reserved") 0
   :+ uint "duration"
-
-instance IsBoxContent (TrackHeader version) where
-  boxSize (TrackHeader c) = boxSize c
-  boxBuilder (TrackHeader c) = boxBuilder c
 
 instance IsBox (TrackHeader version)
 

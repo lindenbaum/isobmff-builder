@@ -10,9 +10,7 @@ import qualified Data.Text as T
 
 -- | Construct a visual sample entry box
 visualSampleEntry ::
-     (KnownSymbol
-       (BoxTypeSymbol (SampleEntry 'VideoTrack (VideoCoding codec))))
-  => VideoCoding codec
+     VideoCoding codec
   -> U16 "data_reference_index"
   -> SampleEntry 'VideoTrack (VideoCoding codec)
   -> Box (SampleEntry 'VideoTrack (VideoCoding codec))
@@ -124,7 +122,7 @@ data SomeColourInformation where
   SomeColourInformation
     :: forall (profile :: ColourTypeProfile)
     . IsBoxContent (ColourInformation profile)
-    => ColourInformation profile
+    => !(ColourInformation profile)
     -> SomeColourInformation
 instance IsBoxContent SomeColourInformation where
   boxSize (SomeColourInformation c) = boxSize c

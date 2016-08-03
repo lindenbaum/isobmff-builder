@@ -10,8 +10,10 @@ import Data.ByteString.IsoBaseFileFormat.Boxes.Box
 -- 'HintFields' instance must be provided
 data instance SampleEntry 'HintTrack protocol where
   HintSampleEntry
-    :: (IsBoxContent (HintFields protocol), Default (HintFields protocol))
-     => HintFields protocol -> SampleEntry 'HintTrack protocol
+    :: (IsBoxContent (HintFields protocol),
+        Default (HintFields protocol))
+     => !(HintFields protocol)
+     -> SampleEntry 'HintTrack protocol
 
 -- | Family of protocol specific contents for 'HintTrack's.
 type family HintFields (protocol :: Symbol)
