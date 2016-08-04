@@ -10,9 +10,20 @@ import Data.Proxy
 import Test.TypeSpecCrazy
 
 data Field :: Nat -> Type
-data (:=>) :: k -> Type -> Type
+data (:=>) :: label -> Type -> Type
 data (:*:) :: Type -> Type -> Type
 type FieldPosition = (Nat, Nat)
+
+-- | Scheme like @(cond ...)@ block
+data Cond
+  :: label
+  -> [Type -> Maybe Type]
+  -- ^ condition wich get the value for the label and -- the first that returns --
+  -- @'Just r@' will terminate -- the 'Cond'
+  -> (Type -> Type)
+  -- ^ Fall back function
+  -> Type 
+
 
 type Flag = Field 1
 

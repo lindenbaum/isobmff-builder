@@ -6,12 +6,14 @@ import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 
--- | The MPEG-4 AAC Audio codec
-newtype Mp4AudioSampleEntry =
-  Mp4AudioSampleEntry (FullBox ElementaryStreamDescriptor 0)
+-- | The MPEG-4 Audio sample entry
+type Mp4AudioSampleEntry = FullBox ElementaryStreamDescriptor 0
 
-type ElementaryStreamDescriptor = Tagged "TODO" Word32
+-- | Consists of 'ElementaryStreamDescriptor's
+newtype Mp4AudioEsd =
+  Mp4AudioEsd ElementaryStreamDescriptor
+  deriving (IsBoxContent, Default)
 
-type instance BoxTypeSymbol Mp4AudioSampleEntry = "mp4a"
+type instance BoxTypeSymbol Mp4AudioEsd = "mp4a"
 
-instance IsBox Mp4AudioSampleEntry
+instance IsBox Mp4AudioEsd
