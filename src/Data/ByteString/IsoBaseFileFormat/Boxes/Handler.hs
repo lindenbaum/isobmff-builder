@@ -18,9 +18,9 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Handler
   ,HandlerTypeCode)
   where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
-import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import qualified Data.Text as T
 
 -- | Handler box fields. A handler box may also contain a null terminated

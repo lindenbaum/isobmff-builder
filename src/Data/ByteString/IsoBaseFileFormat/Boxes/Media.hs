@@ -1,7 +1,7 @@
 -- | Track specific media information container box.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Media where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- | Media data box
 data Media

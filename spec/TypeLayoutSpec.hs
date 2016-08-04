@@ -5,7 +5,7 @@ module TypeLayoutSpec (spec) where
 import Test.Hspec
 import GHC.TypeLits ()
 import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 spec :: Spec
 spec =

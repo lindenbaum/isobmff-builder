@@ -8,27 +8,12 @@
 -- capture some of these characteristics using modern Haskell type system
 -- features, in order to provide compile time checks for (partial) standard
 -- compliance.
-module Data.ByteString.IsoBaseFileFormat.Boxes.Box
-       (module Data.ByteString.IsoBaseFileFormat.Boxes.Box, module X)
-       where
+module Data.ByteString.IsoBaseFileFormat.Box    where
 
-import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout as X
-import Data.Default as X
-import Data.Foldable as X (fold)
-import Data.Int as X
-import Data.Maybe as X
-import Data.Tagged as X
-import Data.Proxy as X
-import Data.Word as X
-import Data.Bits as X
-import Data.ByteString.Builder as X
-import Data.Monoid as X
-import Data.Kind
-import GHC.TypeLits as X
-import Data.String as X
-import Data.Singletons.Prelude.List (Length, (:++))
-import Data.Type.Equality as X
-import Data.Type.Bool as X
+import Data.ByteString.IsoBaseFileFormat.Util
+import           Data.Singletons.Prelude.List                      ((:++),
+                                                                    Length)
+import           Data.Kind
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as B
@@ -265,18 +250,11 @@ instance IsBoxContent B.ByteString where
                          --   boxSize = foldr' (\e acc -> acc + boxSize e) 0
                          --   boxBuilder = foldMap boxBuilder
 
-instance Default B.ByteString where
-  def = mempty
-
 -- | This 'Text' instance writes a null terminated UTF-8 string.
 instance IsBoxContent T.Text where
   boxSize = (1+) . fromIntegral . T.length
   boxBuilder txt = boxBuilder (T.encodeUtf8 txtNoNulls) <> word8 0
     where txtNoNulls = T.map (\c -> if c == '\0' then ' ' else c) txt
-
-instance Default T.Text where
-  def = ""
-
 
 -- | This instance writes zero bytes for 'Nothing' and delegates on 'Just'.
 instance IsBoxContent a => IsBoxContent (Maybe a) where
@@ -303,9 +281,6 @@ instance IsBoxContent c => IsBoxContent (Tagged s c) where
   boxSize = boxSize . untag
   boxBuilder = boxBuilder . untag
 
-instance Default c => Default (Tagged s c) where
-  def = Tagged def
-
 -- * List Box Content
 
 -- | A list of things that renders to a size field with the number of elements
@@ -323,6 +298,40 @@ instance (Num sizeType, IsBoxContent sizeType, IsBoxContent contentType)
 
 instance Default (ListContent sizeTupe contentType) where
   def = ListContent []
+
+-- * Words and Integer
+
+instance IsBoxContent Word8 where
+  boxSize _ = 1
+  boxBuilder = word8
+
+instance IsBoxContent Word16 where
+  boxSize _ = 2
+  boxBuilder = word16BE
+
+instance IsBoxContent Word32 where
+  boxSize _ = 4
+  boxBuilder = word32BE
+
+instance IsBoxContent Word64 where
+  boxSize _ = 8
+  boxBuilder = word64BE
+
+instance IsBoxContent Int8 where
+  boxSize _ = 1
+  boxBuilder = int8
+
+instance IsBoxContent Int16 where
+  boxSize _ = 2
+  boxBuilder = int16BE
+
+instance IsBoxContent Int32 where
+  boxSize _ = 4
+  boxBuilder = int32BE
+
+instance IsBoxContent Int64 where
+  boxSize _ = 8
+  boxBuilder = int64BE
 
 -- * Type Layout Rule Matchers
 

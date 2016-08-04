@@ -1,7 +1,7 @@
 -- | Meta data for a presentation of a /movie/.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Movie where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- | Compose a set of boxes into a 'Movie'
 movie :: Boxes ts -> Box (ContainerBox Movie ts)

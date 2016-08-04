@@ -4,11 +4,11 @@
 -- educational, current need.
 -- This is a convenient way of building documents of that kind.
 module Data.ByteString.IsoBaseFileFormat.Brands.Dash
-       (Dash, SingleAudioTrackInit(..), mkSingleTrackInit, module X)
+       (Dash, dash)
        where
 
-import Data.ByteString.IsoBaseFileFormat.Brands.Types
-import Data.ByteString.IsoBaseFileFormat.Boxes as X hiding (All)
+import Data.ByteString.IsoBaseFileFormat.MediaFile
+import Data.ByteString.IsoBaseFileFormat.Boxes hiding (All)
 import Data.Kind (Type, Constraint)
 
 -- | A phantom type to indicate this branding. Version can be 0 or 1 it is used
@@ -20,7 +20,7 @@ dash :: Proxy (Dash 0)
 dash = Proxy
 
 -- | A 'BoxLayout' which contains the stuff needed for the 'dash' brand.
--- TODO incomplete
+-- TODO add iso1 iso2 iso3 iso5 isom formats
 instance IsMediaFileFormat (Dash v) where
   type BoxLayout (Dash v) =
     Boxes
@@ -58,7 +58,7 @@ type TrackLayout version handlerType =
                        , OM_ SampleToChunk
                        , OneOf '[ OM_ ChunkOffset32
                                 , OM_ ChunkOffset64 ]
-                      --       , OO_ (SampleSizes version)
+                       , OM_ SampleSize
                        ]
                 ]
          ]
@@ -66,7 +66,6 @@ type TrackLayout version handlerType =
 
 
 -- Missing Boxes
---  stsz
 --  esds
 --  mvex
 --  trex
@@ -77,33 +76,3 @@ type TrackLayout version handlerType =
 -- traf
 -- tfhd
 -- trun
--- | A record which contains the stuff needed for a single track initialization
--- document according to the 'Dash' brand. TODO incomplete
--- TODO take this out into its own module, make a new package for specific file formats
-data SingleAudioTrackInit =
-  SingleAudioTrackInit {mvhd :: !(MovieHeader 0)
-                       ,tkhd :: !(TrackHeader 0)
-                       ,mdhd :: !(MediaHeader 0)
-                       ,hdlr :: !(Handler 'AudioTrack)
-                       ,smhd :: !(SoundMediaHeader)}
-
--- | Convert a 'SingleAudioTrackInit' record to a generic 'Boxes' collection.
-mkSingleTrackInit
-  :: SingleAudioTrackInit -> Builder
-mkSingleTrackInit doc = mediaBuilder dash $
-     fileTypeBox (FileType "dash" 0 ["isom","iso5","mp42"])
-  :| movie
-      ( movieHeader (mvhd doc)
-      :| track
-          ( trackHeader (tkhd doc)
-          :| media
-              ( mediaHeader (mdhd doc)
-              :. handler (hdlr doc)
-              :| mediaInformation
-                   ( soundMediaHeader (smhd doc)
-                   :. (dataInformation $: localMediaDataReference)
-                   :| sampleTable
-                       ((sampleDescription $: audioSampleEntry Mpeg4Aac 1 def)
-                        :. timeToSample []
-                        :. sampleToChunk []
-                        :| chunkOffset32 [])))))

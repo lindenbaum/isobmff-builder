@@ -3,9 +3,9 @@
 -- entry boxes are entailed.
 module Data.ByteString.IsoBaseFileFormat.Boxes.SampleDescription where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
+import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.Singletons.Prelude.List (Length)
 
 -- | A sample table contains no fieds.

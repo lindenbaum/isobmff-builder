@@ -3,9 +3,9 @@
 -- chunk and offset within of a sample.
 module Data.ByteString.IsoBaseFileFormat.Boxes.SampleToChunk where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
+import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 
 -- | An alias for the box content type.
 type SampleToChunk = FullBox SampleToChunkTable 0

@@ -1,10 +1,10 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- | A binary version 0/1 field with seperate content for each version.
-module Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
+module Data.ByteString.IsoBaseFileFormat.Util.Versioned
        (Versioned(..))
        where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- TODO rewrite/cleanup the versioned mess
 

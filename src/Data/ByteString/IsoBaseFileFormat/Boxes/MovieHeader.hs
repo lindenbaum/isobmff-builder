@@ -1,10 +1,10 @@
 -- | Meta data for a presentation of a /movie/.
 module Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
-import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
-import Data.ByteString.IsoBaseFileFormat.Boxes.Time
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
+import Data.ByteString.IsoBaseFileFormat.Util.Time
 
 -- * @mvhd@ Box
 

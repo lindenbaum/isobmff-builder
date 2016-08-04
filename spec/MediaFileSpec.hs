@@ -1,10 +1,10 @@
-module BrandTypeSpec
+module MediaFileSpec
   (spec)
   where
 
 import Test.Hspec
 import Data.ByteString.IsoBaseFileFormat.Boxes
-import Data.ByteString.IsoBaseFileFormat.Brands.Types
+import Data.ByteString.IsoBaseFileFormat.MediaFile
 import Data.ByteString.Lazy (unpack)
 
 spec :: Spec

@@ -1,9 +1,9 @@
 -- | Mini EDSL for labelled box fields. The boxfields can be 'Scalar' or
 -- 'ScalarArray's.
-module Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
+module Data.ByteString.IsoBaseFileFormat.Util.BoxFields
        where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 import Text.Printf
 import Data.Singletons
 import Data.Singletons.Prelude.List

@@ -2,7 +2,7 @@
 -- 'Track' the actual location are stored in 'DataReference's.
 module Data.ByteString.IsoBaseFileFormat.Boxes.DataInformation where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- | Data information box phantom type.
 data DataInformation

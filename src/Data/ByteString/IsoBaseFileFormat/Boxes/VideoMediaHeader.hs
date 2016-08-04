@@ -1,9 +1,9 @@
 -- | Media-independent properties of a tracks video content.
 module Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
-import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
 import Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader
 

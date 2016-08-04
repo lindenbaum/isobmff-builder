@@ -6,8 +6,8 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrl
   )
   where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import qualified Data.Text as T
 
 -- | A container for a URL or an indicator for local only media

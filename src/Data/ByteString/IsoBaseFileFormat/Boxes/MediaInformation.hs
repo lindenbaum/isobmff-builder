@@ -2,7 +2,7 @@
 -- technicalities of the media data associated with a 'Track'.
 module Data.ByteString.IsoBaseFileFormat.Boxes.MediaInformation where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- | Media information box type.
 data MediaInformation

@@ -1,7 +1,7 @@
 -- | Meta data for a presentation of a /movie/.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Track where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- * @trak@ Box
 -- | Compose a 'Track' box from the given boxes.

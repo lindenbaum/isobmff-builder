@@ -1,8 +1,8 @@
 -- | Indicate that a tracks media content is /null/ or /dummy/ media.
 module Data.ByteString.IsoBaseFileFormat.Boxes.NullMediaHeader where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.FullBox
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 
 -- | Null header data box.
 data NullMediaHeader = NullMediaHeader

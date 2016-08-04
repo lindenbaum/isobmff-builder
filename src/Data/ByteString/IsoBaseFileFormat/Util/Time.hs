@@ -1,5 +1,5 @@
 -- | Time and timing utilities.
-module Data.ByteString.IsoBaseFileFormat.Boxes.Time
+module Data.ByteString.IsoBaseFileFormat.Util.Time
        (referenceTime, utcToMp4, mp4CurrentTime, durationFromSeconds,
         TimeScale, Timing)
        where
@@ -7,9 +7,9 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Time
 import Data.Time.Clock
 import Data.Time.Calendar
 import Data.Ratio
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes.BoxFields
-import Data.ByteString.IsoBaseFileFormat.Boxes.Versioned
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Util.Versioned
 
 -- * Absolute Dates
 -- | According to the standard, fields with absolute dates and times are in

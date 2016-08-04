@@ -5,7 +5,7 @@
 -- block of audio samples.
 module Data.ByteString.IsoBaseFileFormat.Boxes.SampleTable where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- | A sample table contains no fieds.
 data SampleTable = SampleTable

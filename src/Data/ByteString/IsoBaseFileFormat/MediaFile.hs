@@ -1,8 +1,8 @@
 -- | Brand/Box-validation
-module Data.ByteString.IsoBaseFileFormat.Brands.Types
+module Data.ByteString.IsoBaseFileFormat.MediaFile
         where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout ()
 
 -- TODO move this to general module merge with Box.hs

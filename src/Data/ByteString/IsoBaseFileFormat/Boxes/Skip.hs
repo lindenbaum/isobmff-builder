@@ -1,7 +1,7 @@
 -- | A filler box with a specific size.
 module Data.ByteString.IsoBaseFileFormat.Boxes.Skip where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.Box
+import Data.ByteString.IsoBaseFileFormat.Box
 
 -- | Contents of a 'skip' box are just any number of filler bytes.
 newtype Skip = Skip Int
