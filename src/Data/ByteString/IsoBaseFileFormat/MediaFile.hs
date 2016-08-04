@@ -3,7 +3,8 @@ module Data.ByteString.IsoBaseFileFormat.MediaFile
         where
 
 import Data.ByteString.IsoBaseFileFormat.Box
-import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout ()
+import Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- TODO move this to general module merge with Box.hs
 -- | A class that describes (on the type level) how a box can be nested into

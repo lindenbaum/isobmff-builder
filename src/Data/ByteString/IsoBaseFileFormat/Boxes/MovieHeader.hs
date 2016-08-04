@@ -5,6 +5,7 @@ import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Util.Time
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * @mvhd@ Box
 

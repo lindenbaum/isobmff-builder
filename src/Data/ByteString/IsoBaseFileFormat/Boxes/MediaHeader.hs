@@ -6,6 +6,7 @@ import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Boxes.Language
 import Data.ByteString.IsoBaseFileFormat.Util.Time
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | Media header data box.
 newtype MediaHeader (v :: Nat) where

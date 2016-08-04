@@ -7,6 +7,7 @@ import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.Singletons.Prelude.List (Length)
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | A sample table contains no fieds.
 newtype SampleDescription handlerType =

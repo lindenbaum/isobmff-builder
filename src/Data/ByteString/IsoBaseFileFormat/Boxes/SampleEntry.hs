@@ -6,6 +6,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry where
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | Specific sample entries must provide an instance for this data family.
 -- The @format@ parameter will be used as 'BoxTypeSymbol'.

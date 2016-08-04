@@ -60,11 +60,10 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Brands.Dash
                      , Data.ByteString.IsoBaseFileFormat.MediaFile
-                     , Data.ByteString.IsoBaseFileFormat.Util
+                     , Data.ByteString.IsoBaseFileFormat.ReExports
                      , Data.ByteString.IsoBaseFileFormat.Util.BitRecords
                      , Data.ByteString.IsoBaseFileFormat.Util.BoxFields
                      , Data.ByteString.IsoBaseFileFormat.Util.FullBox
-                     , Data.ByteString.IsoBaseFileFormat.Util.Orphanage
                      , Data.ByteString.IsoBaseFileFormat.Util.Time
                      , Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
                      , Data.ByteString.IsoBaseFileFormat.Util.Versioned

@@ -22,6 +22,7 @@ import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import qualified Data.Text as T
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | Handler box fields. A handler box may also contain a null terminated
 -- description text in UTF-8. The 'T.Text' parameter is a human readable name of

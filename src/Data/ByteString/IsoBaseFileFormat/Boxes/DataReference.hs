@@ -14,6 +14,7 @@ import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrl
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.Singletons.Prelude.List (Length)
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | A container for 'DataEntryUrl's and 'DataEntryUrn's
 newtype DataReference =

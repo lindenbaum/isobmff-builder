@@ -2,6 +2,7 @@
 module Data.ByteString.IsoBaseFileFormat.Boxes.Skip where
 
 import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | Contents of a 'skip' box are just any number of filler bytes.
 newtype Skip = Skip Int

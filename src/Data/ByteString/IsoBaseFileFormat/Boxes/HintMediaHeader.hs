@@ -6,6 +6,7 @@ import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
 import Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 type instance MediaHeaderFor 'HintTrack = HintMediaHeader
 

@@ -8,12 +8,11 @@
 -- capture some of these characteristics using modern Haskell type system
 -- features, in order to provide compile time checks for (partial) standard
 -- compliance.
-module Data.ByteString.IsoBaseFileFormat.Box    where
+module Data.ByteString.IsoBaseFileFormat.Box where
 
-import Data.ByteString.IsoBaseFileFormat.Util
+import Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.Singletons.Prelude.List                      ((:++),
                                                                     Length)
-import           Data.Kind
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as B

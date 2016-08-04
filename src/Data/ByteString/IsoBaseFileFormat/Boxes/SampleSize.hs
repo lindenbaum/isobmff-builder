@@ -2,8 +2,8 @@
 module Data.ByteString.IsoBaseFileFormat.Boxes.SampleSize where
 
 import           Data.ByteString.IsoBaseFileFormat.Box
-import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.Util.FullBox
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | Content type of the 'FullBox' containing the 'SampleSize'.
 type SampleSize = FullBox SampleSizeTable 0

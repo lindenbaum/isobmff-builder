@@ -3,6 +3,7 @@
 
 module Data.ByteString.IsoBaseFileFormat.Boxes.ChunkOffset where
 
+import Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.Util.FullBox

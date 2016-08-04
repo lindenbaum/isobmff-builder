@@ -5,6 +5,7 @@ module Data.ByteString.IsoBaseFileFormat.Util.Versioned
        where
 
 import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- TODO rewrite/cleanup the versioned mess
 

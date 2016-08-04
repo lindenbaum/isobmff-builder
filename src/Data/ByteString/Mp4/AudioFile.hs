@@ -1,8 +1,11 @@
 module Data.ByteString.Mp4.AudioFile where
 
+import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes
 import Data.ByteString.Mp4.Boxes.AudioSampleEntry
 import Data.ByteString.IsoBaseFileFormat.Brands.Dash
+import Data.ByteString.IsoBaseFileFormat.MediaFile
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | A record which contains the stuff needed for a single track initialization
 -- document according to the 'Dash' brand. TODO incomplete
@@ -30,7 +33,7 @@ mkSingleTrackInit doc = mediaBuilder dash $
                    ( soundMediaHeader (smhd doc)
                    :. (dataInformation $: localMediaDataReference)
                    :| sampleTable
-                       ((  sampleDescription $: audioSampleEntry def 1 def)
+                       ((  sampleDescription $: audioSampleEntry (error "TODO") 1 def)
                         :. timeToSample []
                         :. sampleToChunk []
                         :. chunkOffset32 []

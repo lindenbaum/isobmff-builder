@@ -6,6 +6,7 @@ import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
 import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
+import Data.ByteString.IsoBaseFileFormat.ReExports
 import qualified Data.Text as T
 
 -- | Construct a visual sample entry box

@@ -9,6 +9,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.DataEntryUrl
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import qualified Data.Text as T
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | A container for a URL or an indicator for local only media
 newtype DataEntryUrl =

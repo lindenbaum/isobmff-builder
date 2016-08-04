@@ -4,7 +4,7 @@ module Data.ByteString.IsoBaseFileFormat.Util.BoxFields
        where
 
 import Data.ByteString.IsoBaseFileFormat.Box
-import Text.Printf
+import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.Singletons
 import Data.Singletons.Prelude.List
 import qualified Data.Vector.Sized as Vec

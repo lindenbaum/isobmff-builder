@@ -1,6 +1,7 @@
 module Data.ByteString.IsoBaseFileFormat.Boxes.FileType where
 
 import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | File Type Box
 instance IsBox FileType where

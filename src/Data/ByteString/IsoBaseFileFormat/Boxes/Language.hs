@@ -2,6 +2,7 @@
 module Data.ByteString.IsoBaseFileFormat.Boxes.Language (Language, mkLanguage) where
 
 import           Data.ByteString.IsoBaseFileFormat.Box
+import           Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | A Boxfield contains an ISO 639-2-T alpha-3 language code,  which is encoded
 -- as a single bit followed by three 5 bit words, each representing the

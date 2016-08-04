@@ -9,6 +9,7 @@ import qualified Data.Text as T
 import qualified Data.ByteString as B
 import Data.Tagged ()
 import Data.Default ()
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * Generat meta data sample entry
 

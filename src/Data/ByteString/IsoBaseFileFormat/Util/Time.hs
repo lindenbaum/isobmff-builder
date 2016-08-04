@@ -10,6 +10,7 @@ import Data.Ratio
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.Versioned
+import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * Absolute Dates
 -- | According to the standard, fields with absolute dates and times are in

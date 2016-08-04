@@ -2,10 +2,9 @@
 module Data.ByteString.Mp4.Boxes.AudioSampleEntry where
 
 import Data.ByteString.IsoBaseFileFormat.Box
-import Data.ByteString.IsoBaseFileFormat.BoxFields
-import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
-import Data.ByteString.IsoBaseFileFormat.Boxes.AudioSampleEntry
--- import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
+import Data.ByteString.IsoBaseFileFormat.Util.FullBox
+import Data.ByteString.IsoBaseFileFormat.ReExports
+import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 
 -- | The MPEG-4 AAC Audio codec
 newtype Mp4AudioSampleEntry =
@@ -14,3 +13,5 @@ newtype Mp4AudioSampleEntry =
 type ElementaryStreamDescriptor = Tagged "TODO" Word32
 
 type instance BoxTypeSymbol Mp4AudioSampleEntry = "mp4a"
+
+instance IsBox Mp4AudioSampleEntry
