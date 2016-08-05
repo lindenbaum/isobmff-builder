@@ -1,19 +1,30 @@
 -- | TODO SPLIT!
 module Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor where
 
+import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * Expandable Classes
 
 newtype Expandable content where -- TODO maxSize in Expandable class
-  Expandable :: content -> Expandable maxSize content
+  Expandable :: content -> Expandable content
 
-isntance IsBoxContent content => IsBoxContent (Expandable content) where
-  boxSize (Expandable cnt) = boxSize cnt
+instance IsBoxContent content => IsBoxContent (Expandable content) where
+  boxSize (Expandable cnt) =
+    let (BoxSize cntSizeW) =  boxSize cnt
+        sizeBlocks7bit = relBitSize `div` 7 + if rem relBitSize 7 == 0 then 0 else 1
+        relBitSize = fromIntegral $ finiteBitSize cntSizeW - countLeadingZeros cntSizeW
+        in BoxSize (sizeBlocks7bit + cntSizeW)
+  boxBuilder (Expandable cnt) =
+    let (BoxSize cntSizeW) = boxSize cnt
+        sizeWriter s
+          | s < 128   = word8 (fromIntegral s)
+          | otherwise = sizeWriter (s `shiftR` 7)
+                        <> word8 (0x80 .|. (fromIntegral s .&. 0x7f))
+        in sizeWriter cntSizeW <> boxBuilder cnt
 
 
-sizeBlocks len s = s `div` 7 + if rem s 7 == 0 then 0 else 1
-type ExpandableTLoop size =
+-- type ExpandableTLoop size =
 
 
 -- * Base Descriptor Class Tags

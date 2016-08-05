@@ -12,19 +12,14 @@ import Test.TypeSpecCrazy
 -- * Fields
 
 -- | Define a field with a size
-data Field :: Nat -> Type
+data Seq :: Nat -> Type
 
 -- | Alias for a single bit field
-type Flag = Field 1
-
--- | A field with a fixed value
-data (:=) :: Type -> Nat -> Type
-infixr 6 :=
+type Flag = Seq 1
 
 -- | Get the field size of a field
 type family GetFieldSize field :: Nat
-type instance GetFieldSize (Field n) = n
-type instance GetFieldSize (f := v) = GetFieldSize f
+type instance GetFieldSize (Seq n) = n
 
 type FieldPosition = (Nat, Nat)
 
@@ -36,9 +31,16 @@ infixr 3 :*:
 
 -- * Nested Records
 
--- | Assign a field al label
-data (:->) :: label -> Type -> Type
-infixr 5 :->
+-- | A field
+data (:$) :: label -> Type -> Type
+infixr 5 :$
+
+-- | A field with a fixed value
+data (:=) :: Type -> Nat -> Type
+infixr 6 :=
+
+-- | Ignore a part of the data stream
+data Ignore :: Nat -> Type
 
 -- | A Path of field labels for nested record created with ':=>'
 data (:/) :: Symbol -> label -> Type
@@ -127,8 +129,8 @@ type Align padRight a f =
 type family
   AddPadding (padRight :: Bool) (n :: Nat) (r :: rk) :: rk where
   AddPadding padRight 0 r = r
-  AddPadding 'True n r = r :*: Reserved n
-  AddPadding 'False n r = Reserved n :*: r
+  AddPadding 'True n r = r :*: Seq n := 0
+  AddPadding 'False n r = Seq n := 0 :*: r
 
 -- | Get the remainder of the integer division of x and y, such that @forall x
 -- y. exists k. (Rem x y) == x - y * k@ The algorithm is: count down x
@@ -213,10 +215,10 @@ setField _ _ v x = (x .&. bitMaskField) .|. (v' `shiftL` posFirst)
 
 type Foo =
        "foo" :-> Flag
-   :*:           Field 4
-   :*: "bar" :-> Field 2
-   :*:           Field 4
-   :*: "baz" :-> Field 17
+   :*:           Seq 4
+   :*: "bar" :-> Seq 2
+   :*:           Seq 4
+   :*: "baz" :-> Seq 17
 
 testFoo :: TypeSpec (ShouldBeTrue (HasField Foo "bar"))
 testFoo = Valid
