@@ -2,7 +2,7 @@ module Data.ByteString.Mp4.AudioFile where
 
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes
-import Data.ByteString.Mp4.Boxes.AudioSampleEntry
+import Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
 import Data.ByteString.IsoBaseFileFormat.Brands.Dash
 import Data.ByteString.IsoBaseFileFormat.MediaFile
 import Data.ByteString.IsoBaseFileFormat.ReExports
@@ -33,7 +33,7 @@ mkSingleTrackInit doc = mediaBuilder dash $
                    ( soundMediaHeader (smhd doc)
                    :. (dataInformation $: localMediaDataReference)
                    :| sampleTable
-                       ((  sampleDescription $: audioSampleEntry (error "TODO") 1 def)
+                       ((  sampleDescription $: sampleEntry 0 (mp4AudioSampleEntry def def))
                         :. timeToSample []
                         :. sampleToChunk []
                         :. chunkOffset32 []

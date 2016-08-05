@@ -5,6 +5,7 @@ module Data.ByteString.IsoBaseFileFormat.ReExports (module X) where
 
 
 import           Data.Bits                                         as X
+import qualified Data.ByteString                                   as B
 import           Data.ByteString.Builder                           as X
 import           Data.ByteString.IsoBaseFileFormat.Util.BitRecords as X
 import           Data.ByteString.IsoBaseFileFormat.Util.TypeLayout as X
@@ -18,14 +19,14 @@ import           Data.Monoid                                       as X
 import           Data.Proxy                                        as X
 import           Data.String                                       as X
 import           Data.Tagged                                       as X
+import qualified Data.Text                                         as T
 import           Data.Type.Bool                                    as X
 import           Data.Type.Equality                                as X
 import           Data.Word                                         as X
 import           GHC.TypeLits                                      as X
+import           Test.TypeSpecCrazy                                as X hiding
+                                                                         (type Not)
 import           Text.Printf                                       as X
-
-import qualified Data.ByteString                                   as B
-import qualified Data.Text                                         as T
 
 
 instance Default B.ByteString where

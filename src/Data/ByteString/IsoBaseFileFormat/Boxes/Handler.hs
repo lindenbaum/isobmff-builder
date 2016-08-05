@@ -15,6 +15,7 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.Handler
   ,auxilliaryVideoTrackHandler
   ,namedAuxilliaryVideoTrackHandler
   ,HandlerType(..)
+  ,GetHandlerType
   ,HandlerTypeCode)
   where
 
@@ -44,6 +45,9 @@ data HandlerType
   | HintTrack
   | TimedMetaDataTrack
   | AuxilliaryVideoTrack
+
+-- | Return 'HandlerType' for 'BoxLayout' checking.
+type family GetHandlerType t :: HandlerType
 
 type family HandlerTypeCode (handlertype :: HandlerType) :: Symbol where
   HandlerTypeCode 'VideoTrack           = "vide"

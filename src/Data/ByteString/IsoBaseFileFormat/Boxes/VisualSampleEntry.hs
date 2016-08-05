@@ -5,23 +5,14 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry where
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
-import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import qualified Data.Text as T
-
--- | Construct a visual sample entry box
-visualSampleEntry ::
-     VideoCoding codec
-  -> U16 "data_reference_index"
-  -> SampleEntry 'VideoTrack (VideoCoding codec)
-  -> Box (SampleEntry 'VideoTrack (VideoCoding codec))
-visualSampleEntry _ = sampleEntry
 
 -- | Fields if visual sample entries.
 --  A @depth@ of 0x0018 means colour image with no alpha.
 --  The @horizresolution@ and @vertresolution@ of 0x00480000 means 72 dpi.
 --  The @frame_count@ indicates the number of video frames per sample.
-newtype instance SampleEntry 'VideoTrack (VideoCoding c) where
+newtype VideoSampleEntry c where
     VideoSampleEntry
       :: U16 "pre_defined"
       :+ Constant (U16 "reserved") 0
@@ -37,20 +28,16 @@ newtype instance SampleEntry 'VideoTrack (VideoCoding c) where
       :+ Maybe (Box CleanAperture)
       :+ Maybe (Box PixelAspectRatio)
       :+ [Box SomeColourInformation]
-      -> SampleEntry 'VideoTrack (VideoCoding c)
+      :+ c
+      -> VideoSampleEntry c
     deriving (IsBoxContent, Default)
+
+type instance GetHandlerType (VideoSampleEntry c) = 'VideoTrack
+type instance BoxTypeSymbol (VideoSampleEntry c) = BoxTypeSymbol c
 
 instance IsBoxContent [Box SomeColourInformation] where
   boxSize = sum . fmap boxSize
   boxBuilder = fold . fmap boxBuilder
-
--- | A coproduct of video codec types
-data family VideoCoding (c :: Symbol)
-
--- | Simple default  MPEG-4 video
-data instance VideoCoding "mp4v" = Mpeg4Avc
-
-type instance BoxTypeSymbol (VideoCoding c) = c
 
 -- * Clean Aperture sub box
 

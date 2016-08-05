@@ -9,75 +9,80 @@ import Data.Bits
 import Data.Proxy
 import Test.TypeSpecCrazy
 
+-- * Fields
+
+-- | Define a field with a size
 data Field :: Nat -> Type
-data (:=>) :: label -> Type -> Type
-data (:*:) :: Type -> Type -> Type
-type FieldPosition = (Nat, Nat)
 
--- | Scheme like @(cond ...)@ block
-data Cond
-  :: label
-  -> [Type -> Maybe Type]
-  -- ^ condition wich get the value for the label and -- the first that returns --
-  -- @'Just r@' will terminate -- the 'Cond'
-  -> (Type -> Type)
-  -- ^ Fall back function
-  -> Type 
-
-
+-- | Alias for a single bit field
 type Flag = Field 1
 
-infixr 6 :=>
-infixl 5 :*:
+-- | A field with a fixed value
+data (:=) :: Type -> Nat -> Type
+infixr 6 :=
 
--- nested fields
-data (:/) :: Symbol -> k -> Type
+-- | Get the field size of a field
+type family GetFieldSize field :: Nat
+type instance GetFieldSize (Field n) = n
+type instance GetFieldSize (f := v) = GetFieldSize f
+
+type FieldPosition = (Nat, Nat)
+
+-- * Records
+
+-- | Combine two field to form a new field
+data (:*:) :: Type -> Type -> Type
+infixr 3 :*:
+
+-- * Nested Records
+
+-- | Assign a field al label
+data (:->) :: label -> Type -> Type
+infixr 5 :->
+
+-- | A Path of field labels for nested record created with ':=>'
+data (:/) :: Symbol -> label -> Type
 infixr 7 :/
 
+-- | A wrapper around 'Constraint' that propagates 'TypeError'.
+type ConstraintE = Either Constraint Constraint
+
+-- | Unwrap a 'ConstraintE', this is where 'TypeError's might be /thrown/.
+type family
+  RunConstraintE t :: Constraint where
+  RunConstraintE ('Left t) = t
+  RunConstraintE ('Right t) = t
+
+-- * BitRecord Accessor
 
 type family
-  GetFieldSize (f :: l) :: Nat where
-  GetFieldSize (label :=> f) = GetFieldSize f
-  GetFieldSize (Field n ) = n
-  GetFieldSize (l :*: r) = GetFieldSize l + GetFieldSize r
+  GetRecordSize (r :: rk) :: Nat where
+  GetRecordSize (label :-> f) = GetRecordSize f
+  GetRecordSize (l :*: r)     = GetRecordSize l + GetRecordSize r
+  GetRecordSize f             = GetFieldSize f
 
 type family
-  HasField (f :: fk) (l :: lk) :: Bool where
-  HasField (l :=> f) l = 'True
-  HasField (l :=> f) (l :/ p) = HasField f p
+  HasField (r :: rk) (l :: lk) :: Bool where
+  HasField (l :-> f) l = 'True
+  HasField (l :-> f) (l :/ p) = HasField f p
   HasField (f1 :*: f2) l = HasField f1 l || HasField f2 l
   HasField f l = 'False
 
 type family
-  HasFieldConstraint (label :: lk) (field :: fk) :: Constraint where
-  HasFieldConstraint l f =
-      If (HasField f l)
-         (HasField f l ~ 'True)
-         (TypeError ('Text "Label not found: '"
-                     ':<>: 'ShowType l
-                     ':<>: 'Text "' in:"
-                     ':$$: 'ShowType f ))
-
-type family
-  FocusOn (l :: lk) (f :: fk) :: Result fk where
-    FocusOn l f =
-      If (HasField f l)
-         ('Right (FocusOnUnsafe l f))
-         ('Left ('Text "Label not found. Cannot focus '"
-                     ':<>: 'ShowType l
-                     ':<>: 'Text "' in:"
-                     ':$$: 'ShowType f ))
-
-type family
-  FocusOnUnsafe (l :: lk) (f :: fk) :: fk where
-  FocusOnUnsafe l        (l :=> f) = f
-  FocusOnUnsafe (l :/ p) (l :=> f) = FocusOnUnsafe p f
-  FocusOnUnsafe l        (f :*: f') = FocusOnUnsafe l (If (HasField f l) f f')
+  HasFieldConstraint (r :: rk) (l :: lk) :: ConstraintE where
+  HasFieldConstraint r l =
+      If (HasField r l)
+         ('Left (HasField r l ~ 'True))
+         ('Right
+           (TypeError ('Text "Label not found: '"
+                       ':<>: 'ShowType l
+                       ':<>: 'Text "' in:"
+                       ':$$: 'ShowType r )))
 
 -- field location and access
 
 type family
-  GetFieldPosition (f :: field) (l :: label) :: Result FieldPosition where
+  GetFieldPosition (r :: rk) (l :: lk) :: Result FieldPosition where
   GetFieldPosition f l =
      If (HasField f l)
        ('Right (GetFieldPositionUnsafe f l))
@@ -87,13 +92,13 @@ type family
           ':$$: 'ShowType f ))
 
 type family
-  GetFieldPositionUnsafe (f :: field) (l :: label) :: FieldPosition where
-  GetFieldPositionUnsafe (l :=> f)  l        = '(0, GetFieldSize f - 1)
-  GetFieldPositionUnsafe (l :=> f)  (l :/ p) = GetFieldPositionUnsafe f p
+  GetFieldPositionUnsafe (r :: rk) (l :: lk) :: FieldPosition where
+  GetFieldPositionUnsafe (l :-> f)  l        = '(0, GetRecordSize f - 1)
+  GetFieldPositionUnsafe (l :-> f)  (l :/ p) = GetFieldPositionUnsafe f p
   GetFieldPositionUnsafe (f :*: f') l        =
      If (HasField f l)
       (GetFieldPositionUnsafe f l)
-      (AddToFieldPosition (GetFieldSize f) (GetFieldPositionUnsafe f' l))
+      (AddToFieldPosition (GetRecordSize f) (GetFieldPositionUnsafe f' l))
 
 type family
   AddToFieldPosition (v :: Nat) (e :: (Nat, Nat)) :: (Nat, Nat) where
@@ -116,15 +121,14 @@ type family
     FieldPostitionToList '(a, a) = '[a]
     FieldPostitionToList '(a, b) = (a ': (FieldPostitionToList '(a+1, b)))
 
-type family
-  AlignField (a :: Nat) (f :: field) :: Result field where
-  AlignField 0 f = 'Left ('Text "Invalid alignment of 0")
-  AlignField a f = 'Right (AddPadding ((a - (GetFieldSize f `Rem` a)) `Rem` a) f)
+type Align padRight a f =
+    AddPadding padRight ((a - (GetRecordSize f `Rem` a)) `Rem` a) f
 
 type family
-  AddPadding (n :: Nat) (f :: field) :: field where
-  AddPadding 0 f = f
-  AddPadding n f = f :*: Field n
+  AddPadding (padRight :: Bool) (n :: Nat) (r :: rk) :: rk where
+  AddPadding padRight 0 r = r
+  AddPadding 'True n r = r :*: Reserved n
+  AddPadding 'False n r = Reserved n :*: r
 
 -- | Get the remainder of the integer division of x and y, such that @forall x
 -- y. exists k. (Rem x y) == x - y * k@ The algorithm is: count down x
@@ -155,30 +159,31 @@ type family
   -- the base case
   RemImpl x y acc = RemImpl (x - 1) y (acc + 1)
 
+-- | Return the value of a single bit field as Bool
 getFlag
-  :: forall a (path :: k) (first :: Nat) field p1 p2
-  . ( IsFieldC path field first first
+  :: forall a (field :: fk) (first :: Nat) record p1 p2
+  . ( IsFieldC field record first first
     , Bits a )
-   => p1 path -> p2 field -> a -> Bool
+   => p1 field -> p2 record -> a -> Bool
 getFlag _ _ a = testBit a pos
     where pos = fromIntegral $ natVal (Proxy :: Proxy first)
 
 setFlag
-  :: forall a (path :: k) (first :: Nat) field p1 p2
-  . ( IsFieldC path field first first
+  :: forall a field (first :: Nat) record p1 p2
+  . ( IsFieldC field record first first
     , Bits a )
-   => p1 path -> p2 field -> Bool -> a -> a
+   => p1 field -> p2 record -> Bool -> a -> a
 setFlag _ _ v a = modifyBit a pos
     where pos = fromIntegral $ natVal (Proxy :: Proxy first)
           modifyBit = if v then setBit else clearBit
 
 getField
-  :: forall a b (path :: k) (first :: Nat) (last :: Nat) field pxy1 pxy2
-  . ( IsFieldC path field first last
+  :: forall a b field (first :: Nat) (last :: Nat) record pxy1 pxy2
+  . ( IsFieldC field record first last
     , Integral a
     , Bits a
     , Num b)
-   => pxy1 path -> pxy2 field -> a -> b
+   => pxy1 field -> pxy2 record -> a -> b
 getField _ _ a = fromIntegral ((a `shiftR` posFirst) .&. bitMask)
     where
       bitMask =
@@ -188,12 +193,12 @@ getField _ _ a = fromIntegral ((a `shiftR` posFirst) .&. bitMask)
       posLast = fromIntegral $ natVal (Proxy :: Proxy last)
 
 setField
-  :: forall a b (path :: k) (first :: Nat) (last :: Nat) field pxy1 pxy2
-  . ( IsFieldC path field first last
+  :: forall a b field (first :: Nat) (last :: Nat) record pxy1 pxy2
+  . ( IsFieldC field record first last
     , Num a
     , Bits a
     , Integral b)
-   => pxy1 path -> pxy2 field -> b -> a -> a
+   => pxy1 field -> pxy2 record -> b -> a -> a
 setField _ _ v x = (x .&. bitMaskField) .|. (v' `shiftL` posFirst)
     where
       v' = bitMaskValue .&. fromIntegral v
@@ -207,17 +212,20 @@ setField _ _ v x = (x .&. bitMaskField) .|. (v' `shiftL` posFirst)
 
 
 type Foo =
-       "foo" :=> Flag
+       "foo" :-> Flag
    :*:           Field 4
-   :*: "bar" :=> Field 2
+   :*: "bar" :-> Field 2
    :*:           Field 4
-   :*: "baz" :=> Field 17
+   :*: "baz" :-> Field 17
 
-type IsFieldC name field first last =
-    ( name `HasFieldConstraint` field
+testFoo :: TypeSpec (ShouldBeTrue (HasField Foo "bar"))
+testFoo = Valid
+
+type IsFieldC field record first last =
+    ( RunConstraintE (record `HasFieldConstraint` field)
      , KnownNat first
      , KnownNat last
-     , 'Right '(first, last) ~ (GetFieldPosition field name)
+     , 'Right '(first, last) ~ (GetFieldPosition record field)
      )
 
 getFooField :: IsFieldC name Foo first last

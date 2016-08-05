@@ -4,7 +4,6 @@ import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
-import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
 import qualified Data.Text as T
 import qualified Data.ByteString as B
 import Data.Tagged ()
@@ -13,15 +12,7 @@ import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * Generat meta data sample entry
 
--- | Construct a meta data sample entry box. For every 'MetaDataCoding'
--- a 'SampleEntry' instances must be provided.
-metaDataSampleEntry ::
-     MetaDataCoding c
-  -> U16 "data_reference_index"
-  -> SampleEntry 'TimedMetaDataTrack (MetaDataCoding c)
-  -> Box (SampleEntry 'TimedMetaDataTrack (MetaDataCoding c))
-metaDataSampleEntry _ = sampleEntry
-
+type instance GetHandlerType (MetaDataCoding c) = 'TimedMetaDataTrack
 type instance BoxTypeSymbol (MetaDataCoding c) = c
 
 -- | A coproduct of meta data codings (XML, Text, ...)
