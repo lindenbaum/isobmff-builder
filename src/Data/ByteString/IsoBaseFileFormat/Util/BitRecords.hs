@@ -12,14 +12,14 @@ import Test.TypeSpecCrazy
 -- * Fields
 
 -- | Define a field with a size
-data Seq :: Nat -> Type
+data Field :: Nat -> Type
 
 -- | Alias for a single bit field
-type Flag = Seq 1
+type Flag = Field 1
 
 -- | Get the field size of a field
 type family GetFieldSize field :: Nat
-type instance GetFieldSize (Seq n) = n
+type instance GetFieldSize (Field n) = n
 
 type FieldPosition = (Nat, Nat)
 
@@ -31,16 +31,16 @@ infixr 3 :*:
 
 -- * Nested Records
 
--- | A field
-data (:$) :: label -> Type -> Type
-infixr 5 :$
+-- | A field with a name
+data (:=>) :: label -> Type -> Type
+infixr 5 :=>
 
--- | A field with a fixed value
+-- | A field with a constant fixed value
 data (:=) :: Type -> Nat -> Type
 infixr 6 :=
 
--- | Ignore a part of the data stream
-data Ignore :: Nat -> Type
+-- | Make a part of the record ignored
+data Ignore :: Type -> Type
 
 -- | A Path of field labels for nested record created with ':=>'
 data (:/) :: Symbol -> label -> Type
@@ -59,16 +59,20 @@ type family
 
 type family
   GetRecordSize (r :: rk) :: Nat where
-  GetRecordSize (label :-> f) = GetRecordSize f
+  GetRecordSize (label :=> f) = GetRecordSize f
   GetRecordSize (l :*: r)     = GetRecordSize l + GetRecordSize r
-  GetRecordSize f             = GetFieldSize f
+  GetRecordSize (Ignore r)    = GetRecordSize r
+  GetRecordSize (Field n)     = n
+  GetRecordSize (r := v)      = GetRecordSize r
 
 type family
   HasField (r :: rk) (l :: lk) :: Bool where
-  HasField (l :-> f) l = 'True
-  HasField (l :-> f) (l :/ p) = HasField f p
-  HasField (f1 :*: f2) l = HasField f1 l || HasField f2 l
-  HasField f l = 'False
+  HasField (l :=> f) l        = 'True
+  HasField (l :=> f) (l :/ p) = HasField f p
+  HasField (f1 :*: f2) l      = HasField f1 l || HasField f2 l
+  HasField (r := v) l         = HasField r l
+  HasField (Ignore r) l       = HasField r l
+  HasField f l                = 'False
 
 type family
   HasFieldConstraint (r :: rk) (l :: lk) :: ConstraintE where
@@ -95,8 +99,10 @@ type family
 
 type family
   GetFieldPositionUnsafe (r :: rk) (l :: lk) :: FieldPosition where
-  GetFieldPositionUnsafe (l :-> f)  l        = '(0, GetRecordSize f - 1)
-  GetFieldPositionUnsafe (l :-> f)  (l :/ p) = GetFieldPositionUnsafe f p
+  GetFieldPositionUnsafe (l :=> f)  l        = '(0, GetRecordSize f - 1)
+  GetFieldPositionUnsafe (l :=> f)  (l :/ p) = GetFieldPositionUnsafe f p
+  GetFieldPositionUnsafe (f := v)   l        = GetFieldPositionUnsafe f l
+  GetFieldPositionUnsafe (Ignore f) l        = GetFieldPositionUnsafe f l
   GetFieldPositionUnsafe (f :*: f') l        =
      If (HasField f l)
       (GetFieldPositionUnsafe f l)
@@ -129,8 +135,8 @@ type Align padRight a f =
 type family
   AddPadding (padRight :: Bool) (n :: Nat) (r :: rk) :: rk where
   AddPadding padRight 0 r = r
-  AddPadding 'True n r = r :*: Seq n := 0
-  AddPadding 'False n r = Seq n := 0 :*: r
+  AddPadding 'True n r = r :*: Ignore (Field n := 0)
+  AddPadding 'False n r = Ignore (Field n := 0) :*: r
 
 -- | Get the remainder of the integer division of x and y, such that @forall x
 -- y. exists k. (Rem x y) == x - y * k@ The algorithm is: count down x
@@ -214,11 +220,11 @@ setField _ _ v x = (x .&. bitMaskField) .|. (v' `shiftL` posFirst)
 
 
 type Foo =
-       "foo" :-> Flag
-   :*:           Seq 4
-   :*: "bar" :-> Seq 2
-   :*:           Seq 4
-   :*: "baz" :-> Seq 17
+       "foo" :=> Flag
+   :*:           Field 4
+   :*: "bar" :=> Field 2
+   :*:           Field 4
+   :*: "baz" :=> Field 17
 
 testFoo :: TypeSpec (ShouldBeTrue (HasField Foo "bar"))
 testFoo = Valid

@@ -1,5 +1,6 @@
 module DataReferenceSpec (spec) where
 
+import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Boxes
 import           Test.Hspec
 

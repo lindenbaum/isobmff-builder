@@ -3,6 +3,12 @@ module Mp4AudioFileSpec (spec) where -- TODO rename to mp4 audio init spec
 
 import Test.Hspec
 import Data.ByteString.Mp4.AudioFile
+import Data.ByteString.IsoBaseFileFormat.ReExports
+import Data.ByteString.IsoBaseFileFormat.Boxes
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import Data.ByteString.IsoBaseFileFormat.Util.Time
+import Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import qualified Data.ByteString.Lazy as BL
 import Data.Text ()
 
@@ -56,7 +62,7 @@ spec =
                      ,0,0,0,32,109,100,104,100,0,0,0,0
                      ,0,0,0,0,0,0,0,0,0,1,95,144,0,0,0,0,16,181,0,0
                      -- hdlr box
-                     ,0,0,0,44 utf 8 snowman
+                     ,0,0,0,44
                      ,104,100,108,114
                      ,0,0,0,0,0,0,0,0,115,111,117,110,0,0,0,0,0,0,0,0,0,0,0,0
                      ,72,101,108,108,111,32,119,111,114,108,100,0
@@ -65,7 +71,7 @@ spec =
                      ,109,105,110,102
                      ,0,0,0,16
                      ,115,109,104,100,0,0,0,0,0,0,0,0
-                     -- dinf box
+                     -- dinf boimport Data.ByteString.IsoBaseFileFormat.Boxes
                      ,0,0,0,36
                      ,100,105,110,102
                      -- dref box
@@ -76,12 +82,8 @@ spec =
                      ,0,0,0,12
                      ,117,114,108,32
                      ,0,0,0,1
-                     -- stbl
-                     ,0,0,0,128,115,116,98,108
-                     -- stsd
-                     ,0,0,0,52,115,116,115,100
-                     ,0,0,0,0,0,0,0,1
-                     -- mp4a
+                     -- stblimport Data.ByteString.IsoBaseFileFormat.Boxes
+
                      ,0,0,0,36,109,112,52,97
                      ,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,2,0,16,0,0,0,0
                      ,187,128,0,0

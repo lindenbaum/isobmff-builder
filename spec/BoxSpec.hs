@@ -1,7 +1,8 @@
 module BoxSpec (spec) where
 
 import Test.Hspec
-import Data.ByteString.IsoBaseFileFormat.Boxes
+import Data.ByteString.IsoBaseFileFormat.Box
+import Data.ByteString.IsoBaseFileFormat.ReExports
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as Binary

@@ -3,8 +3,9 @@ module MediaFileSpec
   where
 
 import Test.Hspec
-import Data.ByteString.IsoBaseFileFormat.Boxes
+import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.MediaFile
+import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.ByteString.Lazy (unpack)
 
 spec :: Spec

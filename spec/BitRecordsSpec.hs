@@ -1,23 +1,23 @@
+{-# LANGUAGE UndecidableInstances #-}
 module BitRecordsSpec (spec) where
 
 import Data.Bits
 import Data.ByteString.IsoBaseFileFormat.Util.BitRecords
 import Data.Proxy
 import Data.Word
+import Data.Monoid
+import Data.ByteString.Builder
 import GHC.TypeLits
 import Test.Hspec
 import Test.TypeSpecCrazy
-
 
 spec :: Spec
 spec = do
   describe "The Set of Type Functions" $
     it "is sound" $ do
-      print (Valid :: Expect (GetFieldSize (Flag :*: Field 7) `Is` 8))
+      print (Valid :: Expect (GetRecordSize (Flag :*: Field 7) `Is` 8))
       print testBitHasFields
       print testBitHasNestedFields
-      print testFocus
-      print testFocusError
       print testRem
       print testAlign
       print testFieldPosition0
@@ -98,6 +98,12 @@ spec = do
         (0xe :: Word8)
         (0xcaf0 `shiftL` (13 + 7 + 1) :: Word64)
        `shouldBe` (0xcafe `shiftL` (13 + 7 + 1) :: Word64)
+  describe "Holey Shit" $ do
+     it "writes fields" $
+        let rec = (Proxy :: Proxy (Field 48 := 0 :*: "foo" :=> (Field 3 :*: Field 5)))
+            actual = runBitWriter $ runHoley (getBitBuilder rec) 0x7f
+            in actual `shouldBe` 0x7F00000000000000
+
 
 
 --
@@ -117,38 +123,6 @@ testBitHasNestedFields
   :: Expect (ShouldBeTrue (HasField TestHasNestedField ("foo" :/ "bar")))
 testBitHasNestedFields = Valid
 
---
-
-type TestFocus =
-       "bad" :=> Field 13
-   :*: "bar" :=> (              Field 7
-                  :*: "bax" :=> Flag )
-   :*: "foo" :=> ExpectedFocus
-
-type ExpectedFocus =
-  (     "fmm" :=> Flag
-                  :*:           Flag
-                  :*:           Flag)
-
-testFocus
-  :: Expect (FocusOnUnsafe "foo" TestFocus `Is` ExpectedFocus)
-testFocus = Valid
-
-type ExpectedFocusError =
-  'Left
-   (       'Text "Label not found. Cannot focus '"
-     ':<>: 'ShowType "xxx"
-     ':<>: 'Text "' in:"
-     ':$$: 'ShowType
-            (      "bad" :=> Field 13
-               :*: "bar" :=> (Field 7 :*: "bax" :=> Flag)
-               :*: "foo" :=> ExpectedFocus))
-
-testFocusError
-  :: Expect (FocusOn "xxx" TestFocus `ShouldBe` ExpectedFocusError)
-testFocusError = Valid
-
---
 
 testRem
   :: Expect '[ Rem 0 3 `ShouldBe` 0
@@ -164,11 +138,11 @@ testRem = Valid
 --
 
 testAlign
-  :: Expect '[ Try (AlignField 7 Flag)       `ShouldBe`  (Flag :*: Field 6)
-             , Try (AlignField 1 Flag)       `ShouldBe`  Flag
-             , Try (AlignField 8 (Field 7))  `ShouldBe`  (Field 7 :*: Field 1)
-             , Try (AlignField 8 (Field 8))  `ShouldBe`  Field 8
-             , Try (AlignField 8 (Field 9))  `ShouldBe`  (Field 9 :*: Field 7)
+  :: Expect '[ (Align 'True 7 Flag)       `ShouldBe`  (Flag :*: Ignore (Field 6 := 0))
+             , (Align 'True 1 Flag)       `ShouldBe`  Flag
+             , (Align 'True 8 (Field 7))  `ShouldBe`  (Field 7 :*: Ignore (Field 1 := 0))
+             , (Align 'True 8 (Field 8))  `ShouldBe`  Field 8
+             , (Align 'True 8 (Field 9))  `ShouldBe`  (Field 9 :*: Ignore (Field 7 := 0))
             ]
 testAlign = Valid
 
@@ -224,3 +198,78 @@ testFieldPositionToList
        `ShouldBe`
        '[15,16,17,18,19,20,21,22,23])
 testFieldPositionToList = Valid
+
+-- * HoleyBit
+
+type BitOffset = Word64
+type BitWriter = Endo (BitOffset, Word64)
+
+runBitWriter :: BitWriter -> Word64
+runBitWriter w =
+  snd $ appEndo w (let v0 = 0 in (fromIntegral (finiteBitSize v0), v0))
+
+writeBitField :: BitOffset -> Word64 -> BitWriter
+writeBitField len v =
+  Endo
+     (\(offset, out) ->
+          let offset' = offset - len
+              mask = (2 ^ len) - 1
+              v' = ((v .&. mask) `shiftL` fromIntegral offset')
+              in (offset', (out .|. v')))
+
+type BitBuilder r a = Holey BitWriter r a
+
+class HasBitBuilder field r where
+  type Res field r
+  type Res field r = r
+  getBitBuilder :: proxy field -> BitBuilder r (Res field r)
+
+instance (KnownNat (GetRecordSize f))
+  => HasBitBuilder (l :=> f) r where
+    type Res (l :=> f) r = Word64 -> r
+    getBitBuilder _ = indirect (writeBitField len)
+      where len = fromIntegral (natVal (Proxy :: Proxy (GetRecordSize f)))
+
+instance ( KnownNat v
+         , KnownNat (GetRecordSize f))
+  => HasBitBuilder (f := v) r where
+    type Res (f := v) r = r
+    getBitBuilder _ = immediate (writeBitField len val)
+      where len = fromIntegral (natVal (Proxy :: Proxy (GetRecordSize f)))
+            val = fromIntegral (natVal (Proxy :: Proxy v))
+
+instance ( HasBitBuilder f b
+         , HasBitBuilder g a
+         , b ~ Res g a)
+  => HasBitBuilder (f :*: g) a where
+    type Res (f :*: g) a = Res f (Res g a)
+    getBitBuilder _ =
+      getBitBuilder (Proxy :: Proxy f) % getBitBuilder (Proxy :: Proxy g)
+
+
+-- * Holey
+
+newtype Holey m r a = HM {runHM :: ((m -> r) -> a) }
+
+immediate :: m -> Holey m r r
+immediate m =
+  HM { runHM = ($ m) }
+
+indirect :: (a -> m) -> Holey m r (a -> r)
+indirect f =
+  HM { runHM = (. f) }
+
+-- --    Holey String r r
+
+bind :: Holey m b c
+      -> (m -> Holey n a b)
+      -> Holey n a c
+bind mbc fm = HM $ \ kna -> runHM mbc (($ kna) . runHM . fm)
+
+comp, comp', (%) :: Monoid m => Holey m b c -> Holey m a b  -> Holey m a c
+comp f g = f `bind` (\l ->  g `bind` (\r -> immediate (l <> r)))
+comp' (HM f) (HM g) = HM (\k -> (f (\m1 -> g (\m2 -> k (m1 <> m2)))))
+(%) = comp'
+
+runHoley :: Holey m m a -> a
+runHoley = ($ id) . runHM
