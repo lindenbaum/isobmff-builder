@@ -203,7 +203,7 @@ type AudioObjectTypeSmall n =
 
 type AudioObjectTypeExt n =
        AudioObjectTypeSmall 31
-  :*:  "audioObjectTypeExt" :=> Field 6 := (n - 32)
+  :>:  "audioObjectTypeExt" :=> Field 6 := (n - 32)
 
 type ElementaryStreamDescriptor = Tagged "TODO" Word32
 

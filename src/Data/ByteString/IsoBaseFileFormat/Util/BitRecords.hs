@@ -25,9 +25,17 @@ type FieldPosition = (Nat, Nat)
 
 -- * Records
 
--- | Combine two field to form a new field
-data (:*:) :: Type -> Type -> Type
-infixr 3 :*:
+-- | Combine two fields to form a new field
+-- This field composition happens in the order from
+-- the *most significant bit* to the *least significant bit*
+data (:>:) :: Type -> Type -> Type
+infixl 3 :>:
+
+-- | Combine two fields to form a new field
+-- This field composition happens in the order from
+-- the *least significant bit* to the *most significant bit*
+type (:<:) a b = b :>: a
+infixl 3 :<:
 
 -- * Nested Records
 
@@ -60,7 +68,7 @@ type family
 type family
   GetRecordSize (r :: rk) :: Nat where
   GetRecordSize (label :=> f) = GetRecordSize f
-  GetRecordSize (l :*: r)     = GetRecordSize l + GetRecordSize r
+  GetRecordSize (l :>: r)     = GetRecordSize l + GetRecordSize r
   GetRecordSize (Ignore r)    = GetRecordSize r
   GetRecordSize (Field n)     = n
   GetRecordSize (r := v)      = GetRecordSize r
@@ -69,7 +77,7 @@ type family
   HasField (r :: rk) (l :: lk) :: Bool where
   HasField (l :=> f) l        = 'True
   HasField (l :=> f) (l :/ p) = HasField f p
-  HasField (f1 :*: f2) l      = HasField f1 l || HasField f2 l
+  HasField (f1 :>: f2) l      = HasField f1 l || HasField f2 l
   HasField (r := v) l         = HasField r l
   HasField (Ignore r) l       = HasField r l
   HasField f l                = 'False
@@ -103,7 +111,7 @@ type family
   GetFieldPositionUnsafe (l :=> f)  (l :/ p) = GetFieldPositionUnsafe f p
   GetFieldPositionUnsafe (f := v)   l        = GetFieldPositionUnsafe f l
   GetFieldPositionUnsafe (Ignore f) l        = GetFieldPositionUnsafe f l
-  GetFieldPositionUnsafe (f :*: f') l        =
+  GetFieldPositionUnsafe (f :>: f') l        =
      If (HasField f l)
       (GetFieldPositionUnsafe f l)
       (AddToFieldPosition (GetRecordSize f) (GetFieldPositionUnsafe f' l))
@@ -135,8 +143,8 @@ type Align padRight a f =
 type family
   AddPadding (padRight :: Bool) (n :: Nat) (r :: rk) :: rk where
   AddPadding padRight 0 r = r
-  AddPadding 'True n r = r :*: Ignore (Field n := 0)
-  AddPadding 'False n r = Ignore (Field n := 0) :*: r
+  AddPadding 'True n r = r :>: Ignore (Field n := 0)
+  AddPadding 'False n r = Ignore (Field n := 0) :>: r
 
 -- | Get the remainder of the integer division of x and y, such that @forall x
 -- y. exists k. (Rem x y) == x - y * k@ The algorithm is: count down x
@@ -166,6 +174,8 @@ type family
   RemImpl y y acc = acc
   -- the base case
   RemImpl x y acc = RemImpl (x - 1) y (acc + 1)
+
+-- * Bit record accessor for 'Num's
 
 -- | Return the value of a single bit field as Bool
 getFlag
@@ -217,25 +227,9 @@ setField _ _ v x = (x .&. bitMaskField) .|. (v' `shiftL` posFirst)
       posFirst = fromIntegral $ natVal (Proxy :: Proxy first)
       posLast = fromIntegral $ natVal (Proxy :: Proxy last)
 
-
-
-type Foo =
-       "foo" :=> Flag
-   :*:           Field 4
-   :*: "bar" :=> Field 2
-   :*:           Field 4
-   :*: "baz" :=> Field 17
-
-testFoo :: TypeSpec (ShouldBeTrue (HasField Foo "bar"))
-testFoo = Valid
-
 type IsFieldC field record first last =
     ( RunConstraintE (record `HasFieldConstraint` field)
      , KnownNat first
      , KnownNat last
      , 'Right '(first, last) ~ (GetFieldPosition record field)
      )
-
-getFooField :: IsFieldC name Foo first last
-   => proxy name -> Word64 -> Word64
-getFooField px = getField px (Proxy :: Proxy Foo)

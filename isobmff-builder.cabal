@@ -83,7 +83,8 @@ library
                      , mtl >= 2.2 && < 3
   default-language:    Haskell2010
   ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind
-  default-extensions:  ConstraintKinds
+  default-extensions:  BangPatterns
+                     , ConstraintKinds
                      , CPP
                      , DataKinds
                      , DefaultSignatures
@@ -134,7 +135,8 @@ test-suite spec
                      , mtl >= 2.2 && < 3
                      , QuickCheck
   default-language:    Haskell2010
-  default-extensions:  ConstraintKinds
+  default-extensions:  BangPatterns
+                     , ConstraintKinds
                      , CPP
                      , DataKinds
                      , DefaultSignatures
