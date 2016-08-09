@@ -546,10 +546,11 @@ initialBBState b = BBState b 0 0
 -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
 -- in the 'BitBuilder' as often as necessary.
 writeBits
-      :: (HasBuilder buff, Bits buff, DirectedBits buff )
-      => Int -> buff -> BitBuilder buff
-writeBits !pLen !pBits = modifyBitBuilder $ go pLen pBits
+      :: ( KnownNat len, HasBuilder buff, Bits buff, DirectedBits buff )
+      => proxy (len :: Nat) -> buff -> BitBuilder buff
+writeBits pLen !pBits = modifyBitBuilder $ go inputLen pBits
   where
+    inputLen = fromIntegral $ natVal pLen
     go len b st = traceShow ("go", len, b, st) $ traceShowId (go' len b st)
     go' !0 _ !st = st
     go' !len !bits (BBState !builder !part !partOffset) =
@@ -578,7 +579,7 @@ instance ( HasBuilder b, DirectedBits b, Bits b, KnownNat (GetRecordSize f) )
     toFormatter _ =
         indirect (writeBits fieldLen . fromIntegral)
       where
-        fieldLen = fromIntegral (natVal (Proxy :: Proxy (GetRecordSize f)))
+        fieldLen = Proxy :: Proxy (GetRecordSize f)
 
 instance  ( HasBuilder b
                           , DirectedBits b
@@ -590,7 +591,7 @@ instance  ( HasBuilder b
     toFormatter _ =
         immediate (writeBits fieldLen fieldVal)
       where
-        fieldLen = fromIntegral (natVal (Proxy :: Proxy (GetRecordSize f)))
+        fieldLen = Proxy :: Proxy (GetRecordSize f)
         fieldVal = fromIntegral (natVal (Proxy :: Proxy v))
 
 -- | An instance that when given:
