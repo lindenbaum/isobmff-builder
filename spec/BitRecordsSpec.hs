@@ -244,11 +244,11 @@ spec = do
             rec :: Proxy TestRecAligned
             actual e = B.unpack $ toLazyByteString actualB
               where actualB = toBuilder $ formatAlignedBits e rec
-                        (Tagged 16 :: Tagged "rab" Integer)
-                        (Tagged 8 :: Tagged "oof" Integer)
-                        (Tagged 4 :: Tagged "foo" Integer)
-                        (Tagged 2 :: Tagged "baz" Integer)
                         (Tagged 1 :: Tagged "bar" Integer)
+                        (Tagged 2 :: Tagged "baz" Integer)
+                        (Tagged 4 :: Tagged "foo" Integer)
+                        (Tagged 8 :: Tagged "oof" Integer)
+                        (Tagged 16 :: Tagged "rab" Integer)
         it "writes fields in big endian" $
             actual bigEndian `shouldBe` [1,0,2,0,0,0,0,4,0,8,0,16]
         it "writes fields in little endian" $
@@ -264,9 +264,9 @@ spec = do
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
             actualB = toBuilder $ formatBits littleEndian align16 rec
-                        (Tagged 4 :: Tagged "foo" Integer)
-                        (Tagged 2 :: Tagged "baz" Integer)
                         (Tagged 1 :: Tagged "bar" Integer)
+                        (Tagged 2 :: Tagged "baz" Integer)
+                        (Tagged 4 :: Tagged "foo" Integer)
 
             actual = B.unpack $ toLazyByteString actualB
             in actual `shouldBe` [1,0,2,0,0,0,0,3]
@@ -386,6 +386,9 @@ class DirectedBits a where
     -> a -- ^ The input to write to
     -> (a, Int, Int) -- ^ The output buffer, space left in buffer,
 
+  -- | Type level calculation for the rest of the buffer
+  type CopyBitsRestLength a (copyLen :: Nat) (offset :: Nat) :: Nat
+
 -- | Set bits starting from the most significant bit to the least.
 --   For example @writeBits m 1 <> writeBits n 2@ would result in:
 -- @
@@ -407,6 +410,9 @@ instance ( FiniteBits (BitBuffer a e), HasBuilder (BitBuffer a e))
         buff' = buff .|. (maskedBits `unsafeShiftL` writeOffset)
         in (buff', spaceLeft, writeLen)
 
+  type CopyBitsRestLength (BitBuffer a e) len offset =
+          GetRemainingUnaligned (len + offset) a
+
 -- * Bit Buffering
 
 -- | Words acting as aligned bit buffers, that can eventually be converted to a
@@ -422,7 +428,7 @@ builderAlignmentProxy _ =
   fromIntegral $ natVal $ (Proxy :: Proxy (GetAlignmentBits (GetAlignment b)))
 
 -- | Return the static size of an 'HasBuilder'. The parameter is ignored!
-builderAlignment :: forall b proxy . (HasBuilder b) => b -> Int
+builderAlignment :: forall b . (HasBuilder b) => b -> Int
 builderAlignment _ =
   fromIntegral $ natVal $ (Proxy :: Proxy (GetAlignmentBits (GetAlignment b)))
 
@@ -466,70 +472,90 @@ instance HasBuilder (BitBuffer 'Align8 e) where
 ------------------
 
 formatBits
-  :: forall proxy0 proxy1 proxy2 rec endianness buff alignment res
+  :: forall proxy0 proxy1 proxy2 rec endianness buff alignment res off recSize
    . ( buff ~ BitBuffer alignment endianness
      , FiniteBits (ToAlignedWord alignment)
      , HasBuilder buff
-     , HasFormatter (BitBuilder buff) rec (BitBuilder buff))
+     , recSize ~ GetRecordSize rec
+     , KnownNat recSize
+     , off ~ GetRemainingUnaligned recSize alignment
+     , KnownNat off
+     , HasFormatter (BitBuilder buff 0 off) rec (BitBuilder buff 0 off))
   => proxy0 endianness
   -> proxy1 alignment
   -> proxy2 rec
-  -> FmtArg (BitBuilder buff) rec (BitBuilder buff)
+  -> FmtArg (BitBuilder buff 0 off) rec (BitBuilder buff 0 off)
 formatBits _pEnd _pAlign pRec = runHoley toFormatter'
   where
-    toFormatter' :: HFinalBitBuilder buff (FmtArg (BitBuilder buff) rec (BitBuilder buff))
+    toFormatter' ::
+      Holey
+        (BitBuilder buff 0 off)
+        (BitBuilder buff 0 off)
+        (FmtArg (BitBuilder buff 0 off) rec (BitBuilder buff 0 off))
     toFormatter' = toFormatter pRec
 
 formatAlignedBits
-  :: forall proxy0 proxy1 rec endianness buff a
-   . ( 'Just a ~ SelectAlignment (GetRecordSize rec)
-     , buff    ~ BitBuffer a endianness
-     , FiniteBits (ToAlignedWord a)
+  :: forall proxy0 proxy1 rec endianness buff alignment recSize off
+   . ( 'Just alignment ~ SelectAlignment (GetRecordSize rec)
+     , buff    ~ BitBuffer alignment endianness
+     , FiniteBits (ToAlignedWord alignment)
      , HasBuilder buff
-     , HasFormatter (BitBuilder buff) rec (BitBuilder buff))
+     , recSize ~ GetRecordSize rec
+     , KnownNat recSize
+     , off ~ GetRemainingUnaligned recSize alignment
+     , KnownNat off
+     , HasFormatter (BitBuilder buff 0 off) rec (BitBuilder buff 0 off))
   => proxy0 endianness
   -> proxy1 rec
-  -> FmtArg (BitBuilder buff) rec (BitBuilder buff)
+  -> FmtArg (BitBuilder buff 0 off) rec (BitBuilder buff 0 off)
 formatAlignedBits _pEnd pRec = runHoley toFormatter'
   where
-    toFormatter' :: HFinalBitBuilder buff (FmtArg (BitBuilder buff) rec (BitBuilder buff))
+    toFormatter' ::
+      Holey
+        (BitBuilder buff 0 off)
+        (BitBuilder buff 0 off)
+        (FmtArg (BitBuilder buff 0 off) rec (BitBuilder buff 0 off))
     toFormatter' = toFormatter pRec
 
 
-type HBitBuilder buff r a = Holey (BitBuilder buff) r a
-type HFinalBitBuilder buff a = HBitBuilder buff (BitBuilder buff) a
+type HBitBuilder buff f t r a = Holey (BitBuilder buff f t) r a
+type HFinalBitBuilder buff a = HBitBuilder buff 0 0 (BitBuilder buff 0 0) a
 
 
 -- TODO BitBuilder add type level unflushed
-toBuilder :: Num buff => BitBuilder buff -> Builder
+toBuilder :: Num buff => BitBuilder buff 0 0 -> Builder
 toBuilder = appBitBuilder mempty
 
-appBitBuilder :: Num buff => Builder -> BitBuilder buff -> Builder
+appBitBuilder :: Num buff => Builder -> BitBuilder buff 0 0 -> Builder
 appBitBuilder !b (BitBuilder !f) =
-  bbStateBuilder (appEndo f (initialBBState b))
+  bbStateBuilder (appIxEndo f (initialBBState b))
 
-startBitBuilder :: Num buff => Builder -> BitBuilder buff
+startBitBuilder :: Num buff => Builder -> BitBuilder buff n 0
 startBitBuilder b = modifyBitBuilder (const (initialBBState b))
 
-newtype BitBuilder buff = BitBuilder (Endo (BBState buff))
-  deriving Monoid
+newtype BitBuilder buff
+                   (fromOffset :: Nat)
+                   (toOffset :: Nat)
+  = BitBuilder (IxEndo (BBState buff) fromOffset toOffset)
+  deriving IxMonoid
 
-modifyBitBuilder :: (BBState buff -> BBState buff) -> BitBuilder buff
-modifyBitBuilder = BitBuilder . Endo
+modifyBitBuilder
+  :: (BBState buff fromOffset -> BBState buff toOffset)
+  -> BitBuilder buff fromOffset toOffset
+modifyBitBuilder = BitBuilder . IxEndo
 
-data BBState buff =
+data BBState buff (offset :: Nat) =
   BBState {  bbStateBuilder    :: !Builder
-          , _bbStatePart       :: !buff
-          , _bbStatePartOffset :: !Int}
+          , _bbStatePart       :: !buff}
 
-instance Show buff => Show (BBState buff) where
-  showsPrec d (BBState b p o) =
+instance (KnownNat o, Show buff) => Show (BBState buff o) where
+  showsPrec d st@(BBState b p) =
     showParen (d > 10) $
           showString (printf "BBState %s" (printBuilder b))
         . (showChar ' ')
         . (showsPrec 11 p)
         . (showChar ' ')
-        . (showsPrec 11 o)
+        . (showsPrec 11 (natVal st))
 
 printBuilder :: Builder -> String
 printBuilder b =
@@ -540,30 +566,41 @@ printBuilder b =
   <$> (B.unpack $ toLazyByteString b)
 
 
-initialBBState :: Num buff => Builder -> BBState buff
-initialBBState b = BBState b 0 0
+initialBBState :: Num buff => Builder -> BBState buff 0
+initialBBState b = BBState b 0
 
 -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
 -- in the 'BitBuilder' as often as necessary.
 writeBits
-      :: ( KnownNat len, HasBuilder buff, Bits buff, DirectedBits buff )
-      => proxy (len :: Nat) -> buff -> BitBuilder buff
-writeBits pLen !pBits = modifyBitBuilder $ go inputLen pBits
+      :: ( KnownNat len, HasBuilder buff, Bits buff, DirectedBits buff
+         , toOffset ~ CopyBitsRestLength buff len fromOffset)
+      => proxy (len :: Nat)
+      -> buff
+      -> BitBuilder buff fromOffset toOffset
+writeBits pLen !pBits =
+  modifyBitBuilder $
+    \bb@(BBState !bldr !part) ->
+      go (fromIntegral (natVal pLen))
+         pBits
+         bldr
+         part
+         (fromIntegral (natVal bb))
   where
-    inputLen = fromIntegral $ natVal pLen
-    go len b st = traceShow ("go", len, b, st) $ traceShowId (go' len b st)
-    go' !0 _ !st = st
-    go' !len !bits (BBState !builder !part !partOffset) =
-      let (part', spaceLeft, writeLen) = copyBits len bits partOffset part
+    go 0 _ !bldr !part _ = BBState bldr part
+    go !len !bits !builder !part !partOffset =
+      let
+        (part', spaceLeft, writeLen) = copyBits len bits partOffset part
       in
            if spaceLeft > 0
             then
-              trace "spaceLeft: " $ traceShow spaceLeft $ BBState builder part' (partOffset + writeLen)
+              trace "spaceLeft: " $ traceShow spaceLeft $
+                BBState builder part
             else
               let restLen = len - writeLen
                   restBits = bits `unsafeShiftL` writeLen
                   nextBuilder = builder <> wordBuilder part'
-              in trace "restLen: " $ traceShow restLen $ go restLen restBits (BBState nextBuilder 0 0)
+              in trace "restLen: " $ traceShow restLen $
+                  go restLen restBits nextBuilder 0 0
 
 -------------------------
 
@@ -572,9 +609,11 @@ class Monoid m => HasFormatter m f r where
   type FmtArg m f r = r
   toFormatter :: proxy f -> Holey m r (FmtArg m f r)
 
-instance ( HasBuilder b, DirectedBits b, Bits b, KnownNat (GetRecordSize f) )
-  => HasFormatter (BitBuilder b) (l :=> f) r where
-    type FmtArg (BitBuilder b) (l :=> f) r =
+instance ( KnownNat oF, KnownNat oT, HasBuilder b
+         , DirectedBits b, Bits b, KnownNat (GetRecordSize f)
+         , oT ~ CopyBitsRestLength b (GetRecordSize f) oF)
+  => HasFormatter (BitBuilder b oF oT) (l :=> f) r where
+    type FmtArg (BitBuilder b oF oT) (l :=> f) r =
       Tagged l Integer -> r
     toFormatter _ =
         indirect (writeBits fieldLen . fromIntegral)
@@ -582,12 +621,14 @@ instance ( HasBuilder b, DirectedBits b, Bits b, KnownNat (GetRecordSize f) )
         fieldLen = Proxy :: Proxy (GetRecordSize f)
 
 instance  ( HasBuilder b
-                          , DirectedBits b
-                          , Bits b
-                          , KnownNat v
-                          , KnownNat (GetRecordSize f))
-  => HasFormatter (BitBuilder b) (f := v) r where
-    type FmtArg (BitBuilder b) (f := v) r = r
+          , KnownNat oF, KnownNat oT
+          , DirectedBits b
+          , Bits b
+          , KnownNat v
+          , KnownNat (GetRecordSize f)
+          , oT ~ CopyBitsRestLength b (GetRecordSize f) oF)
+  => HasFormatter (BitBuilder b oF oT) (f := v) r where
+    type FmtArg (BitBuilder b oF oT) (f := v) r = r
     toFormatter _ =
         immediate (writeBits fieldLen fieldVal)
       where
@@ -616,21 +657,58 @@ instance  ( HasBuilder b
 --    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
 --  Value: |0     ..     1|0       ..      10| X    ..      X|
 -- @
-instance forall f0 f1 a b bb .
-         ( HasFormatter (BitBuilder bb) f0 a
-         , HasFormatter (BitBuilder bb) f1 b
-         , b ~ FmtArg (BitBuilder bb) f0 a)
-  => HasFormatter (BitBuilder bb) (f0 :>: f1) a where
-    type FmtArg (BitBuilder bb) (f0 :>: f1) a =
-      FmtArg (BitBuilder bb) f1 (FmtArg (BitBuilder bb) f0 a)
-    toFormatter _ =  toFormatter pf1 . toFormatter pf0
+instance forall f0 f1 a b bb oF o oT  .
+         ( HasFormatter (BitBuilder bb oF o) f0 b
+         , HasFormatter (BitBuilder bb o oT) f1 a
+         , o ~ (CopyBitsRestLength bb (GetRecordSize f0) oF)
+         , oT ~ (CopyBitsRestLength bb (GetRecordSize f1) o)
+         , KnownNat oF, KnownNat o, KnownNat oT
+         , DirectedBits bb
+         , HasBuilder bb
+         , b ~ FmtArg (BitBuilder bb o oT) f1 a)
+  => HasFormatter (BitBuilder bb oF oT) (f0 :>: f1) a where
+    type FmtArg (BitBuilder bb oF oT) (f0 :>: f1) a =
+      FmtArg
+        (BitBuilder bb oF (CopyBitsRestLength bb (GetRecordSize f0) oF))
+        f0
+        (FmtArg
+          (BitBuilder bb (CopyBitsRestLength bb (GetRecordSize f0) oF) oT)
+          f1
+          a)
+    toFormatter _ = fmt0 % fmt1
       where
+        -- fmt0 :: FmtArg (BitBuilder bb oF (CopyBitsRestLength bb (GetRecordSize f0) oF)) f0
+        fmt0 = toFormatter pf0
+        -- fmt1 :: FmtArg (BitBuilder bb (CopyBitsRestLength bb (GetRecordSize f0) oT)) f1
+        fmt1 = toFormatter pf1
         pf0 = Proxy :: Proxy f0
         pf1 = Proxy :: Proxy f1
 
 -------------------------------------------------------------
 
 newtype Holey m r a = HM {runHM :: ((m -> r) -> a) }
+
+-- * Indexec Holey
+
+class IxMonoid (m :: k -> k -> Type)  where
+  ixEmpty :: m i i
+  ixAppend :: m h i -> m i j -> m h j
+
+newtype IxEndo (a :: k -> Type) (i :: k) (j:: k) where
+  IxEndo :: { appIxEndo :: a i -> a j } -> IxEndo a i j
+
+instance IxMonoid (IxEndo (a :: k -> Type)) where
+  ixEmpty = IxEndo id
+  ixAppend (IxEndo f) (IxEndo g) = IxEndo (g . f)
+
+(%) :: IxMonoid (m :: k ->  k -> Type) =>
+  Holey (m h i) b c ->
+  Holey (m i j) a b ->
+  Holey (m h j) a c
+(%) (HM f) (HM g) =
+  HM (\k -> (f (\m1 -> g (\m2 -> k (m1 `ixAppend` m2)))))
+
+-- * Normal Holey
 
 instance Monoid m => Category (Holey m) where
   (.) (HM f) (HM g) = HM (\k -> (f (\m1 -> g (\m2 -> k (m1 <> m2)))))
@@ -649,6 +727,7 @@ immediate m =
 indirect :: (a -> m) -> Holey m r (a -> r)
 indirect f =
   HM { runHM = (. f) }
+
 
 bind :: Holey m b c
       -> (m -> Holey n a b)
