@@ -20,6 +20,134 @@ import Debug.Trace
 import qualified Data.ByteString.Lazy as B
 import Data.Kind hiding (type (*))
 import Prelude hiding ((.), id)
+import Data.Tagged
+
+type TestRecAligned =
+  "bar" :=> Field 8       :>:
+            Field 8  := 0 :>:
+  "baz" :=> Field 8       :>:
+            Field 32 := 0 :>:
+  "foo" :=> Field 8       :>:
+            Field 8  := 0 :>:
+  "oof" :=> Field 8       :>:
+            Field 8  := 0 :>:
+  "rab" :=> Field 8
+
+checkTestRecAligned
+  :: Expect '[ ShouldBe 96        (GetRecordSize TestRecAligned)
+             , ShouldBe '(0, 7)   (GetFieldPositionUnsafe TestRecAligned "bar")
+             , ShouldBe '(16, 23) (GetFieldPositionUnsafe TestRecAligned "baz")
+             , ShouldBe '(56, 63) (GetFieldPositionUnsafe TestRecAligned "foo")
+             , ShouldBe '(72, 79) (GetFieldPositionUnsafe TestRecAligned "oof")
+             , ShouldBe '(88, 95) (GetFieldPositionUnsafe TestRecAligned "rab")
+             ]
+checkTestRecAligned = Valid
+
+type TestRecUnAligned =
+  "bar" :=> Field 8       :>:
+            Field 8  := 0 :>:
+  "baz" :=> Field 7       :>:
+            Field 32 := 0 :>:
+  "foo" :=> Field 8       :>:
+            Field 8  := 0xfe
+
+checkTestRecUnAligned
+  :: Expect '[ ShouldBe 71        (GetRecordSize TestRecUnAligned)
+             , ShouldBe '(0, 7)   (GetFieldPositionUnsafe TestRecUnAligned "bar")
+             , ShouldBe '(16, 22) (GetFieldPositionUnsafe TestRecUnAligned "baz")
+             , ShouldBe '(55, 62) (GetFieldPositionUnsafe TestRecUnAligned "foo")
+             ]
+checkTestRecUnAligned = Valid
+
+type TestHasField =
+       "foo" :=> Flag
+   :>:           Field 4
+   :>: "bar" :=> Field 2
+testBitHasFields
+  :: Expect '(ShouldBeTrue (HasField TestHasField "foo"),
+              ShouldBeTrue (HasField TestHasField "bar"))
+testBitHasFields = Valid
+
+type TestHasNestedField =
+       "foo" :=> "bar" :=> Field 2
+testBitHasNestedFields
+  :: Expect (ShouldBeTrue (HasField TestHasNestedField ("foo" :/ "bar")))
+testBitHasNestedFields = Valid
+
+testRem
+  :: Expect '[ Rem 0 3 `ShouldBe` 0
+             , Rem 1 3 `ShouldBe` 1
+             , Rem 2 3 `ShouldBe` 2
+             , Rem 3 3 `ShouldBe` 0
+             , Rem 4 3 `ShouldBe` 1
+             , Rem 5 3 `ShouldBe` 2
+             , Rem 6 3 `ShouldBe` 0
+            ]
+testRem = Valid
+
+testAlign
+  :: Expect '[ (Align 'True 7 Flag)       `ShouldBe`  (Flag :>: Ignore (Field 6 := 0))
+             , (Align 'True 1 Flag)       `ShouldBe`  Flag
+             , (Align 'True 8 (Field 7))  `ShouldBe`  (Field 7 :>: Ignore (Field 1 := 0))
+             , (Align 'True 8 (Field 8))  `ShouldBe`  Field 8
+             , (Align 'True 8 (Field 9))  `ShouldBe`  (Field 9 :>: Ignore (Field 7 := 0))
+            ]
+testAlign = Valid
+
+type TestField0 =  "test" :=> Field 19
+testFieldPosition0
+   :: Expect (GetFieldPositionUnsafe TestField0 "test" `ShouldBe` '(0,18))
+testFieldPosition0 = Valid
+
+type TestField1 =
+      Field 1
+  :>: "foo" :=> Flag
+  :>: Field 8
+  :>: "bar" :=> Field 5
+  :>: "baz" :=> Field 9
+
+testFieldPosition1Foo
+   :: Expect (GetFieldPositionUnsafe TestField1 "foo" `ShouldBe` '(1,1))
+testFieldPosition1Foo = Valid
+
+testFieldPosition1Bar
+   :: Expect (GetFieldPositionUnsafe TestField1 "bar" `ShouldBe` '(10,14))
+testFieldPosition1Bar = Valid
+
+testFieldPosition1Baz
+   :: Expect (Try (GetFieldPosition TestField1 "baz") `ShouldBe` '(15,23))
+testFieldPosition1Baz = Valid
+
+type TestFieldNested =
+     Field 13
+     :>: "bar" :=> (              Field 7
+                    :>:           Flag
+                    :>: "foo" :=> Field 16
+                    :>:           Flag
+                    :>:           Flag)
+
+testFieldPositionTestFieldNested
+   :: Expect
+       (Try
+         (GetFieldPosition TestFieldNested ("bar" :/ "foo"))
+             `ShouldBe`
+                        '(13 + 7 + 1, (16 - 1) + (13 + 7 + 1)))
+testFieldPositionTestFieldNested = Valid
+
+testFieldPositionToList
+   :: Expect
+       (FieldPostitionToList
+         '(15,23)
+       `ShouldBe`
+       '[15,16,17,18,19,20,21,22,23])
+testFieldPositionToList = Valid
+
+testGetRemainingUnaligned ::
+  TypeSpec '[ GetRemainingUnaligned 1 'Align32  `ShouldBe` 1
+            , GetRemainingUnaligned 16 'Align16  `ShouldBe` 0
+            , GetRemainingUnaligned 31 'Align16  `ShouldBe` 15
+            ]
+testGetRemainingUnaligned = Valid
 
 spec :: Spec
 spec = do
@@ -36,7 +164,9 @@ spec = do
       print testFieldPosition1Baz
       print testFieldPositionTestFieldNested
       print testFieldPositionToList
-      print checkHoleyTest64
+      print checkTestRecAligned
+      print checkTestRecUnAligned
+      print testGetRemainingUnaligned
   describe "Field-Getter" $ do
     it "returns False for flag 'foo'" $
       getFlag
@@ -109,133 +239,84 @@ spec = do
         (0xe :: Word8)
         (0xcaf0 `shiftL` (13 + 7 + 1) :: Word64)
        `shouldBe` (0xcafe `shiftL` (13 + 7 + 1) :: Word64)
-  describe "BufferedBitBuilder" $ do
-     it "writes fields" $
+  describe "formatAlignedBits" $ do
         let rec = Proxy
-            rec :: Proxy  HoleyTest64
+            rec :: Proxy TestRecAligned
+            actual e = B.unpack $ toLazyByteString actualB
+              where actualB = toBuilder $ formatAlignedBits e rec
+                        (Tagged 16 :: Tagged "rab" Integer)
+                        (Tagged 8 :: Tagged "oof" Integer)
+                        (Tagged 4 :: Tagged "foo" Integer)
+                        (Tagged 2 :: Tagged "baz" Integer)
+                        (Tagged 1 :: Tagged "bar" Integer)
+        it "writes fields in big endian" $
+            actual bigEndian `shouldBe` [1,0,2,0,0,0,0,4,0,8,0,16]
+        it "writes fields in little endian" $
+            -- since the TestRecAligned has a size of 96 bit, it is
+            -- automatically aligned to 32 bits, so little endian
+            -- of [A,B,C,D, A,B,C,D, A,B,C,D]
+            -- is [D,C,B,A, D,C,B,A, D,C,B,A]
+            actual littleEndian `shouldBe` [0,2,0,1, 4,0,0,0, 16,0,8,0]
+  describe "unaligned bit records" $ do
+    describe "formatBits align16" $ do
+      it "writes fields" $
+        let rec = Proxy
+            rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toBuilder $ runBitBuilder64LE (toBitBuilder rec) 1 2 3
+            actualB = toBuilder $ formatBits littleEndian align16 rec
+                        (Tagged 4 :: Tagged "foo" Integer)
+                        (Tagged 2 :: Tagged "baz" Integer)
+                        (Tagged 1 :: Tagged "bar" Integer)
+
             actual = B.unpack $ toLazyByteString actualB
-            in actual `shouldBe` [3,0,0,0,0,0,0,6]
+            in actual `shouldBe` [1,0,2,0,0,0,0,3]
 
+-- * Alignment
 
-type HoleyTest64 =
-  "bar" :=> Field 6       :<:
-  "baz" :=> Field 2       :<:
-            Field 48 := 0 :<:
-  "foo" :=> Field 8
-
-checkHoleyTest64
-  :: Expect '[ ShouldBe 64        (GetRecordSize HoleyTest64)
-             , ShouldBe '(58, 63) (GetFieldPositionUnsafe HoleyTest64 "bar")
-             , ShouldBe '(56, 57) (GetFieldPositionUnsafe HoleyTest64 "baz")
-             , ShouldBe '(0, 7)   (GetFieldPositionUnsafe HoleyTest64 "foo") ]
-checkHoleyTest64 = Valid
-
---
-
-type TestHasField =
-       "foo" :=> Flag
-   :>:           Field 4
-   :>: "bar" :=> Field 2
-testBitHasFields
-  :: Expect '(ShouldBeTrue (HasField TestHasField "foo"),
-              ShouldBeTrue (HasField TestHasField "bar"))
-testBitHasFields = Valid
-
-type TestHasNestedField =
-       "foo" :=> "bar" :=> Field 2
-testBitHasNestedFields
-  :: Expect (ShouldBeTrue (HasField TestHasNestedField ("foo" :/ "bar")))
-testBitHasNestedFields = Valid
-
-
-testRem
-  :: Expect '[ Rem 0 3 `ShouldBe` 0
-             , Rem 1 3 `ShouldBe` 1
-             , Rem 2 3 `ShouldBe` 2
-             , Rem 3 3 `ShouldBe` 0
-             , Rem 4 3 `ShouldBe` 1
-             , Rem 5 3 `ShouldBe` 2
-             , Rem 6 3 `ShouldBe` 0
-            ]
-testRem = Valid
-
---
-
-testAlign
-  :: Expect '[ (Align 'True 7 Flag)       `ShouldBe`  (Flag :>: Ignore (Field 6 := 0))
-             , (Align 'True 1 Flag)       `ShouldBe`  Flag
-             , (Align 'True 8 (Field 7))  `ShouldBe`  (Field 7 :>: Ignore (Field 1 := 0))
-             , (Align 'True 8 (Field 8))  `ShouldBe`  Field 8
-             , (Align 'True 8 (Field 9))  `ShouldBe`  (Field 9 :>: Ignore (Field 7 := 0))
-            ]
-testAlign = Valid
-
---
-
-type TestField0 =  "test" :=> Field 19
-testFieldPosition0
-   :: Expect (GetFieldPositionUnsafe TestField0 "test" `ShouldBe` '(0,18))
-testFieldPosition0 = Valid
-
-type TestField1 =
-      Field 1
-  :>: "foo" :=> Flag
-  :>: Field 8
-  :>: "bar" :=> Field 5
-  :>: "baz" :=> Field 9
-
-testFieldPosition1Foo
-   :: Expect (GetFieldPositionUnsafe TestField1 "foo" `ShouldBe` '(1,1))
-testFieldPosition1Foo = Valid
-
-testFieldPosition1Bar
-   :: Expect (GetFieldPositionUnsafe TestField1 "bar" `ShouldBe` '(10,14))
-testFieldPosition1Bar = Valid
-
-testFieldPosition1Baz
-   :: Expect (Try (GetFieldPosition TestField1 "baz") `ShouldBe` '(15,23))
-testFieldPosition1Baz = Valid
-
--- (Proxy :: Proxy ("bar" :/ "foo"))
-type TestFieldNested =
-     Field 13
-     :>: "bar" :=> (              Field 7
-                    :>:           Flag
-                    :>: "foo" :=> Field 16
-                    :>:           Flag
-                    :>:           Flag)
-
-testFieldPositionTestFieldNested
-   :: Expect
-       (Try
-         (GetFieldPosition TestFieldNested ("bar" :/ "foo"))
-             `ShouldBe`
-                        '(13 + 7 + 1, (16 - 1) + (13 + 7 + 1)))
-testFieldPositionTestFieldNested = Valid
-
---
-
-testFieldPositionToList
-   :: Expect
-       (FieldPostitionToList
-         '(15,23)
-       `ShouldBe`
-       '[15,16,17,18,19,20,21,22,23])
-testFieldPositionToList = Valid
-
--- * HoleyBit
-
-type BitOffset = Int
-
+-- | Alignments for optimized writing of bits into bytestrings.
 data Alignment = Align8 | Align16 | Align32 | Align64
+
+-- | Constructor for a proxy fot the promoted 'Align8', e.g. for
+-- 'formatBits'.
+align8 :: Proxy 'Align8
+align8 = Proxy
+
+-- | Constructor for a proxy fot the promoted 'Align16', e.g. for
+-- 'formatBits'.
+align16 :: Proxy 'Align16
+align16 = Proxy
+
+-- | Constructor for a proxy fot the promoted 'Align32', e.g. for
+-- 'formatBits'.
+align32 :: Proxy 'Align32
+align32 = Proxy
+
+-- | Constructor for a proxy fot the promoted 'Align64', e.g. for
+-- 'formatBits'.
+align64 :: Proxy 'Align64
+align64 = Proxy
+
+-- | Return an adequate alignment for records with @n@ bits.
+type family SelectAlignment (n :: Nat) :: Maybe Alignment where
+  SelectAlignment  x =
+     If ((x `Rem` 64) == 0) ('Just 'Align64)
+    (If ((x `Rem` 32) == 0) ('Just 'Align32)
+    (If ((x `Rem` 16) == 0) ('Just 'Align16)
+    (If ((x `Rem`  8) == 0) ('Just 'Align8)
+       (TypeError ('Text "Bit record size is not divisable by 8: "
+                   ':<>: 'ShowType x)))))
 
 type family GetAlignmentBits (a :: Alignment) :: Nat where
   GetAlignmentBits 'Align8 = 8
   GetAlignmentBits 'Align16 = 16
   GetAlignmentBits 'Align32 = 32
   GetAlignmentBits 'Align64 = 64
+
+-- | Calculate the number of unaligned bits with respect to a specific
+-- 'Alignment'. This is just the type level integer remainder using the number
+-- of bits in the alignment as returned by 'GetAlignmentBits'.
+type family GetRemainingUnaligned (n :: Nat) (a :: Alignment) :: Nat where
+  GetRemainingUnaligned n a = n `Rem` GetAlignmentBits a
 
 type family MustFitInto (a :: Alignment) k :: Constraint where
   MustFitInto a t =
@@ -273,85 +354,147 @@ type family FitsInto (a :: Alignment) k :: Bool where
   FitsInto 'Align8 Int8 = 'True
   FitsInto 'Align8 _    = 'False
 
-type family AlignedWord (alignemnt :: Alignment) (signed :: Bool) where
-  AlignedWord 'Align64 'True  =  Int64
-  AlignedWord 'Align64 'False = Word64
-  AlignedWord 'Align32 'True  =  Int32
-  AlignedWord 'Align32 'False = Word32
-  AlignedWord 'Align16 'True  =  Int16
-  AlignedWord 'Align16 'False = Word16
-  AlignedWord 'Align8  'True  =   Int8
-  AlignedWord 'Align8  'False =  Word8
+type family ToAlignedWord (alignemnt :: Alignment) where
+  ToAlignedWord 'Align64 = Word64
+  ToAlignedWord 'Align32 = Word32
+  ToAlignedWord 'Align16 = Word16
+  ToAlignedWord 'Align8  =  Word8
 
+-- * Endianness
+
+-- | The endianness for the serialization of a 'BitBuffer'.
 data Endianness = BigEndian | LittleEndian
 
+-- | A 'Proxy' for the promoted type 'BigEndian', e.g. for
+-- 'formatAlignedBits'.
+bigEndian :: Proxy 'BigEndian
+bigEndian = Proxy
+
+-- | A 'Proxy' for the promoted type 'LittleEndian', e.g. for
+-- 'formatAlignedBits'.
+littleEndian :: Proxy 'LittleEndian
+littleEndian = Proxy
+
+-- | Types which contain a finite amount of bits, which can be set from a value
+-- and an offset. Bits can be written to the value.
+class DirectedBits a where
+  -- | Copy bits starting at a specific offset from one @a@ the the other.
+  copyBits
+    :: Int  -- ^ @length@ of the value to write in number of bits.
+    -> a -- ^ The value to write (in the lower @length@ bits).
+    -> Int  -- ^ The start offset in the output value
+    -> a -- ^ The input to write to
+    -> (a, Int, Int) -- ^ The output buffer, space left in buffer,
+
+-- | Set bits starting from the most significant bit to the least.
+--   For example @writeBits m 1 <> writeBits n 2@ would result in:
+-- @
+--         MSB                                             LSB
+--    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
+--  Value: |0     ..     1|0        ..     10|  ...          |
+--          ->             ->                 ->     (direction of writing)
+-- @
+instance ( FiniteBits (BitBuffer a e), HasBuilder (BitBuffer a e))
+  => DirectedBits (BitBuffer a e) where
+  copyBits !len !bits !offset !buff =
+    let buffLen = builderAlignment buff
+        spaceAvailable = buffLen - offset
+        writeLen = min spaceAvailable len
+        spaceLeft = spaceAvailable - writeLen
+        writeOffset = spaceAvailable - writeLen
+        readMask = 2 ^ writeLen - 1
+        maskedBits = bits .&. readMask
+        buff' = buff .|. (maskedBits `unsafeShiftL` writeOffset)
+        in (buff', spaceLeft, writeLen)
+
+-- * Bit Buffering
+
+-- | Words acting as aligned bit buffers, that can eventually be converted to a
+-- 'Builder'.
+class ( Num a, Show a, KnownNat (GetAlignmentBits (GetAlignment a)))
+    => HasBuilder a where
+  type GetAlignment a :: Alignment
+  wordBuilder :: a -> Builder
+
+-- | Return the static size of a 'HasBuilder'.
+builderAlignmentProxy :: forall b proxy . (HasBuilder b) => proxy b -> Int
+builderAlignmentProxy _ =
+  fromIntegral $ natVal $ (Proxy :: Proxy (GetAlignmentBits (GetAlignment b)))
+
+-- | Return the static size of an 'HasBuilder'. The parameter is ignored!
+builderAlignment :: forall b proxy . (HasBuilder b) => b -> Int
+builderAlignment _ =
+  fromIntegral $ natVal $ (Proxy :: Proxy (GetAlignmentBits (GetAlignment b)))
+
+-- | A wrapper around an integral type retreived from 'ToAlignedWord' like
+-- 'Word32', 'Word64', etc, that acts as a buffer for efficient serialization of
+-- bits to a 'Builder'.
 newtype BitBuffer (a :: Alignment) (endianness :: Endianness) =
-  BitBuffer {unBBWord :: AlignedWord a 'False}
+  BitBuffer {fromBitBufferMsbFirst :: ToAlignedWord a}
 
-deriving instance Eq (AlignedWord a 'False) => Eq (BitBuffer a e)
-deriving instance Ord (AlignedWord a 'False) => Ord (BitBuffer a e)
-deriving instance Num (AlignedWord a 'False) => Num (BitBuffer a e)
-deriving instance Bits (AlignedWord a 'False) => Bits (BitBuffer a e)
-deriving instance FiniteBits (AlignedWord a 'False) => FiniteBits (BitBuffer a e)
+instance PrintfArg (ToAlignedWord a) => Show (BitBuffer a e) where
+  show (BitBuffer x) = printf "%0.64b" x
 
-class (Num buff, FiniteBits buff) => IsBitBuffer buff where
-  type GetAlignment buff :: Alignment
-  wordBuilder :: buff -> Builder
+deriving instance Eq (ToAlignedWord a) => Eq (BitBuffer a e)
+deriving instance Ord (ToAlignedWord a) => Ord (BitBuffer a e)
+deriving instance Num (ToAlignedWord a) => Num (BitBuffer a e)
+deriving instance Bits (ToAlignedWord a) => Bits (BitBuffer a e)
+deriving instance FiniteBits (ToAlignedWord a) => FiniteBits (BitBuffer a e)
 
-instance IsBitBuffer (BitBuffer 'Align64 'LittleEndian) where
-  wordBuilder = word64LE . unBBWord
-instance IsBitBuffer (BitBuffer 'Align64 'BigEndian)    where
-  wordBuilder = word64BE . unBBWord
-instance IsBitBuffer (BitBuffer 'Align32 'LittleEndian) where
-  wordBuilder = word32LE . unBBWord
-instance IsBitBuffer (BitBuffer 'Align32 'BigEndian)    where
-  wordBuilder = word32BE . unBBWord
-instance IsBitBuffer (BitBuffer 'Align16 'LittleEndian) where
-  wordBuilder = word16LE . unBBWord
-instance IsBitBuffer (BitBuffer 'Align16 'BigEndian)    where
-  wordBuilder = word16BE . unBBWord
-instance IsBitBuffer (BitBuffer 'Align8 'LittleEndian) where
-  wordBuilder = word8    . unBBWord
-instance IsBitBuffer (BitBuffer 'Align8 'BigEndian)    where
-  wordBuilder = word8    . unBBWord
+instance HasBuilder (BitBuffer 'Align64 'LittleEndian) where
+  type GetAlignment (BitBuffer 'Align64 'LittleEndian) = 'Align64
+  wordBuilder = word64LE . fromBitBufferMsbFirst
+instance HasBuilder (BitBuffer 'Align64 'BigEndian)    where
+  type GetAlignment (BitBuffer 'Align64 'BigEndian) = 'Align64
+  wordBuilder = word64BE . fromBitBufferMsbFirst
+instance HasBuilder (BitBuffer 'Align32 'LittleEndian) where
+  type GetAlignment (BitBuffer 'Align32 'LittleEndian) = 'Align32
+  wordBuilder = word32LE . fromBitBufferMsbFirst
+instance HasBuilder (BitBuffer 'Align32 'BigEndian)    where
+  type GetAlignment (BitBuffer 'Align32 'BigEndian) = 'Align32
+  wordBuilder = word32BE . fromBitBufferMsbFirst
+instance HasBuilder (BitBuffer 'Align16 'LittleEndian) where
+  type GetAlignment (BitBuffer 'Align16 'LittleEndian) = 'Align16
+  wordBuilder = word16LE . fromBitBufferMsbFirst
+instance HasBuilder (BitBuffer 'Align16 'BigEndian)    where
+  type GetAlignment (BitBuffer 'Align16 'BigEndian) = 'Align16
+  wordBuilder = word16BE . fromBitBufferMsbFirst
+instance HasBuilder (BitBuffer 'Align8 e) where
+  type GetAlignment (BitBuffer 'Align8 e) = 'Align8
+  wordBuilder = word8    . fromBitBufferMsbFirst
 
 ------------------
 
-type BitBuffer64BE = BitBuffer 'Align64 'BigEndian
-runBitBuilder64BE :: HFinalBitBuilder BitBuffer64BE c -> c
-runBitBuilder64BE = runBitBuilder
-type BitBuffer32BE = BitBuffer 'Align32 'BigEndian
-runBitBuilder32BE :: HFinalBitBuilder BitBuffer32BE c -> c
-runBitBuilder32BE = runBitBuilder
-type BitBuffer16BE = BitBuffer 'Align16 'BigEndian
-runBitBuilder16BE :: HFinalBitBuilder BitBuffer16BE c -> c
-runBitBuilder16BE = runBitBuilder
-type BitBuffer64LE = BitBuffer 'Align64 'LittleEndian
-runBitBuilder64LE :: HFinalBitBuilder BitBuffer64LE c -> c
-runBitBuilder64LE = runBitBuilder
-type BitBuffer32LE = BitBuffer 'Align32 'LittleEndian
-runBitBuilder32LE :: HFinalBitBuilder BitBuffer32LE c -> c
-runBitBuilder32LE = runBitBuilder
-type BitBuffer16LE = BitBuffer 'Align16 'LittleEndian
-runBitBuilder16LE :: HFinalBitBuilder BitBuffer16LE c -> c
-runBitBuilder16LE = runBitBuilder
-type BitBuffer8 = BitBuffer 'Align8 'LittleEndian
-runBitBuilder8 :: HFinalBitBuilder BitBuffer8 c -> c
-runBitBuilder8 = runBitBuilder
+formatBits
+  :: forall proxy0 proxy1 proxy2 rec endianness buff alignment res
+   . ( buff ~ BitBuffer alignment endianness
+     , FiniteBits (ToAlignedWord alignment)
+     , HasBuilder buff
+     , HasFormatter (BitBuilder buff) rec (BitBuilder buff))
+  => proxy0 endianness
+  -> proxy1 alignment
+  -> proxy2 rec
+  -> FmtArg (BitBuilder buff) rec (BitBuilder buff)
+formatBits _pEnd _pAlign pRec = runHoley toFormatter'
+  where
+    toFormatter' :: HFinalBitBuilder buff (FmtArg (BitBuilder buff) rec (BitBuilder buff))
+    toFormatter' = toFormatter pRec
 
-runBitBuilder :: IsBitBuffer buff => HFinalBitBuilder buff c -> c
-runBitBuilder = runHoley
+formatAlignedBits
+  :: forall proxy0 proxy1 rec endianness buff a
+   . ( 'Just a ~ SelectAlignment (GetRecordSize rec)
+     , buff    ~ BitBuffer a endianness
+     , FiniteBits (ToAlignedWord a)
+     , HasBuilder buff
+     , HasFormatter (BitBuilder buff) rec (BitBuilder buff))
+  => proxy0 endianness
+  -> proxy1 rec
+  -> FmtArg (BitBuilder buff) rec (BitBuilder buff)
+formatAlignedBits _pEnd pRec = runHoley toFormatter'
+  where
+    toFormatter' :: HFinalBitBuilder buff (FmtArg (BitBuilder buff) rec (BitBuilder buff))
+    toFormatter' = toFormatter pRec
 
-bindBitBuilder
-  :: IsBitBuffer buff
-  => HBuilder b c
-  -> HBitBuilder buff a b
-  -> HBuilder a c
-bindBitBuilder !f !g =
-  f `bind` (\b -> hoistIn (appBitBuilder b) g)
-
-type HBuilder r a = Holey Builder r a
-type HFinalBuilder a = HBuilder Builder a
 
 type HBitBuilder buff r a = Holey (BitBuilder buff) r a
 type HFinalBitBuilder buff a = HBitBuilder buff (BitBuilder buff) a
@@ -363,10 +506,10 @@ toBuilder = appBitBuilder mempty
 
 appBitBuilder :: Num buff => Builder -> BitBuilder buff -> Builder
 appBitBuilder !b (BitBuilder !f) =
-  bbStateBuilder (appEndo f (initialState b))
+  bbStateBuilder (appEndo f (initialBBState b))
 
 startBitBuilder :: Num buff => Builder -> BitBuilder buff
-startBitBuilder b = modifyBitBuilder (const initialBBState b)
+startBitBuilder b = modifyBitBuilder (const (initialBBState b))
 
 newtype BitBuilder buff = BitBuilder (Endo (BBState buff))
   deriving Monoid
@@ -377,70 +520,112 @@ modifyBitBuilder = BitBuilder . Endo
 data BBState buff =
   BBState {  bbStateBuilder    :: !Builder
           , _bbStatePart       :: !buff
-          , _bbStatePartOffset :: !BitOffset}
+          , _bbStatePartOffset :: !Int}
+
+instance Show buff => Show (BBState buff) where
+  showsPrec d (BBState b p o) =
+    showParen (d > 10) $
+          showString (printf "BBState %s" (printBuilder b))
+        . (showChar ' ')
+        . (showsPrec 11 p)
+        . (showChar ' ')
+        . (showsPrec 11 o)
+
+printBuilder :: Builder -> String
+printBuilder b =
+      ("<< " ++)
+   $  (++" >>")
+   $  unwords
+   $  printf "%0.2x"
+  <$> (B.unpack $ toLazyByteString b)
+
 
 initialBBState :: Num buff => Builder -> BBState buff
 initialBBState b = BBState b 0 0
 
--- | write bits starting from the most significant bit to the least
+-- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
+-- in the 'BitBuilder' as often as necessary.
 writeBits
-      :: ( IsBitBuffer buff )
+      :: (HasBuilder buff, Bits buff, DirectedBits buff )
       => Int -> buff -> BitBuilder buff
 writeBits !pLen !pBits = modifyBitBuilder $ go pLen pBits
   where
-    go !0 _ !st = st
-    go !len !bits (BBState !builder !part !partOffset) =
-      let
-          space = finiteBitSize part - partOffset
-          writeLen = min len space
-          readMask = 2 ^ writeLen - 1
-          maskedBits = bits .&. readMask
-          part' = part .|. (maskedBits `unsafeShiftL` partOffset)
+    go len b st = traceShow ("go", len, b, st) $ traceShowId (go' len b st)
+    go' !0 _ !st = st
+    go' !len !bits (BBState !builder !part !partOffset) =
+      let (part', spaceLeft, writeLen) = copyBits len bits partOffset part
       in
-           if space > len
+           if spaceLeft > 0
             then
-              BBState builder part' (partOffset + len)
+              trace "spaceLeft: " $ traceShow spaceLeft $ BBState builder part' (partOffset + writeLen)
             else
               let restLen = len - writeLen
                   restBits = bits `unsafeShiftL` writeLen
                   nextBuilder = builder <> wordBuilder part'
-              in go restLen restBits (BBState nextBuilder 0 0)
+              in trace "restLen: " $ traceShow restLen $ go restLen restBits (BBState nextBuilder 0 0)
 
 -------------------------
-class HasBitBuilder field builderFun where
-  type Res field builderFun
-  type Res field builderFun = builderFun
-  toBitBuilder
-    :: IsBitBuffer b
-    => proxy field
-    -> HBitBuilder b builderFun (Res field builderFun)
 
-instance ( KnownNat (GetRecordSize f) )
-  => HasBitBuilder (l :=> f) r where
-    type Res (l :=> f) r = Integer -> r
-    toBitBuilder _ =
+class Monoid m => HasFormatter m f r where
+  type FmtArg m f r
+  type FmtArg m f r = r
+  toFormatter :: proxy f -> Holey m r (FmtArg m f r)
+
+instance ( HasBuilder b, DirectedBits b, Bits b, KnownNat (GetRecordSize f) )
+  => HasFormatter (BitBuilder b) (l :=> f) r where
+    type FmtArg (BitBuilder b) (l :=> f) r =
+      Tagged l Integer -> r
+    toFormatter _ =
         indirect (writeBits fieldLen . fromIntegral)
       where
         fieldLen = fromIntegral (natVal (Proxy :: Proxy (GetRecordSize f)))
 
-instance forall v f r .
-         ( KnownNat v
-         , KnownNat (GetRecordSize f))
-  => HasBitBuilder (f := v) r where
-    type Res (f := v) r = r
-    toBitBuilder _ =
+instance  ( HasBuilder b
+                          , DirectedBits b
+                          , Bits b
+                          , KnownNat v
+                          , KnownNat (GetRecordSize f))
+  => HasFormatter (BitBuilder b) (f := v) r where
+    type FmtArg (BitBuilder b) (f := v) r = r
+    toFormatter _ =
         immediate (writeBits fieldLen fieldVal)
       where
         fieldLen = fromIntegral (natVal (Proxy :: Proxy (GetRecordSize f)))
         fieldVal = fromIntegral (natVal (Proxy :: Proxy v))
 
-instance ( HasBitBuilder f b
-         , HasBitBuilder g a
-         , b ~ Res g a)
-  => HasBitBuilder (f :>: g) a where
-    type Res (f :>: g) a = Res f (Res g a)
-    toBitBuilder _ =
-      toBitBuilder (Proxy :: Proxy f) % toBitBuilder (Proxy :: Proxy g)
+-- | An instance that when given:
+--
+-- > type TwoFields = "f0" :=> Field m :>: "f1" :=> Field n
+--
+-- Writes:
+-- @       MSB                                             LSB
+--    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
+--  Value: \------f0-----/\--------f1--------/\--- empty ---/
+-- @
+--
+-- Where @k@ is the current bit offset.
+-- The input values are expected to be in the order of the fields, i.e.:
+--
+-- @
+-- runHoley $ toFormatter (Proxy :: Proxy TwoFields) 1 2
+-- @
+--
+-- Will result in:
+-- @       MSB                                             LSB
+--    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
+--  Value: |0     ..     1|0       ..      10| X    ..      X|
+-- @
+instance forall f0 f1 a b bb .
+         ( HasFormatter (BitBuilder bb) f0 a
+         , HasFormatter (BitBuilder bb) f1 b
+         , b ~ FmtArg (BitBuilder bb) f0 a)
+  => HasFormatter (BitBuilder bb) (f0 :>: f1) a where
+    type FmtArg (BitBuilder bb) (f0 :>: f1) a =
+      FmtArg (BitBuilder bb) f1 (FmtArg (BitBuilder bb) f0 a)
+    toFormatter _ =  toFormatter pf1 . toFormatter pf0
+      where
+        pf0 = Proxy :: Proxy f0
+        pf1 = Proxy :: Proxy f1
 
 -------------------------------------------------------------
 
@@ -450,11 +635,11 @@ instance Monoid m => Category (Holey m) where
   (.) (HM f) (HM g) = HM (\k -> (f (\m1 -> g (\m2 -> k (m1 <> m2)))))
   id = HM ($ mempty)
 
-hoistIn :: (m -> n) -> Holey m a b -> Holey n a b
-hoistIn into (HM f) = HM (\k -> f (k . into))
+hoistM :: (m -> n) -> Holey m a b -> Holey n a b
+hoistM into (HM f) = HM (\k -> f (k . into))
 
-hoistOut :: (s -> r) -> Holey m r a -> Holey m s a
-hoistOut outof (HM f) = HM (\k -> f (outof . k))
+hoistR :: (s -> r) -> Holey m r a -> Holey m s a
+hoistR outof (HM f) = HM (\k -> f (outof . k))
 
 immediate :: m -> Holey m r r
 immediate m =
@@ -468,12 +653,6 @@ bind :: Holey m b c
       -> (m -> Holey n a b)
       -> Holey n a c
 bind mbc fm = HM $ \ kna -> runHM mbc (($ kna) . runHM . fm)
-
-
-comp, comp', (%) :: Monoid m => Holey m b c -> Holey m a b  -> Holey m a c
-comp f g = f `bind` (\l ->  g `bind` (\r -> immediate (l <> r)))
-comp' (HM f) (HM g) = HM (\k -> (f (\m1 -> g (\m2 -> k (m1 <> m2)))))
-(%) = comp'
 
 runHoley :: Holey m m a -> a
 runHoley = ($ id) . runHM

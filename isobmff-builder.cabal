@@ -134,6 +134,7 @@ test-suite spec
                      , type-spec >= 0.1
                      , mtl >= 2.2 && < 3
                      , QuickCheck
+                     , tagged
   default-language:    Haskell2010
   default-extensions:  BangPatterns
                      , ConstraintKinds

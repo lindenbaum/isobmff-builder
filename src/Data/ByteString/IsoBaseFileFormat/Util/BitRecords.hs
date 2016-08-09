@@ -25,22 +25,23 @@ type FieldPosition = (Nat, Nat)
 
 -- * Records
 
--- | Combine two fields to form a new field
--- This field composition happens in the order from
+-- | Combine two fields to form a new field.
+--
+-- This field composition happens in the order from TODO wrong DOC
 -- the *most significant bit* to the *least significant bit*
+--
+-- @       MSB                                             LSB
+--    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
+--  Value: \------f0-----/\--------f1--------/\--- empty ---/
+-- @
+--
 data (:>:) :: Type -> Type -> Type
 infixl 3 :>:
-
--- | Combine two fields to form a new field
--- This field composition happens in the order from
--- the *least significant bit* to the *most significant bit*
-type (:<:) a b = b :>: a
-infixl 3 :<:
 
 -- * Nested Records
 
 -- | A field with a name
-data (:=>) :: label -> Type -> Type
+data (:=>) :: label -> Type -> Type where
 infixr 5 :=>
 
 -- | A field with a constant fixed value
