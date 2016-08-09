@@ -263,7 +263,19 @@ spec = do
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toBuilder $ formatBits littleEndian align16 rec
+            actualB = toFlushedBuilder $ formatBits littleEndian align16 rec
+                        (Tagged 1 :: Tagged "bar" Integer)
+                        (Tagged 2 :: Tagged "baz" Integer)
+                        (Tagged 4 :: Tagged "foo" Integer)
+
+            actual = B.unpack $ toLazyByteString actualB
+            in actual `shouldBe` [1,0,2,0,0,0,0,3]
+    describe "formatBits align8" $ do
+      it "writes fields" $
+        let rec = Proxy
+            rec :: Proxy TestRecUnAligned
+            actualB :: Builder
+            actualB = toFlushedBuilder $ formatBits littleEndian align8 rec
                         (Tagged 1 :: Tagged "bar" Integer)
                         (Tagged 2 :: Tagged "baz" Integer)
                         (Tagged 4 :: Tagged "foo" Integer)
@@ -522,9 +534,24 @@ type HBitBuilder buff f t r a = Holey (BitBuilder buff f t) r a
 type HFinalBitBuilder buff a = HBitBuilder buff 0 0 (BitBuilder buff 0 0) a
 
 
--- TODO BitBuilder add type level unflushed
 toBuilder :: Num buff => BitBuilder buff 0 0 -> Builder
 toBuilder = appBitBuilder mempty
+
+toFlushedBuilder :: (KnownNat off, Num buff, HasBuilder buff)
+  => BitBuilder buff 0 off -> Builder
+toFlushedBuilder bb = toBuilder (bb `ixAppend` flushBuilder)
+
+flushBuilder :: forall buff off . (KnownNat off, Num buff, HasBuilder buff)
+  => BitBuilder buff off 0
+flushBuilder =
+    let flushBBState :: BBState buff off -> BBState buff 0
+        flushBBState bb@(BBState bldr part) =
+          let off = natVal bb
+          in initialBBState $
+              if off == 0
+                then bldr
+                else bldr <> wordBuilder part
+    in  modifyBitBuilder flushBBState
 
 appBitBuilder :: Num buff => Builder -> BitBuilder buff 0 0 -> Builder
 appBitBuilder !b (BitBuilder !f) =
@@ -573,6 +600,7 @@ initialBBState b = BBState b 0
 -- in the 'BitBuilder' as often as necessary.
 writeBits
       :: ( KnownNat len, HasBuilder buff, Bits buff, DirectedBits buff
+         , KnownNat fromOffset
          , toOffset ~ CopyBitsRestLength buff len fromOffset)
       => proxy (len :: Nat)
       -> buff
@@ -604,7 +632,7 @@ writeBits pLen !pBits =
 
 -------------------------
 
-class Monoid m => HasFormatter m f r where
+class HasFormatter m f r where
   type FmtArg m f r
   type FmtArg m f r = r
   toFormatter :: proxy f -> Holey m r (FmtArg m f r)
@@ -677,9 +705,15 @@ instance forall f0 f1 a b bb oF o oT  .
           a)
     toFormatter _ = fmt0 % fmt1
       where
-        -- fmt0 :: FmtArg (BitBuilder bb oF (CopyBitsRestLength bb (GetRecordSize f0) oF)) f0
+        fmt0 :: Holey -- rely on ScopedTypeVariables and apply the types
+                      -- so the compiler knows the result type of
+                      -- toFormatter. Only then 'o' and
+                      -- 'c ~ (FmtArg (BitBuilder bb oF oT) (f0 :>: f1) a)'
+                      -- is known, yeah figure 'c' out ;)
+                 (BitBuilder bb oF o)
+                 (FmtArg (BitBuilder bb o oT) f1 a)
+                 (FmtArg (BitBuilder bb oF oT) (f0 :>: f1) a)
         fmt0 = toFormatter pf0
-        -- fmt1 :: FmtArg (BitBuilder bb (CopyBitsRestLength bb (GetRecordSize f0) oT)) f1
         fmt1 = toFormatter pf1
         pf0 = Proxy :: Proxy f0
         pf1 = Proxy :: Proxy f1
