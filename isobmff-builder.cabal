@@ -64,6 +64,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Util.BitRecords
                      , Data.ByteString.IsoBaseFileFormat.Util.BoxFields
                      , Data.ByteString.IsoBaseFileFormat.Util.FullBox
+                     , Data.ByteString.IsoBaseFileFormat.Util.PrettyType
                      , Data.ByteString.IsoBaseFileFormat.Util.Time
                      , Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
                      , Data.ByteString.IsoBaseFileFormat.Util.Versioned

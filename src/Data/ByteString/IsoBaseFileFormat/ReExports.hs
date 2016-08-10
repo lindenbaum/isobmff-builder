@@ -8,6 +8,7 @@ import           Data.Bits                                         as X
 import qualified Data.ByteString                                   as B
 import           Data.ByteString.Builder                           as X
 import           Data.ByteString.IsoBaseFileFormat.Util.BitRecords as X
+import           Data.ByteString.IsoBaseFileFormat.Util.PrettyType as X
 import           Data.ByteString.IsoBaseFileFormat.Util.TypeLayout as X
 import           Data.Default                                      as X
 import           Data.Foldable                                     as X (fold)
@@ -27,7 +28,7 @@ import           GHC.TypeLits                                      as X
 import           Test.TypeSpecCrazy                                as X hiding
                                                                          (type Not)
 import           Text.Printf                                       as X
-
+import Debug.Trace as X
 
 instance Default B.ByteString where
   def = mempty

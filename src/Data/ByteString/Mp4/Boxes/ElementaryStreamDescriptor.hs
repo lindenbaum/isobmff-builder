@@ -7,25 +7,36 @@ import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * Expandable Classes
 
+type family ExpandableT record where
+  ExpandableT record =
+    ExpandableSize (GetRecordSize record) 0 :>: record
+
+type family ExpandableSize (s :: Nat) (marker :: Nat) where
+  ExpandableSize s marker =
+    If (s <=? 127)
+      (Field 8 := (s + marker))
+      ((ExpandableSize (s `Div` 128) 128) :>: (ExpandableSize (s `Rem` 128) marker))
+
+
 newtype Expandable content where -- TODO maxSize in Expandable class
   Expandable :: content -> Expandable content
+
 
 instance IsBoxContent content => IsBoxContent (Expandable content) where
   boxSize (Expandable cnt) =
     let (BoxSize cntSizeW) =  boxSize cnt
-        sizeBlocks7bit =
-          relBitSize `div` 7 + if rem relBitSize 7 == 0 then 0 else 1
+        sizeBlocks7bit = relBitSize `div` 7
         relBitSize =
           max 7 $
-          fromIntegral $ finiteBitSize cntSizeW - countLeadingZeros cntSizeW
+          fromIntegral $ trace "cntSizeW - countLeadingZeros:" $ traceShowId $ finiteBitSize cntSizeW - countLeadingZeros cntSizeW
         in BoxSize (sizeBlocks7bit + cntSizeW)
   boxBuilder (Expandable cnt) =
     let (BoxSize cntSizeW) = boxSize cnt
-        sizeWriter s
-          | s < 128   = word8 (fromIntegral s)
-          | otherwise = sizeWriter (s `shiftR` 7)
-                         <> word8 (0x80 .|. (fromIntegral s .&. 0x7f))
-        in sizeWriter cntSizeW <> boxBuilder cnt
+        sizeWriter s marker
+          | s <= 127  = word8 (fromIntegral s + marker)
+          | otherwise = sizeWriter (s `shiftR` 7) 128
+                         <> word8 ((fromIntegral s .&. 0x7f) + marker)
+        in sizeWriter cntSizeW 0 <> boxBuilder cnt
 
 -- * The base constructor
 

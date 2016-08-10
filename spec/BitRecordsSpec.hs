@@ -3,6 +3,7 @@ module BitRecordsSpec (spec) where
 
 import Data.Bits
 import Data.ByteString.IsoBaseFileFormat.Util.BitRecords
+import Data.ByteString.IsoBaseFileFormat.Util.PrettyType
 import Data.Proxy
 import Data.Word
 import Data.Type.Equality
@@ -43,6 +44,28 @@ checkTestRecAligned
              ]
 checkTestRecAligned = Valid
 
+
+type family PrettyRecord rec :: PrettyType where
+  PrettyRecord (Field 0) = 'PrettyEmpty
+  PrettyRecord (Field 1) = PutStr "F"
+  PrettyRecord (Field n) =
+    PutStr "<" <++> PrettyOften (n - 2) (PutStr ".") <++> PutStr ">"
+  PrettyRecord (l :=> r) =
+    PutStr "<" <++>
+    'PrettySymbol ('PrettyPadded ((GetRecordSize r) - 2)) ('PrettyPrecision ((GetRecordSize r) - 2)) l
+    <++> PutStr ">"
+  PrettyRecord (r :=  v) =
+    'PrettyNat 'PrettyUnpadded ('PrettyPrecision (GetRecordSize r)) 'PrettyBit v
+  PrettyRecord (l :>: r) = PrettyRecord l <++> PrettyRecord r
+
+printRec
+  :: forall proxy (rec :: Type)
+  . PrettyTypeShow (PrettyRecord rec)
+  => proxy rec -> String
+printRec _ = ptShow (Proxy :: Proxy (PrettyRecord rec))
+
+-- 70 .. 63
+--
 type TestRecUnAligned =
   "bar" :=> Field 8       :>:
             Field 8  := 0 :>:
@@ -85,12 +108,153 @@ testRem
             ]
 testRem = Valid
 
+testDiv
+  :: Expect '[ Div 0 3 `ShouldBe` 0
+             , Div 1 3 `ShouldBe` 0
+             , Div 2 3 `ShouldBe` 0
+             , Div 3 3 `ShouldBe` 1
+             , Div 4 3 `ShouldBe` 1
+             , Div 5 3 `ShouldBe` 1
+             , Div 6 3 `ShouldBe` 2
+             , Div 144 13 `ShouldBe` 11
+             -- , Div 512 128 `ShouldBe` 11
+            ]
+testDiv = Valid
+
+testNatBits
+  :: "Type Level bit operations"
+     ###########################
+
+     "TestHighBit"
+     ~~~~~~~~~~~~
+
+        ShouldBeFalse (TestHighBit 127 8)
+     -* ShouldBeFalse (TestHighBit 127 7)
+     -* ShouldBeTrue  (TestHighBit 127 6)
+     -* ShouldBeFalse (TestHighBit  32 6)
+     -* ShouldBeTrue  (TestHighBit  32 5)
+     -* ShouldBeFalse (TestHighBit  16 5)
+     -* ShouldBeTrue  (TestHighBit  16 4)
+     -* ShouldBeFalse (TestHighBit   8 4)
+     -* ShouldBeTrue  (TestHighBit   8 3)
+     -* ShouldBeFalse (TestHighBit   4 3)
+     -* ShouldBeTrue  (TestHighBit   4 2)
+     -* ShouldBeFalse (TestHighBit   2 2)
+     -* ShouldBeTrue  (TestHighBit   2 1)
+     -* ShouldBeFalse (TestHighBit   0 1)
+     -* ShouldBeTrue  (TestHighBit   1 0)
+
+  -/-
+
+    "ToBits"
+    ~~~~~~~~~
+
+       It "returns the empty list for a zero bit length"
+          (ToBits 1023 0 `ShouldBe` ('[] :: [Bool]) )
+
+    -* It "returns [] for a single unset bit"
+          (ShouldBe ('[] :: [Bool]) (ToBits 0 1))
+
+    -* It "returns [True] for a single set bit"
+          (ShouldBe '[ 'True] (ToBits 1 1))
+
+    -* It "returns [True, False] when getting two bits from 0x2"
+          (ShouldBe '[ 'True, 'False] (ToBits 0x2 2))
+
+    -* It "returns the list of bits in correct order"
+          (ShouldBe '[ 'True, 'True, 'True, 'True
+                     , 'False, 'False, 'False, 'False]
+                     (ToBits 0xf0 8))
+
+    -* It "returns no leading 'False (i.e. it omits leading zero bits)"
+          (ShouldBe '[ 'True, 'True, 'True, 'True]
+                     (ToBits 0x0000000f 32))
+  -/-
+
+    "FromBits"
+    ~~~~~~~~~
+
+      It "returns 0 for '[]"
+          (ShouldBe 0   (FromBits ('[] :: [Bool])))
+
+    -* It "returns 0 for [False]"
+          (ShouldBe 0   (FromBits '[ 'False]))
+
+    -* It "returns 1 for [True]"
+          (ShouldBe 1   (FromBits '[ 'True]))
+
+    -* It "returns 2 for [True, False]"
+          (ShouldBe 2   (FromBits '[ 'True, 'False]))
+
+    -* It "returns 4 for [True, False, False]"
+          (ShouldBe 4   (FromBits '[ 'True, 'False, 'False]))
+
+    -* It "returns 5 for [True, False, True]"
+          (ShouldBe 5   (FromBits '[ 'True, 'False, 'True]))
+  -/-
+
+    "ShiftBitsR"
+    ~~~~~~~~~~~~
+
+      It "returns the input bits for n == 0"
+        (ShouldBe '[ 'True, 'False] (ShiftBitsR ['True, 'False] 0))
+
+    -* It "returns '[] when shifting [True] 1 bits"
+        (ShouldBe ('[] :: [Bool]) (ShiftBitsR '[ 'True ] 1))
+
+    -* It "returns '[True] when shifting [True, True] 1 bits"
+        (ShouldBe '[ 'True] (ShiftBitsR '[ 'True, 'True ] 1))
+
+    -* It "returns (ToBits 12 8) when shifting (ToBits 97 8) 3 bits to the right"
+        (ShouldBe (ToBits 12 8) (ShiftBitsR (ToBits 97 8) 3))
+  -/-
+
+     "GetMostSignificantBitIndex"
+    ~~~~~~~~~~~~~~~
+
+      It "returns 1 for 0"
+        (ShouldBe 1 (GetMostSignificantBitIndex 64 0))
+
+    -* It "returns 1 for 1"
+        (ShouldBe 1 (GetMostSignificantBitIndex 64 1))
+
+    -* It "returns 1 for 2"
+        (ShouldBe 1 (GetMostSignificantBitIndex 64 2))
+
+    -* It "returns 1 for 3"
+        (ShouldBe 1 (GetMostSignificantBitIndex 64 3))
+
+    -* It "returns 2 for 4"
+        (ShouldBe 2 (GetMostSignificantBitIndex 64 4))
+
+    -* It "returns 2 for 5"
+        (ShouldBe 2 (GetMostSignificantBitIndex 64 4))
+
+    -* It "returns 8 for 511"
+        (ShouldBe 8 (GetMostSignificantBitIndex 64 511))
+
+    -* It "returns 63 for (2^64 - 1)"
+        (ShouldBe 63 (GetMostSignificantBitIndex 64 (2^64 - 1)))
+
+  -/-
+
+
+    "ShiftR"
+    ~~~~~~~~~
+
+       It "returns '0' when shifting '42' 6 bits to the right"
+        (ShouldBe 0 (ShiftR 64 42 6))
+    -* It "returns 2 when shifting 512 8 bits to the right"
+        (ShouldBe 2 (ShiftR 64 512 8))
+
+testNatBits = Valid
+
 testAlign
-  :: Expect '[ (Align 'True 7 Flag)       `ShouldBe`  (Flag :>: Ignore (Field 6 := 0))
-             , (Align 'True 1 Flag)       `ShouldBe`  Flag
-             , (Align 'True 8 (Field 7))  `ShouldBe`  (Field 7 :>: Ignore (Field 1 := 0))
-             , (Align 'True 8 (Field 8))  `ShouldBe`  Field 8
-             , (Align 'True 8 (Field 9))  `ShouldBe`  (Field 9 :>: Ignore (Field 7 := 0))
+  :: Expect '[ Align 'True 7 Flag       `ShouldBe`  (Flag :>: Ignore (Field 6 := 0))
+             , Align 'True 1 Flag       `ShouldBe`  Flag
+             , Align 'True 8 (Field 7)  `ShouldBe`  (Field 7 :>: Ignore (Field 1 := 0))
+             , Align 'True 8 (Field 8)  `ShouldBe`  Field 8
+             , Align 'True 8 (Field 9)  `ShouldBe`  (Field 9 :>: Ignore (Field 7 := 0))
             ]
 testAlign = Valid
 
@@ -157,6 +321,8 @@ spec = do
       print testBitHasFields
       print testBitHasNestedFields
       print testRem
+      print testDiv
+      print testNatBits
       print testAlign
       print testFieldPosition0
       print testFieldPosition1Foo
@@ -258,30 +424,33 @@ spec = do
             -- is [D,C,B,A, D,C,B,A, D,C,B,A]
             actual littleEndian `shouldBe` [0,2,0,1, 4,0,0,0, 16,0,8,0]
   describe "unaligned bit records" $ do
-    describe "formatBits align16" $ do
+    describe "formatBits align16 little endian" $ do
       it "writes fields" $
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toFlushedBuilder $ formatBits littleEndian align16 rec
-                        (Tagged 1 :: Tagged "bar" Integer)
-                        (Tagged 2 :: Tagged "baz" Integer)
-                        (Tagged 4 :: Tagged "foo" Integer)
+            actualB = toFlushedBuilder $
+                        formatBits
+                          littleEndian
+                          align16
+                          rec
+                          1 -- because instance Num a => Num (Tagged t a)
+                          (Tagged 3 :: Tagged "baz" Integer)
+                          (Tagged 7 :: Tagged "foo" Integer)
 
-            actual = B.unpack $ toLazyByteString actualB
-            in actual `shouldBe` [1,0,2,0,0,0,0,3]
-    describe "formatBits align8" $ do
+            actual = printBuilder actualB
+            in  actual `shouldBe` ((printRec rec))
+    describe "formatBits align8 (little / ignored) endian" $ do
       it "writes fields" $
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
             actualB = toFlushedBuilder $ formatBits littleEndian align8 rec
                         (Tagged 1 :: Tagged "bar" Integer)
-                        (Tagged 2 :: Tagged "baz" Integer)
-                        (Tagged 4 :: Tagged "foo" Integer)
-
-            actual = B.unpack $ toLazyByteString actualB
-            in actual `shouldBe` [1,0,2,0,0,0,0,3]
+                        (Tagged 3 :: Tagged "baz" Integer)
+                        (Tagged 7 :: Tagged "foo" Integer)
+            actual = printBuilder actualB
+            in actual `shouldBe` "<< >>"
 
 -- * Alignment
 
@@ -389,7 +558,7 @@ littleEndian = Proxy
 
 -- | Types which contain a finite amount of bits, which can be set from a value
 -- and an offset. Bits can be written to the value.
-class DirectedBits a where
+class IsBitBuffer a where
   -- | Copy bits starting at a specific offset from one @a@ the the other.
   copyBits
     :: Int  -- ^ @length@ of the value to write in number of bits.
@@ -410,7 +579,7 @@ class DirectedBits a where
 --          ->             ->                 ->     (direction of writing)
 -- @
 instance ( FiniteBits (BitBuffer a e), HasBuilder (BitBuffer a e))
-  => DirectedBits (BitBuffer a e) where
+  => IsBitBuffer (BitBuffer a e) where
   copyBits !len !bits !offset !buff =
     let buffLen = builderAlignment buff
         spaceAvailable = buffLen - offset
@@ -450,8 +619,17 @@ builderAlignment _ =
 newtype BitBuffer (a :: Alignment) (endianness :: Endianness) =
   BitBuffer {fromBitBufferMsbFirst :: ToAlignedWord a}
 
-instance PrintfArg (ToAlignedWord a) => Show (BitBuffer a e) where
-  show (BitBuffer x) = printf "%0.64b" x
+instance ( KnownSymbol (AlignedWordPrintfFormatBits a)
+         , PrintfArg (ToAlignedWord a))
+         => Show (BitBuffer a e) where
+  show (BitBuffer x) = printf fmt x
+    where fmt = symbolVal (Proxy :: Proxy (AlignedWordPrintfFormatBits a))
+
+type family AlignedWordPrintfFormatBits (a :: Alignment) :: Symbol where
+  AlignedWordPrintfFormatBits 'Align64 = "%0.64b"
+  AlignedWordPrintfFormatBits 'Align32 = "%0.32b"
+  AlignedWordPrintfFormatBits 'Align16 = "%0.16b"
+  AlignedWordPrintfFormatBits 'Align8 = "%0.8b"
 
 deriving instance Eq (ToAlignedWord a) => Eq (BitBuffer a e)
 deriving instance Ord (ToAlignedWord a) => Ord (BitBuffer a e)
@@ -484,7 +662,7 @@ instance HasBuilder (BitBuffer 'Align8 e) where
 ------------------
 
 formatBits
-  :: forall proxy0 proxy1 proxy2 rec endianness buff alignment res off recSize
+  :: forall proxy0 proxy1 proxy2 rec endianness buff alignment off recSize
    . ( buff ~ BitBuffer alignment endianness
      , FiniteBits (ToAlignedWord alignment)
      , HasBuilder buff
@@ -599,8 +777,10 @@ initialBBState b = BBState b 0
 -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
 -- in the 'BitBuilder' as often as necessary.
 writeBits
-      :: ( KnownNat len, HasBuilder buff, Bits buff, DirectedBits buff
+      :: ( KnownNat len, HasBuilder buff, Bits buff, IsBitBuffer buff
          , KnownNat fromOffset
+         , Show buff
+         , KnownNat toOffset
          , toOffset ~ CopyBitsRestLength buff len fromOffset)
       => proxy (len :: Nat)
       -> buff
@@ -612,23 +792,27 @@ writeBits pLen !pBits =
          pBits
          bldr
          part
-         (fromIntegral (natVal bb))
+         (trace "WRITE_BITS: " $
+          traceShow (natVal pLen, pBits, natVal bb) $
+          fromIntegral (natVal bb))
   where
-    go 0 _ !bldr !part _ = BBState bldr part
+    go 0 !_bits !bldr !part _ = trace "DONE: " $ traceShowId $ BBState bldr part
     go !len !bits !builder !part !partOffset =
       let
-        (part', spaceLeft, writeLen) = copyBits len bits partOffset part
+        (part', spaceLeft, writeLen) =
+          trace "Copy Bits:" $
+          traceShow (len, bits, printBuilder builder, part, partOffset) $
+          traceShowId $ copyBits len bits partOffset part
       in
            if spaceLeft > 0
             then
-              trace "spaceLeft: " $ traceShow spaceLeft $
-                BBState builder part
+              trace "DONE-PARTIAL: " $ traceShowId $
+                BBState builder part'
             else
               let restLen = len - writeLen
                   restBits = bits `unsafeShiftL` writeLen
                   nextBuilder = builder <> wordBuilder part'
-              in trace "restLen: " $ traceShow restLen $
-                  go restLen restBits nextBuilder 0 0
+              in go restLen restBits nextBuilder 0 0
 
 -------------------------
 
@@ -638,7 +822,7 @@ class HasFormatter m f r where
   toFormatter :: proxy f -> Holey m r (FmtArg m f r)
 
 instance ( KnownNat oF, KnownNat oT, HasBuilder b
-         , DirectedBits b, Bits b, KnownNat (GetRecordSize f)
+         , IsBitBuffer b, Bits b, KnownNat (GetRecordSize f)
          , oT ~ CopyBitsRestLength b (GetRecordSize f) oF)
   => HasFormatter (BitBuilder b oF oT) (l :=> f) r where
     type FmtArg (BitBuilder b oF oT) (l :=> f) r =
@@ -650,7 +834,7 @@ instance ( KnownNat oF, KnownNat oT, HasBuilder b
 
 instance  ( HasBuilder b
           , KnownNat oF, KnownNat oT
-          , DirectedBits b
+          , IsBitBuffer b
           , Bits b
           , KnownNat v
           , KnownNat (GetRecordSize f)
@@ -691,7 +875,7 @@ instance forall f0 f1 a b bb oF o oT  .
          , o ~ (CopyBitsRestLength bb (GetRecordSize f0) oF)
          , oT ~ (CopyBitsRestLength bb (GetRecordSize f1) o)
          , KnownNat oF, KnownNat o, KnownNat oT
-         , DirectedBits bb
+         , IsBitBuffer bb
          , HasBuilder bb
          , b ~ FmtArg (BitBuilder bb o oT) f1 a)
   => HasFormatter (BitBuilder bb oF oT) (f0 :>: f1) a where
