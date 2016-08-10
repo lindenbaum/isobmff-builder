@@ -12,7 +12,6 @@ import Data.Monoid
 import Data.ByteString.Builder
 import Control.Category
 import GHC.TypeLits
-import Data.Bits
 import Test.Hspec
 import Test.TypeSpecCrazy
 import Data.Int
@@ -424,6 +423,70 @@ spec = do
             -- is [D,C,B,A, D,C,B,A, D,C,B,A]
             actual littleEndian `shouldBe` [0,2,0,1, 4,0,0,0, 16,0,8,0]
   describe "unaligned bit records" $ do
+    describe "formatBits align64 little endian" $ do
+      it "writes fields" $
+        let rec = Proxy
+            rec :: Proxy TestRecUnAligned
+            actualB :: Builder
+            actualB = toFlushedBuilder $
+                        formatBits
+                          littleEndian
+                          align64
+                          rec
+                          1 -- because instance Num a => Num (Tagged t a)
+                          (Tagged 3 :: Tagged "baz" Integer)
+                          (Tagged 7 :: Tagged "foo" Integer)
+
+            actual = printBuilder actualB
+            in  actual `shouldBe`
+                  "<< 0f 00 00 00 00 06 00 01 00 00 00 00 00 00 00 fc >>"
+    describe "formatBits align64 big endian" $ do
+      it "writes fields" $
+        let rec = Proxy
+            rec :: Proxy TestRecUnAligned
+            actualB :: Builder
+            actualB = toFlushedBuilder $
+                        formatBits
+                          bigEndian
+                          align64
+                          rec
+                          1 -- because instance Num a => Num (Tagged t a)
+                          (Tagged 3 :: Tagged "baz" Integer)
+                          (Tagged 7 :: Tagged "foo" Integer)
+            actual = printBuilder actualB
+            in  actual `shouldBe`
+                  "<< 01 00 06 00 00 00 00 0f fc 00 00 00 00 00 00 00 >>"
+    describe "formatBits align32 little endian" $ do
+      it "writes fields" $
+        let rec = Proxy
+            rec :: Proxy TestRecUnAligned
+            actualB :: Builder
+            actualB = toFlushedBuilder $
+                        formatBits
+                          littleEndian
+                          align32
+                          rec
+                          1 -- because instance Num a => Num (Tagged t a)
+                          (Tagged 3 :: Tagged "baz" Integer)
+                          (Tagged 7 :: Tagged "foo" Integer)
+
+            actual = printBuilder actualB
+            in  actual `shouldBe` "<< 00 06 00 01 0f 00 00 00 00 00 00 fc >>"
+    describe "formatBits align32 big endian" $ do
+      it "writes fields" $
+        let rec = Proxy
+            rec :: Proxy TestRecUnAligned
+            actualB :: Builder
+            actualB = toFlushedBuilder $
+                        formatBits
+                          bigEndian
+                          align32
+                          rec
+                          1 -- because instance Num a => Num (Tagged t a)
+                          (Tagged 3 :: Tagged "baz" Integer)
+                          (Tagged 7 :: Tagged "foo" Integer)
+            actual = printBuilder actualB
+            in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 00 00 >>"
     describe "formatBits align16 little endian" $ do
       it "writes fields" $
         let rec = Proxy
@@ -439,7 +502,22 @@ spec = do
                           (Tagged 7 :: Tagged "foo" Integer)
 
             actual = printBuilder actualB
-            in  actual `shouldBe` ((printRec rec))
+            in  actual `shouldBe` "<< 00 01 00 06 00 00 0f 00 00 fc >>"
+    describe "formatBits align16 big endian" $ do
+      it "writes fields" $
+        let rec = Proxy
+            rec :: Proxy TestRecUnAligned
+            actualB :: Builder
+            actualB = toFlushedBuilder $
+                        formatBits
+                          bigEndian
+                          align16
+                          rec
+                          1 -- because instance Num a => Num (Tagged t a)
+                          (Tagged 3 :: Tagged "baz" Integer)
+                          (Tagged 7 :: Tagged "foo" Integer)
+            actual = printBuilder actualB
+            in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 >>"
     describe "formatBits align8 (little / ignored) endian" $ do
       it "writes fields" $
         let rec = Proxy
@@ -450,12 +528,24 @@ spec = do
                         (Tagged 3 :: Tagged "baz" Integer)
                         (Tagged 7 :: Tagged "foo" Integer)
             actual = printBuilder actualB
-            in actual `shouldBe` "<< >>"
+            in actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc >>"
 
 -- * Alignment
 
 -- | Alignments for optimized writing of bits into bytestrings.
 data Alignment = Align8 | Align16 | Align32 | Align64
+
+-- | A convenience contraint type alias for 'Alignment's.
+type KnownAlignment a =
+  ( Num (ToAlignedWord a)
+  , Show (ToAlignedWord a)
+  , Bits (ToAlignedWord a)
+  , FiniteBits (ToAlignedWord a)
+  , Ord (ToAlignedWord a)
+  , Eq (ToAlignedWord a)
+  , PrintfArg (ToAlignedWord a)
+  , KnownNat (GetAlignmentBits a)
+  , KnownSymbol (AlignedWordPrintfFormatBits a))
 
 -- | Constructor for a proxy fot the promoted 'Align8', e.g. for
 -- 'formatBits'.
@@ -556,68 +646,51 @@ bigEndian = Proxy
 littleEndian :: Proxy 'LittleEndian
 littleEndian = Proxy
 
--- | Types which contain a finite amount of bits, which can be set from a value
--- and an offset. Bits can be written to the value.
-class IsBitBuffer a where
-  -- | Copy bits starting at a specific offset from one @a@ the the other.
-  copyBits
-    :: Int  -- ^ @length@ of the value to write in number of bits.
-    -> a -- ^ The value to write (in the lower @length@ bits).
-    -> Int  -- ^ The start offset in the output value
-    -> a -- ^ The input to write to
-    -> (a, Int, Int) -- ^ The output buffer, space left in buffer,
-
-  -- | Type level calculation for the rest of the buffer
-  type CopyBitsRestLength a (copyLen :: Nat) (offset :: Nat) :: Nat
-
--- | Set bits starting from the most significant bit to the least.
---   For example @writeBits m 1 <> writeBits n 2@ would result in:
--- @
---         MSB                                             LSB
---    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
---  Value: |0     ..     1|0        ..     10|  ...          |
---          ->             ->                 ->     (direction of writing)
--- @
-instance ( FiniteBits (BitBuffer a e), HasBuilder (BitBuffer a e))
-  => IsBitBuffer (BitBuffer a e) where
-  copyBits !len !bits !offset !buff =
-    let buffLen = builderAlignment buff
-        spaceAvailable = buffLen - offset
-        writeLen = min spaceAvailable len
-        spaceLeft = spaceAvailable - writeLen
-        writeOffset = spaceAvailable - writeLen
-        readMask = 2 ^ writeLen - 1
-        maskedBits = bits .&. readMask
-        buff' = buff .|. (maskedBits `unsafeShiftL` writeOffset)
-        in (buff', spaceLeft, writeLen)
-
-  type CopyBitsRestLength (BitBuffer a e) len offset =
-          GetRemainingUnaligned (len + offset) a
-
 -- * Bit Buffering
 
--- | Words acting as aligned bit buffers, that can eventually be converted to a
--- 'Builder'.
-class ( Num a, Show a, KnownNat (GetAlignmentBits (GetAlignment a)))
-    => HasBuilder a where
-  type GetAlignment a :: Alignment
-  wordBuilder :: a -> Builder
+-- | Types which contain a finite amount of bits, which can be set from a value
+-- and an offset. Bits can be written to the value.
+class
+  ( Num a, Show a, FiniteBits a, Bits a
+  , KnownNat (BitBufferSize a))
+  =>
+  IsBitBuffer a where
+    -- | IsBitBuffer a ,
+    type BitBufferSize a :: Nat
+    -- | Type level calculation for the rIsBitBuffer a r
+    type CopyBitsRestLength a (len :: Nat) (offset :: Nat) :: Nat
+    type CopyBitsRestLength a len offset = (len + offset) `Rem` BitBufferSize a
+    -- | Copy bits starting at a specific offset from one @a@ the the other.
+    copyBits
+      :: Int  -- ^ @length@ of the value to write in number of bits.
+      -> a -- ^ The value to write (in the lower @length@ bits).
+      -> Int  -- ^ The start offset in the output value
+      -> a -- ^ The input to write to
+      -> (a, Int, Int, a) -- ^ The output buffer, space left in buffer, the
+                          -- number of remaining bits that did not fit in the
+                          -- buffer, and finally the left bits themselves.
 
--- | Return the static size of a 'HasBuilder'.
-builderAlignmentProxy :: forall b proxy . (HasBuilder b) => proxy b -> Int
-builderAlignmentProxy _ =
-  fromIntegral $ natVal $ (Proxy :: Proxy (GetAlignmentBits (GetAlignment b)))
+-- | Return the static size of a 'IsBitBuffer'.
+bitBufferSizeProxy :: forall b proxy . (IsBitBuffer b) => proxy b -> Int
+bitBufferSizeProxy _ =
+  fromIntegral $ natVal $ (Proxy :: Proxy (BitBufferSize b))
 
--- | Return the static size of an 'HasBuilder'. The parameter is ignored!
-builderAlignment :: forall b . (HasBuilder b) => b -> Int
-builderAlignment _ =
-  fromIntegral $ natVal $ (Proxy :: Proxy (GetAlignmentBits (GetAlignment b)))
+-- | Return the static size of an 'IsBitBuffer'. The parameter is ignored!
+bitBufferSize :: forall b . (IsBitBuffer b) => b -> Int
+bitBufferSize _ =
+  fromIntegral $ natVal $ (Proxy :: Proxy (BitBufferSize b))
 
 -- | A wrapper around an integral type retreived from 'ToAlignedWord' like
 -- 'Word32', 'Word64', etc, that acts as a buffer for efficient serialization of
 -- bits to a 'Builder'.
 newtype BitBuffer (a :: Alignment) (endianness :: Endianness) =
   BitBuffer {fromBitBufferMsbFirst :: ToAlignedWord a}
+
+deriving instance Eq (ToAlignedWord a) => Eq (BitBuffer a e)
+deriving instance Ord (ToAlignedWord a) => Ord (BitBuffer a e)
+deriving instance Num (ToAlignedWord a) => Num (BitBuffer a e)
+deriving instance Bits (ToAlignedWord a) => Bits (BitBuffer a e)
+deriving instance FiniteBits (ToAlignedWord a) => FiniteBits (BitBuffer a e)
 
 instance ( KnownSymbol (AlignedWordPrintfFormatBits a)
          , PrintfArg (ToAlignedWord a))
@@ -631,45 +704,54 @@ type family AlignedWordPrintfFormatBits (a :: Alignment) :: Symbol where
   AlignedWordPrintfFormatBits 'Align16 = "%0.16b"
   AlignedWordPrintfFormatBits 'Align8 = "%0.8b"
 
-deriving instance Eq (ToAlignedWord a) => Eq (BitBuffer a e)
-deriving instance Ord (ToAlignedWord a) => Ord (BitBuffer a e)
-deriving instance Num (ToAlignedWord a) => Num (BitBuffer a e)
-deriving instance Bits (ToAlignedWord a) => Bits (BitBuffer a e)
-deriving instance FiniteBits (ToAlignedWord a) => FiniteBits (BitBuffer a e)
+instance ( KnownAlignment a, FiniteBits (BitBuffer a e) )
+    => IsBitBuffer (BitBuffer a e) where
+  type BitBufferSize (BitBuffer a e) = (GetAlignmentBits a)
+  -- | Set bits starting from the most significant bit to the least.
+  --   For example @writeBits m 1 <> writeBits n 2@ would result in:
+  -- @
+  --         MSB                                             LSB
+  --    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
+  --  Value: |0     ..     1|0        ..     10|  ...          |
+  --          ->             ->                 ->     (direction of writing)
+  -- @
+  copyBits !len !bits !offset !buff =
+    let buffLen = bitBufferSize buff
+        spaceAvailable = buffLen - offset
+        writeLen = min spaceAvailable len
+        spaceLeft = spaceAvailable - writeLen
+        writeOffset = spaceLeft
+        restLen = len - writeLen
+        restBits = bits .&. (1 `unsafeShiftL` restLen - 1)
+        buff' = buff .|. (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
+        in (buff', spaceLeft, restLen, restBits)
+
+-- | Words acting as aligned bit buffers, that can eventually be converted to a
+-- 'Builder'.
+class ( IsBitBuffer a ) => HasBuilder a where
+  wordBuilder :: a -> Builder
 
 instance HasBuilder (BitBuffer 'Align64 'LittleEndian) where
-  type GetAlignment (BitBuffer 'Align64 'LittleEndian) = 'Align64
   wordBuilder = word64LE . fromBitBufferMsbFirst
 instance HasBuilder (BitBuffer 'Align64 'BigEndian)    where
-  type GetAlignment (BitBuffer 'Align64 'BigEndian) = 'Align64
   wordBuilder = word64BE . fromBitBufferMsbFirst
 instance HasBuilder (BitBuffer 'Align32 'LittleEndian) where
-  type GetAlignment (BitBuffer 'Align32 'LittleEndian) = 'Align32
   wordBuilder = word32LE . fromBitBufferMsbFirst
 instance HasBuilder (BitBuffer 'Align32 'BigEndian)    where
-  type GetAlignment (BitBuffer 'Align32 'BigEndian) = 'Align32
   wordBuilder = word32BE . fromBitBufferMsbFirst
 instance HasBuilder (BitBuffer 'Align16 'LittleEndian) where
-  type GetAlignment (BitBuffer 'Align16 'LittleEndian) = 'Align16
   wordBuilder = word16LE . fromBitBufferMsbFirst
 instance HasBuilder (BitBuffer 'Align16 'BigEndian)    where
-  type GetAlignment (BitBuffer 'Align16 'BigEndian) = 'Align16
   wordBuilder = word16BE . fromBitBufferMsbFirst
 instance HasBuilder (BitBuffer 'Align8 e) where
-  type GetAlignment (BitBuffer 'Align8 e) = 'Align8
   wordBuilder = word8    . fromBitBufferMsbFirst
 
 ------------------
 
 formatBits
-  :: forall proxy0 proxy1 proxy2 rec endianness buff alignment off recSize
+  :: forall proxy0 proxy1 proxy2 rec endianness buff alignment off
    . ( buff ~ BitBuffer alignment endianness
-     , FiniteBits (ToAlignedWord alignment)
-     , HasBuilder buff
-     , recSize ~ GetRecordSize rec
-     , KnownNat recSize
-     , off ~ GetRemainingUnaligned recSize alignment
-     , KnownNat off
+     , off ~ GetRemainingUnaligned (GetRecordSize rec) alignment
      , HasFormatter (BitBuilder buff 0 off) rec (BitBuilder buff 0 off))
   => proxy0 endianness
   -> proxy1 alignment
@@ -719,7 +801,7 @@ toFlushedBuilder :: (KnownNat off, Num buff, HasBuilder buff)
   => BitBuilder buff 0 off -> Builder
 toFlushedBuilder bb = toBuilder (bb `ixAppend` flushBuilder)
 
-flushBuilder :: forall buff off . (KnownNat off, Num buff, HasBuilder buff)
+flushBuilder :: forall buff off . (KnownNat off, HasBuilder buff)
   => BitBuilder buff off 0
 flushBuilder =
     let flushBBState :: BBState buff off -> BBState buff 0
@@ -777,7 +859,7 @@ initialBBState b = BBState b 0
 -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
 -- in the 'BitBuilder' as often as necessary.
 writeBits
-      :: ( KnownNat len, HasBuilder buff, Bits buff, IsBitBuffer buff
+      :: ( KnownNat len, HasBuilder buff
          , KnownNat fromOffset
          , Show buff
          , KnownNat toOffset
@@ -792,27 +874,15 @@ writeBits pLen !pBits =
          pBits
          bldr
          part
-         (trace "WRITE_BITS: " $
-          traceShow (natVal pLen, pBits, natVal bb) $
-          fromIntegral (natVal bb))
+         (fromIntegral (natVal bb))
   where
-    go 0 !_bits !bldr !part _ = trace "DONE: " $ traceShowId $ BBState bldr part
-    go !len !bits !builder !part !partOffset =
-      let
-        (part', spaceLeft, writeLen) =
-          trace "Copy Bits:" $
-          traceShow (len, bits, printBuilder builder, part, partOffset) $
-          traceShowId $ copyBits len bits partOffset part
-      in
-           if spaceLeft > 0
-            then
-              trace "DONE-PARTIAL: " $ traceShowId $
-                BBState builder part'
-            else
-              let restLen = len - writeLen
-                  restBits = bits `unsafeShiftL` writeLen
-                  nextBuilder = builder <> wordBuilder part'
-              in go restLen restBits nextBuilder 0 0
+    go 0 _bits !bldr !part _ =  BBState bldr part
+    go !len !bits !builder !part !offset =
+      let (part', spaceLeft, restLen, restBits) = copyBits len bits offset part
+          in if spaceLeft > 0
+                then BBState builder part'
+                else let nextBuilder = builder <> wordBuilder part'
+                         in go restLen restBits nextBuilder 0 0
 
 -------------------------
 
