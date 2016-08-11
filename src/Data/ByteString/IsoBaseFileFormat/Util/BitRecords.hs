@@ -8,6 +8,7 @@ import GHC.TypeLits
 import Data.Bits
 import Data.Proxy
 import Test.TypeSpecCrazy
+import Data.ByteString.IsoBaseFileFormat.Util.PrettyType
 
 -- * Fields
 
@@ -17,7 +18,7 @@ data Field :: Nat -> Type
 -- | Alias for a single bit field
 type Flag = Field 1
 
--- | Get the field size of a field
+-- | Get the field size of a field -- TODO remove
 type family GetFieldSize field :: Nat
 type instance GetFieldSize (Field n) = n
 
@@ -49,10 +50,10 @@ data (:=) :: Type -> Nat -> Type
 infixr 6 :=
 
 -- | Make a part of the record ignored
-data Ignore :: Type -> Type
+data Ignore :: Type -> Type -- TODO remove
 
 -- | A Path of field labels for nested record created with ':=>'
-data (:/) :: Symbol -> label -> Type
+data (:/) :: Symbol -> label -> Type -- TODO implement nested record support
 infixr 7 :/
 
 -- | A wrapper around 'Constraint' that propagates 'TypeError'.
@@ -65,6 +66,11 @@ type family
   RunConstraintE ('Right t) = t
 
 -- * BitRecord Accessor
+
+-- | Return the size of the record.
+getRecordSizeFromProxy
+  :: forall px rec . KnownNat (GetRecordSize rec) => px rec -> Integer
+getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (GetRecordSize rec))
 
 type family
   GetRecordSize (r :: rk) :: Nat where
@@ -295,3 +301,27 @@ type IsFieldC field record first last =
      , KnownNat last
      , 'Right '(first, last) ~ (GetFieldPosition record field)
      )
+
+-- * PrettyType instances
+
+-- | Render @rec@ to a pretty, human readable form. Internally this is a wrapper
+-- around 'ptShow' using 'PrettyRecord'.
+showRecord
+  :: forall proxy (rec :: Type)
+  . PrettyTypeShow (PrettyRecord rec)
+  => proxy rec -> String
+showRecord _ = ptShow (Proxy :: Proxy (PrettyRecord rec))
+
+-- | A type family to pretty print @rec@ to a 'PrettyType'.
+type family PrettyRecord rec :: PrettyType where
+  PrettyRecord (Field 0) = 'PrettyEmpty
+  PrettyRecord (Field 1) = PutStr "X"
+  PrettyRecord (Field n) =
+    PutStr "<" <++> PrettyOften (n - 2) (PutStr ".") <++> PutStr ">"
+  PrettyRecord (l :=> r) =
+    PutStr "<" <++>
+    'PrettySymbol ('PrettyPadded ((GetRecordSize r) - 2)) ('PrettyPrecision ((GetRecordSize r) - 2)) l
+    <++> PutStr ">"
+  PrettyRecord (r :=  v) =
+    'PrettyNat 'PrettyUnpadded ('PrettyPrecision (GetRecordSize r)) 'PrettyBit (v `Rem` (2 ^ (GetRecordSize r)))
+  PrettyRecord (l :>: r) = PrettyRecord l <++> PrettyRecord r

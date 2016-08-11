@@ -21,6 +21,7 @@ import qualified Data.ByteString.Lazy as B
 import Data.Kind hiding (type (*))
 import Prelude hiding ((.), id)
 import Data.Tagged
+import Test.QuickCheck (property)
 
 type TestRecAligned =
   "bar" :=> Field 8       :>:
@@ -43,28 +44,6 @@ checkTestRecAligned
              ]
 checkTestRecAligned = Valid
 
-
-type family PrettyRecord rec :: PrettyType where
-  PrettyRecord (Field 0) = 'PrettyEmpty
-  PrettyRecord (Field 1) = PutStr "F"
-  PrettyRecord (Field n) =
-    PutStr "<" <++> PrettyOften (n - 2) (PutStr ".") <++> PutStr ">"
-  PrettyRecord (l :=> r) =
-    PutStr "<" <++>
-    'PrettySymbol ('PrettyPadded ((GetRecordSize r) - 2)) ('PrettyPrecision ((GetRecordSize r) - 2)) l
-    <++> PutStr ">"
-  PrettyRecord (r :=  v) =
-    'PrettyNat 'PrettyUnpadded ('PrettyPrecision (GetRecordSize r)) 'PrettyBit v
-  PrettyRecord (l :>: r) = PrettyRecord l <++> PrettyRecord r
-
-printRec
-  :: forall proxy (rec :: Type)
-  . PrettyTypeShow (PrettyRecord rec)
-  => proxy rec -> String
-printRec _ = ptShow (Proxy :: Proxy (PrettyRecord rec))
-
--- 70 .. 63
---
 type TestRecUnAligned =
   "bar" :=> Field 8       :>:
             Field 8  := 0 :>:
@@ -332,6 +311,10 @@ spec = do
       print checkTestRecAligned
       print checkTestRecUnAligned
       print testGetRemainingUnaligned
+  describe "showRecord" $ do
+    it "prints (Field 4 :>: (Field 4 := 0x96)) to \"<..>0110\"" $
+      let actual = showRecord (Proxy :: Proxy (Field 4 :>: (Field 4 := 0x96)))
+          in actual `shouldBe` "<..>0110"
   describe "Field-Getter" $ do
     it "returns False for flag 'foo'" $
       getFlag
@@ -529,6 +512,24 @@ spec = do
                         (Tagged 7 :: Tagged "foo" Integer)
             actual = printBuilder actualB
             in actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc >>"
+    describe "Formatting sub-byte fields" $ do
+      it "only the addressed bits are copied to the output" $
+        property $ \value ->
+          let rec = Proxy
+              rec :: Proxy (Field 4 := 0 :>: "here" :=> Field 4)
+              actualB :: Builder
+              actualB = toFlushedBuilder $ formatBits littleEndian align8 rec
+                          (Tagged value :: Tagged "here" Integer)
+              actual = printBuilder actualB
+              expected = printf "<< %.2x >>" (value .&. 0xf)
+              in actual `shouldBe` expected
+      it "renders (Flag := 0 :>: (Field 7 := 130)) to << 02 >>" $
+        let rec = Proxy
+            rec :: Proxy (Flag := 0 :>: (Field 7 := 130))
+            actual = printBuilder b
+              where b = toBuilder $ formatAlignedBits bigEndian rec
+        in actual `shouldBe` "<< 02 >>"
+
 
 -- * Alignment
 
@@ -870,11 +871,11 @@ writeBits
 writeBits pLen !pBits =
   modifyBitBuilder $
     \bb@(BBState !bldr !part) ->
-      go (fromIntegral (natVal pLen))
-         pBits
-         bldr
-         part
-         (fromIntegral (natVal bb))
+      let pLenVal = fromIntegral (natVal pLen)
+          maskedBits = let mask = (1 `unsafeShiftL` pLenVal) - 1
+                           in pBits .&. mask
+          offset = fromIntegral (natVal bb)
+          in go pLenVal maskedBits bldr part offset
   where
     go 0 _bits !bldr !part _ =  BBState bldr part
     go !len !bits !builder !part !offset =

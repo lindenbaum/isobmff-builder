@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/sheyll/isobmff-builder.svg?branch=master)](https://travis-ci.org/sheyll/isobmff-builder)
-[![Hackage](https://img.shields.io/badge/hackage-isobmff-green.svg?style=flat)](http://hackage.haskell.org/package/isobmff-builder)
+[![Hackage](https://img.shields.io/badge/hackage-isobmffbuilder-green.svg?style=flat)](http://hackage.haskell.org/package/isobmff-builder)
 
 # ISO-14496-12 Base Media File Format Builder
 
