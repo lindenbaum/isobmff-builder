@@ -383,39 +383,16 @@ spec = do
   describe "formatAlignedBits" $ do
         let rec = Proxy
             rec :: Proxy TestRecAligned
-            actual e = B.unpack $ toLazyByteString actualB
-              where actualB = toBuilder $ formatAlignedBits e rec
+            actual = B.unpack $ toLazyByteString actualB
+              where actualB = toBuilder $ formatAlignedBits rec
                         (Tagged 1 :: Tagged "bar" Integer)
                         (Tagged 2 :: Tagged "baz" Integer)
                         (Tagged 4 :: Tagged "foo" Integer)
                         (Tagged 8 :: Tagged "oof" Integer)
                         (Tagged 16 :: Tagged "rab" Integer)
         it "writes fields in big endian" $
-            actual bigEndian `shouldBe` [1,0,2,0,0,0,0,4,0,8,0,16]
-        it "writes fields in little endian" $
-            -- since the TestRecAligned has a size of 96 bit, it is
-            -- automatically aligned to 32 bits, so little endian
-            -- of [A,B,C,D, A,B,C,D, A,B,C,D]
-            -- is [D,C,B,A, D,C,B,A, D,C,B,A]
-            actual littleEndian `shouldBe` [0,2,0,1, 4,0,0,0, 16,0,8,0]
+            actual `shouldBe` [1,0,2,0,0,0,0,4,0,8,0,16]
   describe "unaligned bit records" $ do
-    describe "formatBits align64 little endian" $ do
-      it "writes fields" $
-        let rec = Proxy
-            rec :: Proxy TestRecUnAligned
-            actualB :: Builder
-            actualB = toFlushedBuilder $
-                        formatBits
-                          littleEndian
-                          align64
-                          rec
-                          1 -- because instance Num a => Num (Tagged t a)
-                          (Tagged 3 :: Tagged "baz" Integer)
-                          (Tagged 7 :: Tagged "foo" Integer)
-
-            actual = printBitBuffer actualB
-            in  actual `shouldBe`
-                  "<< 0f 00 00 00 00 06 00 01 00 00 00 00 00 00 00 fc >>"
     describe "formatBits align64 big endian" $ do
       it "writes fields" $
         let rec = Proxy
@@ -423,7 +400,6 @@ spec = do
             actualB :: Builder
             actualB = toFlushedBuilder $
                         formatBits
-                          bigEndian
                           align64
                           rec
                           1 -- because instance Num a => Num (Tagged t a)
@@ -432,22 +408,6 @@ spec = do
             actual = printBitBuffer actualB
             in  actual `shouldBe`
                   "<< 01 00 06 00 00 00 00 0f fc 00 00 00 00 00 00 00 >>"
-    describe "formatBits align32 little endian" $ do
-      it "writes fields" $
-        let rec = Proxy
-            rec :: Proxy TestRecUnAligned
-            actualB :: Builder
-            actualB = toFlushedBuilder $
-                        formatBits
-                          littleEndian
-                          align32
-                          rec
-                          1 -- because instance Num a => Num (Tagged t a)
-                          (Tagged 3 :: Tagged "baz" Integer)
-                          (Tagged 7 :: Tagged "foo" Integer)
-
-            actual = printBitBuffer actualB
-            in  actual `shouldBe` "<< 00 06 00 01 0f 00 00 00 00 00 00 fc >>"
     describe "formatBits align32 big endian" $ do
       it "writes fields" $
         let rec = Proxy
@@ -455,7 +415,6 @@ spec = do
             actualB :: Builder
             actualB = toFlushedBuilder $
                         formatBits
-                          bigEndian
                           align32
                           rec
                           1 -- because instance Num a => Num (Tagged t a)
@@ -463,22 +422,6 @@ spec = do
                           (Tagged 7 :: Tagged "foo" Integer)
             actual = printBitBuffer actualB
             in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 00 00 >>"
-    describe "formatBits align16 little endian" $ do
-      it "writes fields" $
-        let rec = Proxy
-            rec :: Proxy TestRecUnAligned
-            actualB :: Builder
-            actualB = toFlushedBuilder $
-                        formatBits
-                          littleEndian
-                          align16
-                          rec
-                          1 -- because instance Num a => Num (Tagged t a)
-                          (Tagged 3 :: Tagged "baz" Integer)
-                          (Tagged 7 :: Tagged "foo" Integer)
-
-            actual = printBitBuffer actualB
-            in  actual `shouldBe` "<< 00 01 00 06 00 00 0f 00 00 fc >>"
     describe "formatBits align16 big endian" $ do
       it "writes fields" $
         let rec = Proxy
@@ -486,7 +429,6 @@ spec = do
             actualB :: Builder
             actualB = toFlushedBuilder $
                         formatBits
-                          bigEndian
                           align16
                           rec
                           1 -- because instance Num a => Num (Tagged t a)
@@ -494,12 +436,12 @@ spec = do
                           (Tagged 7 :: Tagged "foo" Integer)
             actual = printBitBuffer actualB
             in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 >>"
-    describe "formatBits align8 (little / ignored) endian" $ do
+    describe "formatBits align8" $ do
       it "writes fields" $
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toFlushedBuilder $ formatBits littleEndian align8 rec
+            actualB = toFlushedBuilder $ formatBits align8 rec
                         (Tagged 1 :: Tagged "bar" Integer)
                         (Tagged 3 :: Tagged "baz" Integer)
                         (Tagged 7 :: Tagged "foo" Integer)
@@ -511,7 +453,7 @@ spec = do
           let rec = Proxy
               rec :: Proxy (Field 4 := 0 :>: "here" :=> Field 4)
               actualB :: Builder
-              actualB = toFlushedBuilder $ formatBits littleEndian align8 rec
+              actualB = toFlushedBuilder $ formatBits align8 rec
                           (Tagged value :: Tagged "here" Integer)
               actual = printBitBuffer actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
@@ -520,7 +462,7 @@ spec = do
         let rec = Proxy
             rec :: Proxy (Flag := 0 :>: (Field 7 := 130))
             actual = printBitBuffer b
-              where b = toBuilder $ formatAlignedBits bigEndian rec
+              where b = toBuilder $ formatAlignedBits rec
         in actual `shouldBe` "<< 02 >>"
 
 

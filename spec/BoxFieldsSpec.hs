@@ -5,8 +5,6 @@ import Data.ByteString.IsoBaseFileFormat.Boxes
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
-import Data.ByteString.IsoBaseFileFormat.Util.Time
-import Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import qualified Data.ByteString.Lazy as BL
 import Control.Exception (evaluate)
 

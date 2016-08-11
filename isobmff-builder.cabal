@@ -73,7 +73,7 @@ library
                      , Data.Type.BitRecords.Arithmetic
                      , Data.Type.BitRecords.Builder.Alignment
                      , Data.Type.BitRecords.Builder.BitBuffer
-                     , Data.Type.BitRecords.Builder.Parameter
+                     , Data.Type.BitRecords.Builder.Holey
                      , Data.Type.BitRecords.ByteStringBuilder
                      , Data.Type.BitRecords.Core
   build-depends:       base >= 4.9 && < 5
@@ -172,6 +172,47 @@ test-suite spec
                      , TypeOperators
                      , TypeSynonymInstances
   ghc-options:       -Wall -O0 -j +RTS -A256m -n2m -RTS
+                     -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
+
+benchmark bit-records
+  type:                exitcode-stdio-1.0
+  ghc-options:         -Wall
+  hs-source-dirs:      benchmarks/bit-records
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.9 && < 5
+                     , isobmff-builder
+                     , binary
+                     , time >= 1.6 && < 2
+  default-language:    Haskell2010
+  default-extensions:  BangPatterns
+                     , ConstraintKinds
+                     , CPP
+                     , DataKinds
+                     , DefaultSignatures
+                     , DeriveDataTypeable
+                     , DeriveFunctor
+                     , DeriveGeneric
+                     , FlexibleInstances
+                     , FlexibleContexts
+                     , FunctionalDependencies
+                     , GADTs
+                     , GeneralizedNewtypeDeriving
+                     , KindSignatures
+                     , MultiParamTypeClasses
+                     , OverloadedStrings
+                     , QuasiQuotes
+                     , RecordWildCards
+                     , RankNTypes
+                     , ScopedTypeVariables
+                     , StandaloneDeriving
+                     , TemplateHaskell
+                     , TupleSections
+                     , TypeFamilies
+                     , TypeInType
+                     , TypeOperators
+                     , TypeSynonymInstances
+  ghc-options:       -Wall -O2 -j +RTS -A256m -n2m -RTS
                      -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
 
 source-repository head

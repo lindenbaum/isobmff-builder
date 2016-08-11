@@ -1,6 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module ElementaryStreamDescriptorSpec (spec) where
 
+import Prelude hiding ((.))
+import           Control.Category
 import           Data.Bits
 import           Data.ByteString.Builder
 import           Data.ByteString.IsoBaseFileFormat.Box
@@ -12,8 +14,10 @@ import           Data.Word
 import           Test.Hspec
 import           Test.QuickCheck
 
-data StaticBoxContent record where
-  StaticBoxContent :: StaticBoxContent record
+-- * Static BoxContent
+
+newtype StaticBoxContent record where
+  StaticBoxContent :: Builder -> StaticBoxContent record
 
 instance
       ( KnownNat (GetRecordSize content) )
@@ -21,12 +25,23 @@ instance
   boxSize cnt =
     -- convert from bits to bytes
     fromIntegral (getRecordSizeFromProxy cnt `unsafeShiftR` 3)
-  boxBuilder StaticBoxContent = mempty -- TODO
+  boxBuilder (StaticBoxContent cnt) = cnt
 
--- * Static Expandable boxes
+toStaticBoxContent :: Num (BitBuffer a) => BitBuilder a 0 0 -> StaticBoxContent rec
+toStaticBoxContent = StaticBoxContent . toBuilder
+
+-- addBitBuilder
+--   :: Holey Builder r a
+--   -> Holey (BitBuilder buff 0 0) (BitBuilder buff 0 0) a
+--   -> Holey Builder r a
+-- addBitBuilder f g = f . (hoistM startBitBuilder (hoistR (appBitBuilder mempty) g))
+
+-- * Static Expandable
 
 staticExpandable :: proxy record -> StaticExpandable record
-staticExpandable _ = StaticExpandable StaticBoxContent
+staticExpandable _ = StaticExpandable (StaticBoxContent mempty) -- TODO
+
+---
 
 newtype StaticExpandable r =
   StaticExpandable (StaticBoxContent (StaticExpandableContent r))
@@ -59,7 +74,7 @@ type family ExpandableSizeNext (s :: Nat) where
 
 type ExpandableSizeNextChunk (s :: Nat) = Flag := 1 :>: (Field 7 := s)
 
-------------
+---
 
 spec :: Spec
 spec = do

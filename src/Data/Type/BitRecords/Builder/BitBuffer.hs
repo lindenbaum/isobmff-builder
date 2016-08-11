@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Builder.BitBuffer where
 
 import Data.Type.BitRecords.Arithmetic
@@ -8,62 +9,56 @@ import GHC.TypeLits
 import Data.Int
 import Prelude hiding ((.), id)
 
--- | A wrapper around an integral type retreived from 'ToAlignedWord' like
--- 'Word32', 'Word64', etc, that acts as a buffer for efficient serialization of
--- bits to a 'Builder'.
-newtype BitBuffer (a :: Alignment) (endianness :: Endianness) =
-  BitBuffer {fromBitBufferMsbFirst :: ToAlignedWord a}
-
 -- | Types which contain a finite amount of bits, which can be set from a value
 -- and an offset. Bits can be written to the value.
-type IsBitBuffer a e =
-  ( KnownAlignment a
-  , Num (ToAlignedWord a)
-  , Show (ToAlignedWord a)
-  , FiniteBits (ToAlignedWord a)
-  , Bits (ToAlignedWord a)
-  , KnownNat (GetAlignmentBits a))
+class ( KnownAlignment (BitBufferAlignment b)
+      , Num b, Bits b, FiniteBits b, Eq b, Ord b
+      )  => IsBitBuffer b where
+  type BitBufferAlignment b :: Alignment
+  -- | Copy bits starting at a specific offset from one @a@ the the other.
+  bufferBits
+    :: Int  -- ^ @length@ of the value to write in number of bits.
+    -> b -- ^ The value to write (in the lower @length@ bits).
+    -> Int  -- ^ The start offset in the output value
+    -> b -- ^ The input to write to
+    -> (b, Int, Int, b) -- ^ The output buffer, space left in buffer, the
+                        -- number of remaining bits that did not fit in the
+                        -- buffer, and finally the left bits themselves.
 
-type family BitBufferSize b :: Nat where
-  BitBufferSize (BitBuffer a e) = GetAlignmentBits a
+type BitBufferSize b = GetAlignmentBits (BitBufferAlignment b)
 
--- | Return the static size of an 'IsBitBuffer'. The parameter is ignored!
-bitBufferSize :: forall a e . (IsBitBuffer a e) => BitBuffer a e -> Int
-bitBufferSize _ = fromIntegral $ natVal (Proxy :: Proxy (GetAlignmentBits a))
+instance (KnownAlignment a) => IsBitBuffer (BitBuffer a) where
+  type BitBufferAlignment (BitBuffer a) = a
+  -- | Copy bits starting at a specific offset from one @a@ the the other.
+  -- Set bits starting from the most significant bit to the least.
+  --   For example @writeBits m 1 <> writeBits n 2@ would result in:
+  -- @
+  --         MSB                                             LSB
+  --    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
+  --  Value: |0     ..     1|0        ..     10|  ...          |
+  --          ->             ->                 ->     (direction of writing)
+  -- @
+  bufferBits !len !bits !offset !buff =
+    let buffLen = fromIntegral $ natVal (Proxy :: Proxy (GetAlignmentBits a))
+        !spaceAvailable = buffLen - offset
+        !writeLen = min spaceAvailable len
+        !spaceLeft = spaceAvailable - writeLen
+        !writeOffset = spaceLeft
+        !restLen = len - writeLen
+        !restBits = bits .&. (1 `unsafeShiftL` restLen - 1)
+        !buff' = buff .|. (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
+        in (buff', spaceLeft, restLen, restBits)
 
--- | Copy bits starting at a specific offset from one @a@ the the other.
--- Set bits starting from the most significant bit to the least.
---   For example @writeBits m 1 <> writeBits n 2@ would result in:
--- @
---         MSB                                             LSB
---    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
---  Value: |0     ..     1|0        ..     10|  ...          |
---          ->             ->                 ->     (direction of writing)
--- @
-bufferBits
-  :: (IsBitBuffer a e)
-  => Int  -- ^ @length@ of the value to write in number of bits.
-  -> BitBuffer a e -- ^ The value to write (in the lower @length@ bits).
-  -> Int  -- ^ The start offset in the output value
-  -> BitBuffer a e -- ^ The input to write to
-  -> (BitBuffer a e, Int, Int, BitBuffer a e) -- ^ The output buffer, space left in buffer, the
-                      -- number of remaining bits that did not fit in the
-                      -- buffer, and finally the left bits themselves.
-bufferBits !len !bits !offset !buff =
-  let !buffLen = bitBufferSize buff
-      !spaceAvailable = buffLen - offset
-      !writeLen = min spaceAvailable len
-      !spaceLeft = spaceAvailable - writeLen
-      !writeOffset = spaceLeft
-      !restLen = len - writeLen
-      !restBits = bits .&. (1 `unsafeShiftL` restLen - 1)
-      !buff' = buff .|. (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
-      in (buff', spaceLeft, restLen, restBits)
+-- | A bitbuffer that holds as much bits as an aligned word.
+newtype BitBuffer (a :: Alignment) = BitBuffer {unBitBuffer :: ToAlignedWord a}
 
-type NextBitBufferOffset a len offset = (len + offset) `Rem` BitBufferSize a
+type BitBuffer8 = BitBuffer 'Align8
+type BitBuffer16 = BitBuffer 'Align16
+type BitBuffer32 = BitBuffer 'Align32
+type BitBuffer64 = BitBuffer 'Align64
 
-deriving instance Eq (ToAlignedWord a) => Eq (BitBuffer a e)
-deriving instance Ord (ToAlignedWord a) => Ord (BitBuffer a e)
-deriving instance Num (ToAlignedWord a) => Num (BitBuffer a e)
-deriving instance Bits (ToAlignedWord a) => Bits (BitBuffer a e)
-deriving instance FiniteBits (ToAlignedWord a) => FiniteBits (BitBuffer a e)
+deriving instance Eq (ToAlignedWord a) => Eq (BitBuffer a)
+deriving instance Ord (ToAlignedWord a) => Ord (BitBuffer a)
+deriving instance Num (ToAlignedWord a) => Num (BitBuffer a)
+deriving instance Bits (ToAlignedWord a) => Bits (BitBuffer a)
+deriving instance FiniteBits (ToAlignedWord a) => FiniteBits (BitBuffer a)

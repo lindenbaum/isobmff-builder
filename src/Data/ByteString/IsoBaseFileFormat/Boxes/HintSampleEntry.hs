@@ -2,7 +2,7 @@
 -- | Format of the hint track as well as streaming protocol settings.
 module Data.ByteString.IsoBaseFileFormat.Boxes.HintSampleEntry where
 
-import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry
+import Data.ByteString.IsoBaseFileFormat.Boxes.SampleEntry ()
 import Data.ByteString.IsoBaseFileFormat.Boxes.Handler
 import Data.ByteString.IsoBaseFileFormat.Box
 

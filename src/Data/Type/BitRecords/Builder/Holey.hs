@@ -1,4 +1,4 @@
-module Data.Type.BitRecords.Builder.Parameter where
+module Data.Type.BitRecords.Builder.Holey where
   -- TODO
 
 import Data.Monoid
@@ -6,14 +6,14 @@ import Control.Category
 import Data.Kind hiding (type (*))
 import Prelude hiding ((.), id)
 
-class HasParameter m f r where
-  type FmtArg m f r
-  type FmtArg m f r = r
-  toFormatter :: proxy f -> Holey m r (FmtArg m f r)
+class ToHoley m f r where
+  type ToM m f r
+  type ToM m f r = r
+  toHoley :: proxy f -> Holey m r (ToM m f r)
 
 newtype Holey m r a = HM {runHM :: (m -> r) -> a }
 
--- * Indexec Holey
+-- * Indexec Monoid
 
 class IxMonoid (m :: k -> k -> Type)  where
   ixEmpty :: m i i
