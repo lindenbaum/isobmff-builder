@@ -7,8 +7,7 @@ module Data.ByteString.IsoBaseFileFormat.ReExports (module X) where
 import           Data.Bits                                         as X
 import qualified Data.ByteString                                   as B
 import           Data.ByteString.Builder                           as X
-import           Data.ByteString.IsoBaseFileFormat.Util.BitRecords as X
-import           Data.ByteString.IsoBaseFileFormat.Util.PrettyType as X
+import           Data.Type.BitRecords                              as X
 import           Data.ByteString.IsoBaseFileFormat.Util.TypeLayout as X
 import           Data.Default                                      as X
 import           Data.Foldable                                     as X (fold)

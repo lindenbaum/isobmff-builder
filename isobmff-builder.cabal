@@ -61,16 +61,21 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Brands.Dash
                      , Data.ByteString.IsoBaseFileFormat.MediaFile
                      , Data.ByteString.IsoBaseFileFormat.ReExports
-                     , Data.ByteString.IsoBaseFileFormat.Util.BitRecords
                      , Data.ByteString.IsoBaseFileFormat.Util.BoxFields
                      , Data.ByteString.IsoBaseFileFormat.Util.FullBox
-                     , Data.ByteString.IsoBaseFileFormat.Util.PrettyType
                      , Data.ByteString.IsoBaseFileFormat.Util.Time
                      , Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
                      , Data.ByteString.IsoBaseFileFormat.Util.Versioned
                      , Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
                      , Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
                      , Data.ByteString.Mp4.AudioFile
+                     , Data.Type.BitRecords
+                     , Data.Type.BitRecords.Arithmetic
+                     , Data.Type.BitRecords.Builder.Alignment
+                     , Data.Type.BitRecords.Builder.BitBuffer
+                     , Data.Type.BitRecords.Builder.Parameter
+                     , Data.Type.BitRecords.ByteStringBuilder
+                     , Data.Type.BitRecords.Core
   build-depends:       base >= 4.9 && < 5
                      , bytestring >= 0.10.8.1 && < 0.11
                      , type-list >= 0.5.0.0 && < 0.6
