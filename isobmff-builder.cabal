@@ -87,6 +87,7 @@ library
                      , text >= 1.2.2.1 && < 2
                      , type-spec >= 0.1
                      , mtl >= 2.2 && < 3
+                     , pretty-types >= 0.1.1 && < 0.2
   default-language:    Haskell2010
   ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind
   default-extensions:  BangPatterns
@@ -141,6 +142,7 @@ test-suite spec
                      , mtl >= 2.2 && < 3
                      , QuickCheck
                      , tagged
+                     , pretty-types >= 0.1.1 && < 0.2
   default-language:    Haskell2010
   default-extensions:  BangPatterns
                      , ConstraintKinds

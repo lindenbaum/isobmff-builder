@@ -8,7 +8,7 @@ import GHC.TypeLits
 import Data.Bits
 import Data.Proxy
 import Test.TypeSpecCrazy
-import Data.ByteString.IsoBaseFileFormat.Util.PrettyType
+import Data.Type.Pretty
 
 -- * Fields
 

@@ -124,14 +124,14 @@ data BBState buff (offset :: Nat) =
 instance (KnownNat o, Show buff) => Show (BBState buff o) where
   showsPrec d st@(BBState b p) =
     showParen (d > 10) $
-          showString (printf "BBState %s" (printBuilder b))
+          showString (printf "BBState %s" (printBitBuffer b))
         . (showChar ' ')
         . (showsPrec 11 p)
         . (showChar ' ')
         . (showsPrec 11 (natVal st))
 
-printBuilder :: Builder -> String
-printBuilder b =
+printBitBuffer :: Builder -> String
+printBitBuffer b =
       ("<< " ++)
    $  (++" >>")
    $  unwords
@@ -158,11 +158,11 @@ writeBits
 writeBits pLen !pBits =
   modifyBitBuilder $
     \bb@(BBState !bldr !part) ->
-      go (fromIntegral (natVal pLen))
-         pBits
-         bldr
-         part
-         (fromIntegral (natVal bb))
+      let pLenVal = fromIntegral (natVal pLen)
+          maskedBits = let mask = (1 `unsafeShiftL` pLenVal) - 1
+                           in pBits .&. mask
+          offset = fromIntegral (natVal bb)
+          in go pLenVal maskedBits bldr part offset
   where
     go 0 _bits !bldr !part _ =  BBState bldr part
     go !len !bits !builder !part !offset =

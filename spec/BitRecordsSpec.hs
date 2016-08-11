@@ -3,22 +3,15 @@ module BitRecordsSpec (spec) where
 
 import Data.Bits
 import Data.Type.BitRecords
-import Data.ByteString.IsoBaseFileFormat.Util.PrettyType
 import Data.Proxy
 import Data.Word
-import Data.Type.Equality
-import Data.Type.Bool
-import Data.Monoid
+import Data.Type.Equality ()
 import Data.ByteString.Builder
-import Control.Category
 import GHC.TypeLits
 import Test.Hspec
 import Test.TypeSpecCrazy
-import Data.Int
 import Text.Printf
-import Debug.Trace
 import qualified Data.ByteString.Lazy as B
-import Data.Kind hiding (type (*))
 import Prelude hiding ((.), id)
 import Data.Tagged
 import Test.QuickCheck (property)
@@ -420,7 +413,7 @@ spec = do
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
 
-            actual = printBuilder actualB
+            actual = printBitBuffer actualB
             in  actual `shouldBe`
                   "<< 0f 00 00 00 00 06 00 01 00 00 00 00 00 00 00 fc >>"
     describe "formatBits align64 big endian" $ do
@@ -436,7 +429,7 @@ spec = do
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBuilder actualB
+            actual = printBitBuffer actualB
             in  actual `shouldBe`
                   "<< 01 00 06 00 00 00 00 0f fc 00 00 00 00 00 00 00 >>"
     describe "formatBits align32 little endian" $ do
@@ -453,7 +446,7 @@ spec = do
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
 
-            actual = printBuilder actualB
+            actual = printBitBuffer actualB
             in  actual `shouldBe` "<< 00 06 00 01 0f 00 00 00 00 00 00 fc >>"
     describe "formatBits align32 big endian" $ do
       it "writes fields" $
@@ -468,7 +461,7 @@ spec = do
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBuilder actualB
+            actual = printBitBuffer actualB
             in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 00 00 >>"
     describe "formatBits align16 little endian" $ do
       it "writes fields" $
@@ -484,7 +477,7 @@ spec = do
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
 
-            actual = printBuilder actualB
+            actual = printBitBuffer actualB
             in  actual `shouldBe` "<< 00 01 00 06 00 00 0f 00 00 fc >>"
     describe "formatBits align16 big endian" $ do
       it "writes fields" $
@@ -499,7 +492,7 @@ spec = do
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBuilder actualB
+            actual = printBitBuffer actualB
             in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 >>"
     describe "formatBits align8 (little / ignored) endian" $ do
       it "writes fields" $
@@ -510,7 +503,7 @@ spec = do
                         (Tagged 1 :: Tagged "bar" Integer)
                         (Tagged 3 :: Tagged "baz" Integer)
                         (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBuilder actualB
+            actual = printBitBuffer actualB
             in actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc >>"
     describe "Formatting sub-byte fields" $ do
       it "only the addressed bits are copied to the output" $
@@ -520,13 +513,13 @@ spec = do
               actualB :: Builder
               actualB = toFlushedBuilder $ formatBits littleEndian align8 rec
                           (Tagged value :: Tagged "here" Integer)
-              actual = printBuilder actualB
+              actual = printBitBuffer actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
               in actual `shouldBe` expected
       it "renders (Flag := 0 :>: (Field 7 := 130)) to << 02 >>" $
         let rec = Proxy
             rec :: Proxy (Flag := 0 :>: (Field 7 := 130))
-            actual = printBuilder b
+            actual = printBitBuffer b
               where b = toBuilder $ formatAlignedBits bigEndian rec
         in actual `shouldBe` "<< 02 >>"
 
