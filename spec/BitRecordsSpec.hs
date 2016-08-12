@@ -79,15 +79,15 @@ testRemPow2
   #########
 
   "Remainder of '1'"
-  ~~~~~~~~~~~~~~~~~
+  ~~~~~~~~~~~~~~~~~~
 
       It "1 `RemPow2` 1 is 1"  (Is 1 (RemPow2 1 1))
   -*  It "1 `RemPow2` 8 is 1"  (Is 1 (RemPow2 1 8))
 
--/-
+  -/-
 
    "Remainder of '3916441'"
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       It " `RemPow2` 1 is 1"   (Is 1 (RemPow2 3916441 1))
   -*  It " `RemPow2` 2 is 1"   (Is 1 (RemPow2 3916441 2))

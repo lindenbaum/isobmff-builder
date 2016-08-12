@@ -21,6 +21,14 @@ extra-source-files:   README.md
                     , .gitignore
 cabal-version:       >=1.10
 
+flag tracing
+  description: Build with trace output enabled
+  default:     True
+
+flag fullbenchmarks
+  description: Enable the compilation of all benchmarks, takes a long time to compile
+  default:     False
+
 library
   hs-source-dirs:      src
   exposed-modules:     Data.ByteString.IsoBaseFileFormat.Box
@@ -89,7 +97,10 @@ library
                      , mtl >= 2.2 && < 3
                      , pretty-types >= 0.1.1 && < 0.2
   default-language:    Haskell2010
-  ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind
+  if flag(tracing)
+    ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind -DTRACING
+  else
+    ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind -DNTRACING
   default-extensions:  BangPatterns
                      , ConstraintKinds
                      , CPP
@@ -213,8 +224,12 @@ benchmark bit-records
                      , TypeInType
                      , TypeOperators
                      , TypeSynonymInstances
-  ghc-options:       -Wall -O2 -j +RTS -A256m -n2m -RTS
-                     -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
+  if flag(fullbenchmarks)
+    ghc-options:       -Wall -O2 -j +RTS -A256m -n2m -RTS -DFULLBENCHMARKS
+                       -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
+  else
+    ghc-options:       -Wall -O2 -j +RTS -A256m -n2m -RTS -DNFULLBENCHMARKS
+                       -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
 
 source-repository head
   type:     git

@@ -64,9 +64,15 @@ align32 = Proxy
 align64 :: Proxy 'Align64
 align64 = Proxy
 
-type AlignmentOffsetAdd a len offset = AlignmentOffset a (len + offset) 
+type family
+  AlignmentOffsetAdd (a :: Alignment) (len :: Nat) (offset :: Nat) :: Nat where
+  AlignmentOffsetAdd a len offset = AlignmentOffset a (len + offset)
 
-type AlignmentOffset a x = x `Rem` GetAlignmentBits a
+type family AlignmentOffset (a :: Alignment) (x :: Nat) :: Nat where
+  AlignmentOffset 'Align64 x = x `RemPow2` 6
+  AlignmentOffset 'Align32 x = x `RemPow2` 5
+  AlignmentOffset 'Align16 x = x `RemPow2` 4
+  AlignmentOffset 'Align8 x = x `RemPow2` 3
 
 -- | Return an adequate alignment for records with @n@ bits.
 type family SelectAlignment (n :: Nat) :: Maybe Alignment where

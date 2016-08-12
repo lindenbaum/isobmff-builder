@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE CPP #-}
 module Main where
 
 import Criterion.Main
@@ -9,11 +10,12 @@ import Data.Word
 import Data.Type.Equality
 import Data.Proxy
 import Test.TypeSpecCrazy
-import GHC.TypeLits
+import GHC.TypeLits ()
 
 type Static64 =
   Field 3 := 2 :>: Field 5 := 4 :>: Field 9 := 333 :>: Field 7 := 35 :>: Field 30 := 458329 :>: Field 2 := 1 :>: Field 2 := 0 :>: Field 2 := 1 :>: Field 4 := 9
 
+#ifdef FULLBENCHMARKS
 type Static128 = Field 128 := 0xdeadbeef
 
 type Static256 =
@@ -21,7 +23,7 @@ type Static256 =
 
 type Static517 =
    Static256 :>: Static256 :>: Field 5 := 0
-
+#endif
 
 aboutStatic64 ::
 
@@ -29,9 +31,11 @@ aboutStatic64 ::
   ########################
 
      It's "64 bit long" (ShouldBeTrue ((GetRecordSize Static64) == 64))
+#ifdef FULLBENCHMARKS
      -* It's "128 bit long" (ShouldBeTrue ((GetRecordSize Static128) == 128))
      -* It's "256 bit long" (ShouldBeTrue ((GetRecordSize Static256) == 256))
      -* It's "517 bit long" (ShouldBeTrue ((GetRecordSize Static517) == 517))
+#endif
 
 aboutStatic64 =
   Valid
@@ -50,6 +54,8 @@ static32BitAligned64 m =
   lumpUp m $ toBuilder $ formatBits align32 (Proxy :: Proxy Static64)
 static64BitAligned64 m =
   lumpUp m $ toBuilder $ formatBits align64 (Proxy :: Proxy Static64)
+
+#ifdef FULLBENCHMARKS
 
 staticAutoAligned128 m =
   lumpUp m $ toBuilder $ formatAlignedBits (Proxy :: Proxy Static128)
@@ -80,12 +86,16 @@ staticPlain512bitBaseline m =
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64 :>:
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64
     ))
+#endif
 
 main = do
   putStrLn $ show aboutStatic64
   defaultMain
     [bgroup "static-records"
-      [bgroup "auto-align"
+      [
+
+#ifdef FULLBENCHMARKS
+      bgroup "auto-align"
               [bench "64bit record" $ nf staticAutoAligned64 1
               ,bench "128bit record" $  nf staticAutoAligned128 1
               ,bench "256bit record" $  nf staticAutoAligned256 1
@@ -110,5 +120,14 @@ main = do
               ,bench "256bit record" $  nf static64BitAligned256 1
               ,bench "517bit record" $  nf static64BitAligned517 1
               ]
+#else
+      bgroup "static 64-bit"
+              [bench "64bit aligned" $ nf static64BitAligned64 1
+              ,bench "32bit aligned" $ nf static32BitAligned64 1
+              ,bench "16bit aligned" $ nf static16BitAligned64 1
+              ,bench "8bit aligned" $ nf static8BitAligned64 1
+              ,bench "auto aligned" $ nf staticAutoAligned64 1
+              ]
+#endif
       ]
     ]

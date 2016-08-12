@@ -193,24 +193,21 @@ instance  ( HasBuilder a
           , KnownNat (GetRecordSize f)
           , oT ~ AlignmentOffsetAdd a (GetRecordSize f) oF)
   => ToHoley (BitBuilder a oF oT) (f := v) r where
-    type ToM (BitBuilder a oF oT) (f := v) r = r
     toHoley _ =
         immediate (writeBits fieldLen fieldVal)
       where
         fieldLen = Proxy :: Proxy (GetRecordSize f)
         fieldVal = fromIntegral (natVal (Proxy :: Proxy v))
 
--- instance forall a oT n oF r .
---           ( HasBuilder a
---           , KnownAlignment a
---           , KnownNat n
---           , KnownNat oF
---           , oT ~ AlignmentOffsetAdd a n oF
---           , KnownNat oT
---           , IsBitBuffer (BitBuffer a))
---   => ToHoley (BitBuilder a oF oT) (Field n) r where
---     type ToM (BitBuilder a oF oT) (Field n) r = r
---     toHoley _ = immediate (writeBits (fromIntegral (natVal (Proxy :: Proxy n))) 0)
+instance forall a oT n oF r .
+          ( HasBuilder a
+          , KnownNat n
+          , KnownNat oF
+          , oT ~ AlignmentOffsetAdd a n oF
+          , KnownNat oT
+          , IsBitBuffer (BitBuffer a))
+  => ToHoley (BitBuilder a oF oT) (Field n) r where
+    toHoley _ = immediate (writeBits (Proxy :: Proxy n) 0)
 -- TODO
 -- | An instance that when given:
 --
