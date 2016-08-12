@@ -3,6 +3,7 @@ module Data.Type.BitRecords.Arithmetic where
 
 import Data.Type.Bool
 import GHC.TypeLits
+import qualified Data.Promotion.Prelude.List as Sing
 
 -- | Get the remainder of the integer division of x and y, such that @forall x
 -- y. exists k. (Rem x y) == x - y * k@ The algorithm is: count down x
@@ -22,7 +23,44 @@ import GHC.TypeLits
 --  RemImpl 3 3 0 = 0                       -- RemImpl Clause 3 !!!
 -- @
 --
-type Rem (x :: Nat) (y :: Nat) = RemImpl x y 0
+-- If @y@ is a power of 2 and @y <= 2^32@ then 'RemPow2' will be invoked.
+type family Rem (x :: Nat) (y :: Nat) :: Nat where
+  -- special optimizations for
+  Rem x 4294967296 = RemPow2 x 32
+  Rem x 2147483648 = RemPow2 x 31
+  Rem x 1073741824 = RemPow2 x 30
+  Rem x 536870912 = RemPow2 x 29
+  Rem x 268435456 = RemPow2 x 28
+  Rem x 134217728 = RemPow2 x 27
+  Rem x 67108864 = RemPow2 x 26
+  Rem x 33554432 = RemPow2 x 25
+  Rem x 16777216 = RemPow2 x 24
+  Rem x 8388608 = RemPow2 x 23
+  Rem x 4194304 = RemPow2 x 22
+  Rem x 2097152 = RemPow2 x 21
+  Rem x 1048576 = RemPow2 x 20
+  Rem x 524288 = RemPow2 x 19
+  Rem x 262144 = RemPow2 x 18
+  Rem x 131072 = RemPow2 x 17
+  Rem x 65536 = RemPow2 x 16
+  Rem x 32768 = RemPow2 x 15
+  Rem x 16384 = RemPow2 x 14
+  Rem x 8192 = RemPow2 x 13
+  Rem x 4096 = RemPow2 x 12
+  Rem x 2048 = RemPow2 x 11
+  Rem x 1024 = RemPow2 x 10
+  Rem x 512 = RemPow2 x 9
+  Rem x 256 = RemPow2 x 8
+  Rem x 128 = RemPow2 x 7
+  Rem x 64 = RemPow2 x 6
+  Rem x 32 = RemPow2 x 5
+  Rem x 16 = RemPow2 x 4
+  Rem x 8 = RemPow2 x 3
+  Rem x 4 = RemPow2 x 2
+  Rem x 2 = RemPow2 x 1
+  Rem x 1 = 0
+  Rem x 0 = TypeError ('Text "divide by zero: " ':<>: 'ShowType x ':<>: 'Text " `Rem` 0")
+  Rem x y = RemImpl x y 0
 type family
   RemImpl (x :: Nat) (y :: nat) (acc :: Nat) :: Nat where
   -- finished if x was < y:
@@ -32,6 +70,14 @@ type family
   RemImpl y y acc = acc
   -- the base case
   RemImpl x y acc = RemImpl (x - 1) y (acc + 1)
+
+-- | Efficient 'Rem' operation for power of 2 values. Note that x must be
+-- representable by 'RemPow2Bits' bits.
+type RemPow2 x p =
+  FromBits (Sing.Reverse (Sing.Take p (Sing.Reverse (ToBits x RemPow2Bits))))
+
+-- | Maximum number of bits an argument @x@ of 'RemPow2' may occupy.
+type RemPow2Bits = 64
 
 -- | Integer division of x and y: @Div x y  ==> x / y@,
 -- NOTE This only works for small numbers currently

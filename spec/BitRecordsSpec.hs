@@ -62,12 +62,6 @@ testBitHasFields
               ShouldBeTrue (HasField TestHasField "bar"))
 testBitHasFields = Valid
 
-type TestHasNestedField =
-       "foo" :=> "bar" :=> Field 2
-testBitHasNestedFields
-  :: Expect (ShouldBeTrue (HasField TestHasNestedField ("foo" :/ "bar")))
-testBitHasNestedFields = Valid
-
 testRem
   :: Expect '[ Rem 0 3 `ShouldBe` 0
              , Rem 1 3 `ShouldBe` 1
@@ -78,6 +72,30 @@ testRem
              , Rem 6 3 `ShouldBe` 0
             ]
 testRem = Valid
+
+testRemPow2
+  ::
+  "RemPow2"
+  #########
+
+  "Remainder of '1'"
+  ~~~~~~~~~~~~~~~~~
+
+      It "1 `RemPow2` 1 is 1"  (Is 1 (RemPow2 1 1))
+  -*  It "1 `RemPow2` 8 is 1"  (Is 1 (RemPow2 1 8))
+
+-/-
+
+   "Remainder of '3916441'"
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      It " `RemPow2` 1 is 1"   (Is 1 (RemPow2 3916441 1))
+  -*  It " `RemPow2` 2 is 1"   (Is 1 (RemPow2 3916441 2))
+  -*  It " `RemPow2` 3 is 1"   (Is 1 (RemPow2 3916441 3))
+  -*  It " `RemPow2` 4 is 9"   (Is 9 (RemPow2 3916441 4))
+  -*  It " `RemPow2` 8 is 153" (Is 153 (RemPow2 3916441 8))
+
+testRemPow2 = Valid
 
 testDiv
   :: Expect '[ Div 0 3 `ShouldBe` 0
@@ -221,11 +239,11 @@ testNatBits
 testNatBits = Valid
 
 testAlign
-  :: Expect '[ Align 'True 7 Flag       `ShouldBe`  (Flag :>: Ignore (Field 6 := 0))
+  :: Expect '[ Align 'True 7 Flag       `ShouldBe`  (Flag :>: Field 6 := 0)
              , Align 'True 1 Flag       `ShouldBe`  Flag
-             , Align 'True 8 (Field 7)  `ShouldBe`  (Field 7 :>: Ignore (Field 1 := 0))
+             , Align 'True 8 (Field 7)  `ShouldBe`  (Field 7 :>: Field 1 := 0)
              , Align 'True 8 (Field 8)  `ShouldBe`  Field 8
-             , Align 'True 8 (Field 9)  `ShouldBe`  (Field 9 :>: Ignore (Field 7 := 0))
+             , Align 'True 8 (Field 9)  `ShouldBe`  (Field 9 :>: Field 7 := 0)
             ]
 testAlign = Valid
 
@@ -253,22 +271,6 @@ testFieldPosition1Baz
    :: Expect (Try (GetFieldPosition TestField1 "baz") `ShouldBe` '(15,23))
 testFieldPosition1Baz = Valid
 
-type TestFieldNested =
-     Field 13
-     :>: "bar" :=> (              Field 7
-                    :>:           Flag
-                    :>: "foo" :=> Field 16
-                    :>:           Flag
-                    :>:           Flag)
-
-testFieldPositionTestFieldNested
-   :: Expect
-       (Try
-         (GetFieldPosition TestFieldNested ("bar" :/ "foo"))
-             `ShouldBe`
-                        '(13 + 7 + 1, (16 - 1) + (13 + 7 + 1)))
-testFieldPositionTestFieldNested = Valid
-
 testFieldPositionToList
    :: Expect
        (FieldPostitionToList
@@ -290,8 +292,8 @@ spec = do
     it "is sound" $ do
       print (Valid :: Expect (GetRecordSize (Flag :>: Field 7) `Is` 8))
       print testBitHasFields
-      print testBitHasNestedFields
       print testRem
+      print testRemPow2
       print testDiv
       print testNatBits
       print testAlign
@@ -299,7 +301,6 @@ spec = do
       print testFieldPosition1Foo
       print testFieldPosition1Bar
       print testFieldPosition1Baz
-      print testFieldPositionTestFieldNested
       print testFieldPositionToList
       print checkTestRecAligned
       print checkTestRecUnAligned
@@ -344,42 +345,6 @@ spec = do
                                         :>: Flag)))
         (0xcafe0000 `shiftR` 3 :: Word32)
        `shouldBe` (0xcafe :: Word32)
-    it "returns 0xcafe for nested field 'bar :/ foo'" $
-      getField
-        (Proxy :: Proxy ("bar" :/ "foo"))
-        (Proxy :: Proxy (              Field 13
-                         :>: "bar" :=> (              Field 7
-                                        :>:           Flag
-                                        :>: "foo" :=> Field 16
-                                        :>:           Flag
-                                        :>:           Flag)))
-        (0xcafe `shiftL` (13 + 7 + 1) :: Word64)
-       `shouldBe` (0xcafe :: Word64)
-  describe "Field-Setter" $ do
-    it "sets nested flag 'bar :/ foo' to 1" $
-      setFlag
-        (Proxy :: Proxy ("bar" :/ "foo"))
-        (Proxy :: Proxy (              Field 13
-                         :>: "bar" :=> (              Field 7
-                                        :>:           Flag
-                                        :>: "foo" :=> Flag
-                                        :>:           Flag
-                                        :>:           Flag)))
-        True
-        (0 :: Word64)
-       `shouldBe` (1 `shiftL` (13 + 7 + 1) :: Word64)
-    it "sets nested field 'bar :/ foo' to 0xe" $
-      setField
-        (Proxy :: Proxy ("bar" :/ "foo"))
-        (Proxy :: Proxy (              Field 13
-                         :>: "bar" :=> (              Field 7
-                                        :>:           Flag
-                                        :>: "foo" :=> Field 4
-                                        :>:           Flag
-                                        :>:           Flag)))
-        (0xe :: Word8)
-        (0xcaf0 `shiftL` (13 + 7 + 1) :: Word64)
-       `shouldBe` (0xcafe `shiftL` (13 + 7 + 1) :: Word64)
   describe "formatAlignedBits" $ do
         let rec = Proxy
             rec :: Proxy TestRecAligned
