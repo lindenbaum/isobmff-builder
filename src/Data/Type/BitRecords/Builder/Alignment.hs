@@ -77,10 +77,10 @@ type family AlignmentOffset (a :: Alignment) (x :: Nat) :: Nat where
 -- | Return an adequate alignment for records with @n@ bits.
 type family SelectAlignment (n :: Nat) :: Maybe Alignment where
   SelectAlignment  x =
-     If ((x `Rem` 64) == 0) ('Just 'Align64)
-    (If ((x `Rem` 32) == 0) ('Just 'Align32)
-    (If ((x `Rem` 16) == 0) ('Just 'Align16)
-    (If ((x `Rem`  8) == 0) ('Just 'Align8)
+     If ((x `RemPow2` 6) == 0) ('Just 'Align64)
+    (If ((x `RemPow2` 5) == 0) ('Just 'Align32)
+    (If ((x `RemPow2` 4) == 0) ('Just 'Align16)
+    (If ((x `RemPow2` 3) == 0) ('Just 'Align8)
        (TypeError ('Text "Bit record size is not divisable by 8: "
                    ':<>: 'ShowType x)))))
 

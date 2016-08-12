@@ -68,29 +68,29 @@ formatAlignedBits
      , ToHoley (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off))
   => proxy0 rec
   -> ToM (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off)
-formatAlignedBits pRec = runHoley toHoley'
+formatAlignedBits !pRec = runHoley toHoley'
   where
     toHoley' ::
       Holey
         (BitBuilder alignment 0 off)
         (BitBuilder alignment 0 off)
         (ToM (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off))
-    toHoley' = toHoley pRec
+    !toHoley' = toHoley pRec
 
 toBuilder :: (Num (BitBuffer a)) => BitBuilder a 0 0 -> Builder
 toBuilder = appBitBuilder mempty
 
 toFlushedBuilder :: (KnownNat off, HasBuilder a, Num (BitBuffer a))
   => BitBuilder a 0 off -> Builder
-toFlushedBuilder bb = toBuilder (bb `ixAppend` flushBuilder)
+toFlushedBuilder !bb = toBuilder (bb `ixAppend` flushBuilder)
 
 flushBuilder
   :: forall a off . (KnownNat off, Num (BitBuffer a), HasBuilder a)
   => BitBuilder a off 0
 flushBuilder =
     let flushBBState :: BBState a off -> BBState a 0
-        flushBBState bb@(BBState bldr part) =
-          let off = natVal bb
+        flushBBState !bb@(BBState bldr part) =
+          let !off = natVal bb
           in initialBBState $
               if off == 0
                 then bldr
@@ -102,7 +102,7 @@ appBitBuilder !b (BitBuilder !f) =
   bbStateBuilder (appIxEndo f (initialBBState b))
 
 startBitBuilder :: Num (BitBuffer a) => Builder -> BitBuilder a 0 0
-startBitBuilder b = modifyBitBuilder (const (initialBBState b))
+startBitBuilder !b = modifyBitBuilder (const (initialBBState b))
 
 newtype BitBuilder (a          :: Alignment)
                    (fromOffset :: Nat)

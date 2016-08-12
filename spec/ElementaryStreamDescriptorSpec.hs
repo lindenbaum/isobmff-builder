@@ -30,11 +30,12 @@ instance
 toStaticBoxContent :: Num (BitBuffer a) => BitBuilder a 0 0 -> StaticBoxContent rec
 toStaticBoxContent = StaticBoxContent . toBuilder
 
--- addBitBuilder
---   :: Holey Builder r a
---   -> Holey (BitBuilder buff 0 0) (BitBuilder buff 0 0) a
---   -> Holey Builder r a
--- addBitBuilder f g = f . (hoistM startBitBuilder (hoistR (appBitBuilder mempty) g))
+addBitBuilder
+  :: (IsBitBuffer (BitBuffer buffAlign)) 
+  => Holey Builder r a
+  -> Holey (BitBuilder buffAlign 0 0) r r
+  -> Holey Builder r a
+addBitBuilder f g = f . (hoistM (appBitBuilder mempty)  g)
 
 -- * Static Expandable
 

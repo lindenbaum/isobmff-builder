@@ -12,10 +12,11 @@ import Data.Proxy
 import Test.TypeSpecCrazy
 import GHC.TypeLits ()
 
+#ifdef FULLBENCHMARKS
+
 type Static64 =
   Field 3 := 2 :>: Field 5 := 4 :>: Field 9 := 333 :>: Field 7 := 35 :>: Field 30 := 458329 :>: Field 2 := 1 :>: Field 2 := 0 :>: Field 2 := 1 :>: Field 4 := 9
 
-#ifdef FULLBENCHMARKS
 type Static128 = Field 128 := 0xdeadbeef
 
 type Static256 =
@@ -23,6 +24,11 @@ type Static256 =
 
 type Static517 =
    Static256 :>: Static256 :>: Field 5 := 0
+
+#else
+
+type Static64 = Field 64
+
 #endif
 
 aboutStatic64 ::
@@ -30,7 +36,7 @@ aboutStatic64 ::
   "Static Test Type Sizes"
   ########################
 
-     It's "64 bit long" (ShouldBeTrue ((GetRecordSize Static64) == 64))
+     It's "64 bit long" (ShouldBe 64 (GetRecordSize Static64))
 #ifdef FULLBENCHMARKS
      -* It's "128 bit long" (ShouldBeTrue ((GetRecordSize Static128) == 128))
      -* It's "256 bit long" (ShouldBeTrue ((GetRecordSize Static256) == 256))

@@ -62,6 +62,18 @@ testBitHasFields
               ShouldBeTrue (HasField TestHasField "bar"))
 testBitHasFields = Valid
 
+testTakeLastN ::
+  "Taking the last n elements of a list"
+  #######################################
+
+       TakeLastN 0 '[1,2,3] `ShouldBe` ('[] :: [Nat])
+    -* TakeLastN 1 '[1,2,3] `ShouldBe` '[3]
+    -* TakeLastN 2 '[1,2,3] `ShouldBe` '[2,3]
+    -* TakeLastN 5 '[1,2,3] `ShouldBe` '[1,2,3]
+
+testTakeLastN = Valid
+
+
 testRem
   :: Expect '[ Rem 0 3 `ShouldBe` 0
              , Rem 1 3 `ShouldBe` 1
@@ -90,8 +102,6 @@ testRemPow2
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       It " `RemPow2` 1 is 1"   (Is 1 (RemPow2 3916441 1))
-  -*  It " `RemPow2` 2 is 1"   (Is 1 (RemPow2 3916441 2))
-  -*  It " `RemPow2` 3 is 1"   (Is 1 (RemPow2 3916441 3))
   -*  It " `RemPow2` 4 is 9"   (Is 9 (RemPow2 3916441 4))
   -*  It " `RemPow2` 8 is 153" (Is 153 (RemPow2 3916441 8))
 
@@ -292,6 +302,7 @@ spec = do
     it "is sound" $ do
       print (Valid :: Expect (GetRecordSize (Flag :>: Field 7) `Is` 8))
       print testBitHasFields
+      print testTakeLastN
       print testRem
       print testRemPow2
       print testDiv
