@@ -31,7 +31,7 @@ toStaticBoxContent :: Num (BitBuffer a) => BitBuilder a 0 0 -> StaticBoxContent 
 toStaticBoxContent = StaticBoxContent . toBuilder
 
 addBitBuilder
-  :: (IsBitBuffer (BitBuffer buffAlign)) 
+  :: (IsBitBuffer (BitBuffer buffAlign))
   => Holey Builder r a
   -> Holey (BitBuilder buffAlign 0 0) r r
   -> Holey Builder r a
@@ -93,19 +93,19 @@ spec = do
 
     it "has a box size 130 (128 + two bytes) if the content has a size of 128 " $
       boxSize (staticExpandable (Proxy :: Proxy (Field (128 * 8) := 0))) `shouldBe` (BoxSize $ 128 + 2)
---     it "write a the size 128 as [ 0b10000001, 0b00000000 ] " $
+--     it "writes the size 128 as [ 0b10000001, 0b00000000 ] " $
 --       let actual = B.unpack $ toLazyByteString (boxBuilder (Expandable (ETC 128)))
 --           expected = [ 129, 0 ]
 --       in actual `shouldBe` expected
---     it "write a the size (2 ^ 21) as [ 0b10000001, 0b10000000, 0b10000000, 0b00000000 ] " $
+--     it "writes the size (2 ^ 21) as [ 0b10000001, 0b10000000, 0b10000000, 0b00000000 ] " $
 --       let actual = B.unpack $ toLazyByteString (boxBuilder (Expandable (ETC 128)))
 --           expected = [ 129, 128, 128, 0 ]
 --       in actual `shouldBe` expected
---     it "A size of (2 ^ 21) is represented by [ 0b10000001, 0b10000000, 0b10000000, 0b00000000 ] " $
---       let actual :: Word64
---           actual =  ((((1 `shiftL` 7) + 0)  `shiftL` 7) + 0) `shiftL` 7
---           expected = 2 ^ (21 :: Word64)
---       in actual `shouldBe` expected
+    it "A size of (2 ^ 21) is represented by [ 0b10000001, 0b10000000, 0b10000000, 0b00000000 ] " $
+      let actual :: Word64
+          actual =  ((((1 `shiftL` 7) + 0)  `shiftL` 7) + 0) `shiftL` 7
+          expected = 2 ^ (21 :: Word64)
+      in actual `shouldBe` expected
 --     it "writes size according to the spec" $
 --       property $ \etc@(ETC s) ->
 --         let expectedBoxSize =

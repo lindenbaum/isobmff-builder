@@ -40,17 +40,17 @@ type family
 type RemPow2 x p =
   FromBits (TakeLastN p (ToBits x RemPow2Bits))
 
-type TakeLastN n xs = TakeLastNReverse n xs '[]
+type TakeLastN n xs = TakeLastNImplRev n xs '[]
 
-type family TakeLastNReverse (n :: Nat) (xs :: [t]) (rs :: [t]) :: [t] where
-  TakeLastNReverse n '[] rsAcc = TakeLastNTakeN n rsAcc '[]
-  TakeLastNReverse n (x ': xs) rsAcc =
-    TakeLastNReverse n xs (x ': rsAcc)
+type family TakeLastNImplRev (n :: Nat) (xs :: [t]) (acc :: [t]) :: [t] where
+  TakeLastNImplRev n '[] acc = TakeLastNImplTakeNRev n acc '[]
+  TakeLastNImplRev n (x ': xs) acc =
+    TakeLastNImplRev n xs (x ': acc)
 
-type family TakeLastNTakeN (n :: Nat) (rs :: [t]) (acc :: [t]) :: [t] where
-  TakeLastNTakeN n '[] acc = acc
-  TakeLastNTakeN 0 rs acc = acc
-  TakeLastNTakeN n (r ': rs) acc = TakeLastNTakeN (n-1) rs (r ': acc)
+type family TakeLastNImplTakeNRev (n :: Nat) (rs :: [t]) (acc :: [t]) :: [t] where
+  TakeLastNImplTakeNRev n '[] acc = acc
+  TakeLastNImplTakeNRev 0 rs acc = acc
+  TakeLastNImplTakeNRev n (r ': rs) acc = TakeLastNImplTakeNRev (n-1) rs (r ': acc)
 
 
 -- | Maximum number of bits an argument @x@ of 'RemPow2' may occupy.
