@@ -124,10 +124,10 @@ instance (KnownNat o, Show (BitBuffer a)) => Show (BBState a o) where
   showsPrec d st@(BBState b p) =
     showParen (d > 10) $
           showString (printf "BBState %s" (printBitBuffer b))
-        . (showChar ' ')
-        . (showsPrec 11 p)
-        . (showChar ' ')
-        . (showsPrec 11 (natVal st))
+        . showChar ' '
+        . showsPrec 11 p
+        . showChar ' '
+        . showsPrec 11 (natVal st)
 
 printBitBuffer :: Builder -> String
 printBitBuffer b =

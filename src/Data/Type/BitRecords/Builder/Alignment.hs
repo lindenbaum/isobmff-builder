@@ -84,6 +84,16 @@ type family SelectAlignment (n :: Nat) :: Maybe Alignment where
        (TypeError ('Text "Bit record size is not divisable by 8: "
                    ':<>: 'ShowType x)))))
 
+-- | Return an adequate alignment for records with @n@ bits.
+type family SelectAlignmentUnsafe (n :: Nat) :: Alignment where
+  SelectAlignmentUnsafe  x =
+     If ((x `RemPow2` 6) == 0) 'Align64
+    (If ((x `RemPow2` 5) == 0) 'Align32
+    (If ((x `RemPow2` 4) == 0) 'Align16
+    (If ((x `RemPow2` 3) == 0) 'Align8
+       (TypeError ('Text "Bit record size is not divisable by 8: "
+                   ':<>: 'ShowType x)))))
+
 type family GetAlignmentBits (a :: Alignment) :: Nat where
   GetAlignmentBits 'Align8 = 8
   GetAlignmentBits 'Align16 = 16

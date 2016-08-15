@@ -25,6 +25,19 @@ class ( KnownAlignment (BitBufferAlignment b)
                         -- number of remaining bits that did not fit in the
                         -- buffer, and finally the left bits themselves.
 
+  -- | Like 'bufferBits' but work on an 'Integer' as bit source. This makes
+  -- writing more the larger number of bits than 'BitBufferAlignment' more
+  -- efficient, than 'bufferBits', because the input and rest bits don't need to
+  -- be constantly converted with 'fromIntegral'.
+  bufferBitsInteger
+    :: Int  -- ^ @length@ of the value to write in number of bits.
+    -> Integer -- ^ The value to write (in the lower @length@ bits).
+    -> Int  -- ^ The start offset in the output value
+    -> b -- ^ The input to write to
+    -> (b, Int, Int, Integer) -- ^ The output buffer, space left in buffer, the
+                        -- number of remaining bits that did not fit in the
+                        -- buffer, and finally the left bits themselves.
+
 type BitBufferSize b = GetAlignmentBits (BitBufferAlignment b)
 
 instance (KnownAlignment a) => IsBitBuffer (BitBuffer a) where
