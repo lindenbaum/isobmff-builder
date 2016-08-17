@@ -358,27 +358,14 @@ spec = do
                                         :>: Flag)))
         (0xcafe0000 `shiftR` 3 :: Word32)
        `shouldBe` (0xcafe :: Word32)
-  describe "formatAlignedBits" $ do
-        let rec = Proxy
-            rec :: Proxy TestRecAligned
-            actual = B.unpack $ toLazyByteString actualB
-              where actualB = toBuilder $ formatAlignedBits rec
-                        (Tagged 1 :: Tagged "bar" Integer)
-                        (Tagged 2 :: Tagged "baz" Integer)
-                        (Tagged 4 :: Tagged "foo" Integer)
-                        (Tagged 8 :: Tagged "oof" Integer)
-                        (Tagged 16 :: Tagged "rab" Integer)
-        it "writes fields in big endian" $
-            actual `shouldBe` [1,0,2,0,0,0,0,4,0,8,0,16]
   describe "unaligned bit records" $ do
     describe "formatBits align64 big endian" $ do
       it "writes fields" $
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toFlushedBuilder $
+            actualB = toBuilder $
                         formatBits
-                          align64
                           rec
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
@@ -391,9 +378,8 @@ spec = do
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toFlushedBuilder $
+            actualB = toBuilder $
                         formatBits
-                          align32
                           rec
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
@@ -405,9 +391,8 @@ spec = do
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toFlushedBuilder $
+            actualB = toBuilder $
                         formatBits
-                          align16
                           rec
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
@@ -419,7 +404,7 @@ spec = do
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
-            actualB = toFlushedBuilder $ formatBits align8 rec
+            actualB = toBuilder $ formatBits rec
                         (Tagged 1 :: Tagged "bar" Integer)
                         (Tagged 3 :: Tagged "baz" Integer)
                         (Tagged 7 :: Tagged "foo" Integer)
@@ -431,7 +416,7 @@ spec = do
           let rec = Proxy
               rec :: Proxy (Field 4 := 0 :>: "here" :=> Field 4)
               actualB :: Builder
-              actualB = toFlushedBuilder $ formatBits align8 rec
+              actualB = toBuilder $ formatBits rec
                           (Tagged value :: Tagged "here" Integer)
               actual = printBuilder actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
@@ -440,7 +425,7 @@ spec = do
         let rec = Proxy
             rec :: Proxy (Flag := 0 :>: (Field 7 := 130))
             actual = printBuilder b
-              where b = toBuilder $ formatAlignedBits rec
+              where b = toBuilder $ formatBits rec
         in actual `shouldBe` "<< 02 >>"
     describe "DynByteStringBuilder" $
       describe "appendUnlimited" $

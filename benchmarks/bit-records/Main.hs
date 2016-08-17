@@ -63,44 +63,22 @@ aboutStatic64 =
 lumpUp :: Int -> L.Builder -> [Word8]
 lumpUp m = L.unpack . L.toLazyByteString . mconcat . replicate m
 
-staticAutoAligned64 m =
-  lumpUp m $ toBuilder $ formatAlignedBits (Proxy :: Proxy Static64)
-static8BitAligned64 m =
-  lumpUp m $ toBuilder $ formatBits align8 (Proxy  :: Proxy Static64)
-static16BitAligned64 m =
-  lumpUp m $ toBuilder $ formatBits align16 (Proxy :: Proxy Static64)
-static32BitAligned64 m =
-  lumpUp m $ toBuilder $ formatBits align32 (Proxy :: Proxy Static64)
-static64BitAligned64 m =
-  lumpUp m $ toBuilder $ formatBits align64 (Proxy :: Proxy Static64)
+static64 m =
+  lumpUp m $ toBuilder $ formatBits (Proxy :: Proxy Static64)
 
 #ifdef FULLBENCHMARKS
 
-staticAutoAligned128 m =
-  lumpUp m $ toBuilder $ formatAlignedBits (Proxy :: Proxy Static128)
-static8BitAligned128 m =
-  lumpUp m $ toBuilder $ formatBits align8 (Proxy :: Proxy Static128)
-static32BitAligned128 m =
-  lumpUp m $ toBuilder $ formatBits align32 (Proxy :: Proxy Static128)
-static64BitAligned128 m =
-  lumpUp m $ toBuilder $ formatBits align64 (Proxy :: Proxy Static128)
+static128 m =
+  lumpUp m $ toBuilder $ formatBits (Proxy :: Proxy Static128)
 
-staticAutoAligned256 m =
-  lumpUp m $ toBuilder $ formatAlignedBits (Proxy :: Proxy Static256)
-static8BitAligned256 m =
-  lumpUp m $ toBuilder $ formatBits align8 (Proxy :: Proxy Static256)
-static32BitAligned256 m =
-  lumpUp m $ toBuilder $ formatBits align32 (Proxy :: Proxy Static256)
-static64BitAligned256 m =
-  lumpUp m $ toBuilder $ formatBits align64 (Proxy :: Proxy Static256)
+static256 m =
+  lumpUp m $ toBuilder $ formatBits (Proxy :: Proxy Static256)
 
-static8BitAligned517 m =
-  lumpUp m $ toFlushedBuilder $ formatBits align8 (Proxy :: Proxy Static517)
-static64BitAligned517 m =
-  lumpUp m $ toFlushedBuilder $ formatBits align64 (Proxy :: Proxy Static517)
+static517 m =
+  lumpUp m $ toBuilder $ formatBits (Proxy :: Proxy Static517)
 
 staticPlain512bitBaseline m =
-  lumpUp m $ toBuilder $ formatBits align64
+  lumpUp m $ toBuilder $ formatBits
     (Proxy :: Proxy (
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64 :>:
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64
@@ -114,64 +92,69 @@ main = do
       [
 
 #ifdef FULLBENCHMARKS
-      bgroup "auto-align"
-              [bench "64bit record" $ nf staticAutoAligned64 1
-              ,bench "128bit record" $  nf staticAutoAligned128 1
-              ,bench "256bit record" $  nf staticAutoAligned256 1
+      bgroup "64-bit record"
+              [bench "1" $ nf static64 1
+              ,bench "5" $  nf static64 5
+              ,bench "100" $  nf static64 100
               ]
-      ,bgroup "8 bit aligned"
-              [bench "64bit record" $ nf static8BitAligned64 1
-              ,bench "128bit record" $  nf static8BitAligned128 1
-              ,bench "256bit record" $  nf static8BitAligned256 1
-              ,bench "517bit record" $  nf static8BitAligned517 1
+      ,bgroup "128-bit record"
+              [bench "1" $ nf static128 1
+              ,bench "5" $  nf static128 5
+              ,bench "100" $  nf static128 100
               ]
-      ,bgroup "16 bit aligned"
-              [bench "64bit record" $ nf static16BitAligned64 1
+      ,bgroup "256-bit record"
+              [bench "1" $ nf static256 1
+              ,bench "5" $  nf static256 5
+              ,bench "100" $  nf static256 100
               ]
-      ,bgroup "32 bit aligned"
-              [bench "64bit record" $ nf static32BitAligned64 1
-              ,bench "128bit record" $  nf static32BitAligned128 1
-              ,bench "256bit record" $  nf static32BitAligned256 1
+      ,bgroup "517-bit record"
+              [bench "1" $ nf static517 1
+              ,bench "5" $  nf static517 5
+              ,bench "100" $  nf static517 100
               ]
-      ,bgroup "64 bit aligned"
-              [bench "64bit record" $ nf static64BitAligned64 1
-              ,bench "128bit record" $  nf static64BitAligned128 1
-              ,bench "256bit record" $  nf static64BitAligned256 1
-              ,bench "517bit record" $  nf static64BitAligned517 1
+      ,bgroup "512-bit record baseline"
+              [bench "1" $ nf staticPlain512bitBaseline 1
+              ,bench "5" $  nf staticPlain512bitBaseline 5
+              ,bench "100" $  nf staticPlain512bitBaseline 100
               ]
 #else
       bgroup "static 64-bit"
-              [bench "64bit aligned" $ nf static64BitAligned64 1
-              ,bench "32bit aligned" $ nf static32BitAligned64 1
-              ,bench "16bit aligned" $ nf static16BitAligned64 1
-              ,bench "8bit aligned" $ nf static8BitAligned64 1
-              ,bench "auto aligned" $ nf staticAutoAligned64 1
+              [bench "1" $ nf static64 1
+              ,bench "5" $  nf static64 5
+              ,bench "100" $  nf static64 100
               ]
 #endif
-      ,bgroup "BittrWriter"
-        [bgroup "BittrBufferUnlimited-direct"
-              [bench "1" $ nf bittrBufferUnlimitedDirect 1
-              ,bench "5" $ nf bittrBufferUnlimitedDirect 5
-              ,bench "100" $ nf bittrBufferUnlimitedDirect 100
-              ]
-        ,bgroup "BittrBufferUnlimited-typeclass"
-              [bench "1" $ nf bittrBufferUnlimitedTypeClass 1
-              ,bench "5" $ nf bittrBufferUnlimitedTypeClass 5
-              ,bench "100" $ nf bittrBufferUnlimitedTypeClass 100
-              ]
-        ,bgroup "BittrBufferUnlimited-typeclass-M-Times"
-              [bench "1" $ nf bittrBufferUnlimitedTypeClassMTimes 1
-              ,bench "5" $ nf bittrBufferUnlimitedTypeClassMTimes 5
-              ,bench "100" $ nf bittrBufferUnlimitedTypeClassMTimes 100
-              ]
-        ,bgroup "BittrBufferWord64-direct"
-              [bench "1" $ nf bittrBufferWord64Direct 1
-              ,bench "5" $ nf bittrBufferWord64Direct 5
-              ,bench "100" $ nf bittrBufferWord64Direct 100
-              ]
+      ,bgroup "Builder"
+        [bgroup "Static"
+          [bgroup "Poly" []
+          ,bgroup "ByteStringBuilder" []
+          ]
+        ,bgroup "Runtime"
+          [bgroup "Poly" [bgroup "BittrBufferUnlimited-direct"
+                                [bench "1" $ nf bittrBufferUnlimitedDirect 1
+                                ,bench "5" $ nf bittrBufferUnlimitedDirect 5
+                                ,bench "100" $ nf bittrBufferUnlimitedDirect 100
+                                ]
+                          ,bgroup "BittrBufferUnlimited-typeclass"
+                                [bench "1" $ nf bittrBufferUnlimitedTypeClass 1
+                                ,bench "5" $ nf bittrBufferUnlimitedTypeClass 5
+                                ,bench "100" $ nf bittrBufferUnlimitedTypeClass 100
+                                ]
+                          ,bgroup "BittrBufferUnlimited-typeclass-M-Times"
+                                [bench "1" $ nf bittrBufferUnlimitedTypeClassMTimes 1
+                                ,bench "5" $ nf bittrBufferUnlimitedTypeClassMTimes 5
+                                ,bench "100" $ nf bittrBufferUnlimitedTypeClassMTimes 100
+                                ]
+                          ,bgroup "BittrBufferWord64-direct"
+                                [bench "1" $ nf bittrBufferWord64Direct 1
+                                ,bench "5" $ nf bittrBufferWord64Direct 5
+                                ,bench "100" $ nf bittrBufferWord64Direct 100
+                                ]
+                          ]
+           ]
+          ]
         ]
       ]
-    ]
 
 bittrBufferUnlimitedDirect m =
   lumpUp 1
