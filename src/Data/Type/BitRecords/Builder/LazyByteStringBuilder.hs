@@ -11,27 +11,31 @@ import           Data.Monoid
 import           Control.Category
 import           Prelude hiding ((.), id)
 
+import Data.Type.BitRecords.Builder.Poly
+import qualified Data.ByteString.Lazy as B
+import Data.ByteString.Builder
+
 ----------------
 ----------------
 ----------------
 
-newtype BittrWriter b = BittrWriter { unBittrWriter :: Endo (BittrWriterState b) }
+newtype BittrWriter = BittrWriter { unBittrWriter :: Endo BittrWriterState }
   deriving Monoid
 
-runBittrWriter :: Monoid b => BittrWriter b -> b
+runBittrWriter :: BittrWriter -> Builder
 runBittrWriter !w =
   evalBittrWriterState $ appBittrWriter w initialBittrWriterState
 
-appBittrWriter :: BittrWriter b -> BittrWriterState b -> BittrWriterState b
+appBittrWriter :: BittrWriter -> BittrWriterState -> BittrWriterState
 appBittrWriter !w = appEndo (unBittrWriter w)
 
-data BittrWriterState b where
-    BittrWriterState :: !b -> !BittrBuffer -> BittrWriterState b
+data BittrWriterState where
+    BittrWriterState :: !Builder -> !BittrBuffer -> BittrWriterState
 
-initialBittrWriterState :: Monoid b => BittrWriterState b
+initialBittrWriterState :: BittrWriterState
 initialBittrWriterState = BittrWriterState mempty (BittrBuffer 0 0)
 
-evalBittrWriterState :: BittrWriterState b -> b
+evalBittrWriterState :: BittrWriterState -> Builder
 evalBittrWriterState (BittrWriterState !builder (BittrBuffer !_rest !restLen)) =
     flushedBuilder
   where
@@ -54,7 +58,7 @@ data BittrBufferUnlimited =
 
 -- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
 -- in the 'BittrWriterState' as often as necessary.
-appendUnlimited :: (Monoid wi, ToBitBufferBuilder wi) => BittrBufferUnlimited -> BittrWriter wi
+appendUnlimited :: BittrBufferUnlimited -> BittrWriter
 appendUnlimited (BittrBufferUnlimited !allBits !totalLen) =
   BittrWriter $
   Endo $
@@ -79,7 +83,7 @@ appendUnlimited (BittrBufferUnlimited !allBits !totalLen) =
 
 -- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
 -- in the 'BittrWriterState' as often as necessary.
-appendBittrBuffer :: (Monoid wi, ToBitBufferBuilder wi) => BittrBuffer -> BittrWriter wi
+appendBittrBuffer :: BittrBuffer -> BittrWriter
 appendBittrBuffer (BittrBuffer !allBits !totalLen) =
   BittrWriter $
   Endo $
@@ -101,12 +105,12 @@ appendBittrBuffer (BittrBuffer !allBits !totalLen) =
                   let !nextBuilder = builder <> toBitBufferBuilder part'
                       in go restLen rest nextBuilder 0 0
 
-runBittrWriterHoley :: (Monoid wi) => Holey (BittrWriter wi) wi a -> a
+runBittrWriterHoley :: Holey BittrWriter Builder a -> a
 runBittrWriterHoley (HM !x) = x runBittrWriter
 
 
-instance (ToBitBufferBuilder wi,  Monoid wi) => ToHoley (BittrWriter wi) BittrBufferUnlimited r where
+instance ToHoley BittrWriter BittrBufferUnlimited r where
   toHoley = immediate . appendUnlimited
 
-instance (ToBitBufferBuilder wi,  Monoid wi) => ToHoley (BittrWriter wi) BittrBuffer r where
+instance ToHoley BittrWriter BittrBuffer r where
   toHoley = immediate . appendBittrBuffer

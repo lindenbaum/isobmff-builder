@@ -73,7 +73,7 @@ modifyBitBuilder = BitBuilder . IxEndo
 
 
 data BBState (offset :: Nat) =
-  BBState {  bbStateBuilder    :: !Builder  -- TODO HasBuilder in BBState
+  BBState {  bbStateBuilder    :: !Builder
           , _bbStatePart       :: !(BitBuffer)}
 
 instance (KnownNat o, Show (BitBuffer)) => Show (BBState o) where
