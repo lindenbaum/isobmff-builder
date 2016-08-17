@@ -13,7 +13,7 @@ import Prelude hiding ((.), id)
 -- and an offset. Bits can be written to the value.
 class ( KnownAlignment (BitBufferAlignment b)
       , Num b, Bits b, FiniteBits b, Eq b, Ord b
-      )  => IsBitBuffer b where
+      ) => IsBitBuffer b where
   type BitBufferAlignment b :: Alignment
   -- | Copy bits starting at a specific offset from one @a@ the the other.
   bufferBits

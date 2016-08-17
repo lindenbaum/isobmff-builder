@@ -9,7 +9,7 @@ import Prelude hiding ((.), id)
 class ToHoley m f r where
   type ToM m f r
   type ToM m f r = r
-  toHoley :: proxy f -> Holey m r (ToM m f r)
+  toHoley :: f -> Holey m r (ToM m f r)
 
 newtype Holey m r a = HM {runHM :: (m -> r) -> a }
 

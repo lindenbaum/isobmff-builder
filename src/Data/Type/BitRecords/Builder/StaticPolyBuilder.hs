@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Data.Type.BitRecords.ByteStringBuilder where
+module Data.Type.BitRecords.Builder.StaticPolyBuilder where
 
 import Data.Type.BitRecords.Builder.Alignment
 import Data.Type.BitRecords.Builder.BitBuffer
@@ -8,56 +8,34 @@ import Data.Type.BitRecords.Core
 import Data.Bits
 import Data.Proxy
 import Data.Monoid
-import Data.ByteString.Builder
 import Control.Category
 import GHC.TypeLits
 import Text.Printf
-import qualified Data.ByteString.Lazy as B
 import Prelude hiding ((.), id)
 import Data.Tagged
 
-type HasBuilder a = (ToBitBufferBuilder a Builder)
-
-class ToBitBufferBuilder (a :: Alignment) b where
-  toBitBufferBuilder :: BitBuffer a -> b
-
-instance ToBitBufferBuilder 'Align8 Builder where
-  toBitBufferBuilder = word8 . unBitBuffer
-instance ToBitBufferBuilder 'Align16 Builder where
-  toBitBufferBuilder = word16BE . unBitBuffer
-instance ToBitBufferBuilder 'Align32 Builder where
-  toBitBufferBuilder = word32BE . unBitBuffer
-instance ToBitBufferBuilder 'Align64 Builder where
-  toBitBufferBuilder = word64BE . unBitBuffer
-
-newtype LittleEndianBuilder = LittleEndianBuilder Builder
-  deriving Monoid
-
-instance ToBitBufferBuilder 'Align16 LittleEndianBuilder where
-  toBitBufferBuilder = LittleEndianBuilder . word16BE . unBitBuffer
-instance ToBitBufferBuilder 'Align32 LittleEndianBuilder where
-  toBitBufferBuilder = LittleEndianBuilder . word32BE . unBitBuffer
-instance ToBitBufferBuilder 'Align64 LittleEndianBuilder where
-  toBitBufferBuilder = LittleEndianBuilder . word64BE . unBitBuffer
+import Data.Type.BitRecords.Builder.Poly
+import qualified Data.ByteString.Lazy as B
+import Data.ByteString.Builder
 
 formatBits
-  :: forall proxy0 proxy1 rec align off
+  :: forall proxy0 rec align off
    . ( off ~ GetRemainingUnaligned (GetRecordSize rec) align
-     , ToHoley (BitBuilder align 0 off) rec (BitBuilder align 0 off))
+     , ToHoley (BitBuilder align 0 off) (Proxy rec) (BitBuilder align 0 off))
   => proxy0 align
-  -> proxy1 rec
-  -> ToM (BitBuilder align 0 off) rec (BitBuilder align 0 off)
+  -> Proxy rec
+  -> ToM (BitBuilder align 0 off) (Proxy rec) (BitBuilder align 0 off)
 formatBits _pAlign pRec = runHoley toHoley'
   where
     toHoley' ::
       Holey
         (BitBuilder align 0 off)
         (BitBuilder align 0 off)
-        (ToM (BitBuilder align 0 off) rec (BitBuilder align 0 off))
+        (ToM (BitBuilder align 0 off) (Proxy rec) (BitBuilder align 0 off))
     toHoley' = toHoley pRec
 
 formatAlignedBits
-  :: forall proxy0 rec alignment recSize off
+  :: forall rec alignment recSize off
    . ( recSize ~ GetRecordSize rec
      , KnownNat recSize
      , off ~ GetRemainingUnaligned recSize alignment
@@ -65,16 +43,16 @@ formatAlignedBits
      , FiniteBits (ToAlignedWord alignment)
      , HasBuilder alignment
      , KnownNat off
-     , ToHoley (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off))
-  => proxy0 rec
-  -> ToM (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off)
+     , ToHoley (BitBuilder alignment 0 off) (Proxy rec) (BitBuilder alignment 0 off))
+  => Proxy rec
+  -> ToM (BitBuilder alignment 0 off) (Proxy rec) (BitBuilder alignment 0 off)
 formatAlignedBits !pRec = runHoley toHoley'
   where
     toHoley' ::
       Holey
         (BitBuilder alignment 0 off)
         (BitBuilder alignment 0 off)
-        (ToM (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off))
+        (ToM (BitBuilder alignment 0 off) (Proxy rec) (BitBuilder alignment 0 off))
     !toHoley' = toHoley pRec
 
 toBuilder :: (Num (BitBuffer a)) => BitBuilder a 0 0 -> Builder
@@ -178,8 +156,8 @@ instance ( KnownNat oF, KnownNat oT, HasBuilder a
          , IsBitBuffer (BitBuffer a)
          , KnownNat (GetRecordSize f)
          , oT ~ AlignmentOffsetAdd a (GetRecordSize f) oF)
-  => ToHoley (BitBuilder a oF oT) (l :=> f) r where
-    type ToM (BitBuilder a oF oT) (l :=> f) r =
+  => ToHoley (BitBuilder a oF oT) (Proxy (l :=> f)) r where
+    type ToM (BitBuilder a oF oT) (Proxy (l :=> f)) r =
       Tagged l Integer -> r
     toHoley _ =
         indirect (writeBits fieldLen . fromIntegral)
@@ -192,7 +170,7 @@ instance  ( HasBuilder a
           , KnownNat v
           , KnownNat (GetRecordSize f)
           , oT ~ AlignmentOffsetAdd a (GetRecordSize f) oF)
-  => ToHoley (BitBuilder a oF oT) (f := v) r where
+  => ToHoley (BitBuilder a oF oT) (Proxy (f := v)) r where
     toHoley _ =
         immediate (writeBits fieldLen fieldVal)
       where
@@ -206,7 +184,7 @@ instance forall a oT n oF r .
           , oT ~ AlignmentOffsetAdd a n oF
           , KnownNat oT
           , IsBitBuffer (BitBuffer a))
-  => ToHoley (BitBuilder a oF oT) (Field n) r where
+  => ToHoley (BitBuilder a oF oT) (Proxy (Field n)) r where
     toHoley _ = immediate (writeBits (Proxy :: Proxy n) 0)
 -- TODO
 -- | An instance that when given:
@@ -232,22 +210,22 @@ instance forall a oT n oF r .
 --  Value: |0     ..     1|0       ..      10| X    ..      X|
 -- @
 instance forall f0 f1 toM oF oT a .
-         ( ToHoley (BitBuilder a oF (AlignmentOffsetAdd a (GetRecordSize f0) oF)) f0 (ToM (BitBuilder a (AlignmentOffsetAdd a (GetRecordSize f0) oF) oT) f1 toM)
-         , ToHoley (BitBuilder a (AlignmentOffsetAdd a (GetRecordSize f0) oF) oT) f1 toM
+         ( ToHoley (BitBuilder a oF (AlignmentOffsetAdd a (GetRecordSize f0) oF)) (Proxy f0) (ToM (BitBuilder a (AlignmentOffsetAdd a (GetRecordSize f0) oF) oT) (Proxy f1) toM)
+         , ToHoley (BitBuilder a (AlignmentOffsetAdd a (GetRecordSize f0) oF) oT) (Proxy f1) toM
          , oT ~ (AlignmentOffsetAdd a (GetRecordSize f1) (AlignmentOffsetAdd a (GetRecordSize f0) oF))
          , KnownNat oF
          , KnownNat (AlignmentOffsetAdd a (GetRecordSize f0) oF)
          , KnownNat oT
          , IsBitBuffer (BitBuffer a)
          , HasBuilder a)
-  => ToHoley (BitBuilder a oF oT) (f0 :>: f1) toM where
-    type ToM (BitBuilder a oF oT) (f0 :>: f1) toM =
+  => ToHoley (BitBuilder a oF oT) (Proxy (f0 :>: f1)) toM where
+    type ToM (BitBuilder a oF oT) (Proxy (f0 :>: f1)) toM =
       ToM
         (BitBuilder a oF (AlignmentOffsetAdd a (GetRecordSize f0) oF))
-        f0
+        (Proxy f0)
         (ToM
           (BitBuilder a (AlignmentOffsetAdd a (GetRecordSize f0) oF) oT)
-          f1
+          (Proxy f1)
           toM)
     toHoley _ = fmt0 % fmt1
       where
@@ -257,8 +235,8 @@ instance forall f0 f1 toM oF oT a .
                       -- 'c ~ (ToM (BitBuilder a oF oT) (f0 :>: f1) toM)'
                       -- is known, yeah figure 'c' out ;)
                  (BitBuilder a oF (AlignmentOffsetAdd a (GetRecordSize f0) oF))
-                 (ToM (BitBuilder a (AlignmentOffsetAdd a (GetRecordSize f0) oF) oT) f1 toM)
-                 (ToM (BitBuilder a oF oT) (f0 :>: f1) toM)
+                 (ToM (BitBuilder a (AlignmentOffsetAdd a (GetRecordSize f0) oF) oT) (Proxy f1) toM)
+                 (ToM (BitBuilder a oF oT) (Proxy (f0 :>: f1)) toM)
         fmt0 = toHoley pf0
         fmt1 = toHoley pf1
         pf0 = Proxy :: Proxy f0

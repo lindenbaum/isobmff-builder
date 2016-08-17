@@ -1,17 +1,17 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Data.Type.BitRecords.DynByteStringBuilder where
+module Data.Type.BitRecords.Builder.LazyByteStringBuilder where
 
 import           Data.Type.BitRecords.Builder.Alignment
 import           Data.Type.BitRecords.Builder.BitBuffer
 import           Data.Type.BitRecords.Builder.Holey
-import           Data.Type.BitRecords.ByteStringBuilder
+import           Data.Type.BitRecords.Builder.Poly
 import           Data.Type.BitRecords.Core
 import           Data.Word
 
 import           Data.Bits
 import           Data.Proxy
 import           Data.Monoid
-import           Data.ByteString.Builder
+-- import           Data.ByteString.Builder
 import           Control.Category
 import           GHC.TypeLits
 import           Text.Printf
@@ -23,22 +23,23 @@ import           Data.Tagged
 ----------------
 ----------------
 
-newtype BittrWriter = BittrWriter { unBittrWriter :: Endo BittrWriterState }
+newtype BittrWriter b = BittrWriter { unBittrWriter :: Endo (BittrWriterState b) }
   deriving Monoid
 
-runBittrWriter :: BittrWriter -> Builder
+runBittrWriter :: Monoid b => BittrWriter b -> b
 runBittrWriter !w =
   evalBittrWriterState $ appBittrWriter w initialBittrWriterState
 
-appBittrWriter :: BittrWriter -> BittrWriterState -> BittrWriterState
+appBittrWriter :: BittrWriter b -> BittrWriterState b -> BittrWriterState b
 appBittrWriter !w = appEndo (unBittrWriter w)
 
-data BittrWriterState = BittrWriterState !Builder !BittrBuffer
+data BittrWriterState b where
+    BittrWriterState :: !b -> !BittrBuffer -> BittrWriterState b
 
-initialBittrWriterState :: BittrWriterState
+initialBittrWriterState :: Monoid b => BittrWriterState b
 initialBittrWriterState = BittrWriterState mempty (BittrBuffer 0 0)
 
-evalBittrWriterState :: BittrWriterState -> Builder
+evalBittrWriterState :: BittrWriterState b -> b
 evalBittrWriterState (BittrWriterState !builder (BittrBuffer !_rest !restLen)) =
     flushedBuilder
   where
@@ -61,7 +62,7 @@ data BittrBufferUnlimited =
 
 -- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
 -- in the 'BittrWriterState' as often as necessary.
-appendUnlimited :: BittrBufferUnlimited -> BittrWriter
+appendUnlimited :: (Monoid wi, ToBitBufferBuilder 'Align64 wi) => BittrBufferUnlimited -> BittrWriter wi
 appendUnlimited (BittrBufferUnlimited !allBits !totalLen) =
   BittrWriter $
   Endo $
@@ -86,7 +87,7 @@ appendUnlimited (BittrBufferUnlimited !allBits !totalLen) =
 
 -- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
 -- in the 'BittrWriterState' as often as necessary.
-appendBittrBuffer :: BittrBuffer -> BittrWriter
+appendBittrBuffer :: (Monoid wi, ToBitBufferBuilder 'Align64 wi) => BittrBuffer -> BittrWriter wi
 appendBittrBuffer (BittrBuffer !allBits !totalLen) =
   BittrWriter $
   Endo $
@@ -204,27 +205,19 @@ appendBittrBuffer (BittrBuffer !allBits !totalLen) =
 --
 -- -------------------------------------------------------------
 
-class HasBittrWriter x result where
-  type ToBittrWriter x result
-  type ToBittrWriter x result = result
-  getBittrWriterHoley
-    :: x -> Holey BittrWriter result (ToBittrWriter x result)
 
-getAndRunBittrWriterHoley
-        :: (HasBittrWriter x Builder)
-  => x -> ToBittrWriter x Builder
-getAndRunBittrWriterHoley x =
-  runHoley
-    (hoistM (evalBittrWriterState . flip appBittrWriter initialBittrWriterState)
-                    (getBittrWriterHoley x))
+-- getAndRunBittrWriterHoley :: (ToHoley (BittrWriter wi) x b) => x -> ToM (BittrWriter wi) x b
+-- getAndRunBittrWriterHoley x =
+--     runHoley
+--           (hoistM (evalBittrWriterState .  flip appBittrWriter initialBittrWriterState)
+--                      (toHoley x))
 
-runBittrWriterHoley
-  :: Holey BittrWriter Builder a -> a
+runBittrWriterHoley :: (ToBitBufferBuilder 'Align64 wi,  Monoid wi) => Holey (BittrWriter wi) wi a -> a
 runBittrWriterHoley (HM !x) = x runBittrWriter
 
 
-instance HasBittrWriter BittrBufferUnlimited r where
-  getBittrWriterHoley = immediate . appendUnlimited
+instance (ToBitBufferBuilder 'Align64 wi,  Monoid wi) => ToHoley (BittrWriter wi) BittrBufferUnlimited r where
+  toHoley = immediate . appendUnlimited
 
-instance HasBittrWriter BittrBuffer r where
-  getBittrWriterHoley = immediate . appendBittrBuffer
+instance (ToBitBufferBuilder 'Align64 wi,  Monoid wi) => ToHoley (BittrWriter wi) BittrBuffer r where
+  toHoley = immediate . appendBittrBuffer

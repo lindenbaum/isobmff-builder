@@ -11,7 +11,8 @@ import           Data.Foldable
 import           Data.Monoid
 import           Data.Proxy
 import           Data.Type.BitRecords
-import           Data.Type.BitRecords.DynByteStringBuilder
+import           Data.Type.BitRecords.Builder.PolyBuilder
+import           Data.Type.BitRecords.Builder.StaticPolyBuilder
 import           Data.Type.Equality
 import           Data.Word
 import           GHC.TypeLits ()
@@ -20,7 +21,15 @@ import           Test.TypeSpecCrazy
 #ifdef FULLBENCHMARKS
 
 type Static64 =
-  Field 3 := 2 :>: Field 5 := 4 :>: Field 9 := 333 :>: Field 7 := 35 :>: Field 30 := 458329 :>: Field 2 := 1 :>: Field 2 := 0 :>: Field 2 := 1 :>: Field 4 := 9
+      Field 3 := 2
+  :>: Field 5 := 4
+  :>: Field 9 := 333
+  :>: Field 7 := 35
+  :>: Field 30 := 458329
+  :>: Field 2 := 1
+  :>: Field 2 := 0
+  :>: Field 2 := 1
+  :>: Field 4 := 9
 
 type Static128 = Field 128 := 0xdeadbeef
 
@@ -56,9 +65,8 @@ lumpUp m = L.unpack . L.toLazyByteString . mconcat . replicate m
 
 staticAutoAligned64 m =
   lumpUp m $ toBuilder $ formatAlignedBits (Proxy :: Proxy Static64)
-
 static8BitAligned64 m =
-  lumpUp m $ toBuilder $ formatBits align8 (Proxy :: Proxy Static64)
+  lumpUp m $ toBuilder $ formatBits align8 (Proxy  :: Proxy Static64)
 static16BitAligned64 m =
   lumpUp m $ toBuilder $ formatBits align16 (Proxy :: Proxy Static64)
 static32BitAligned64 m =
@@ -173,7 +181,8 @@ bittrBufferUnlimitedDirect m =
 
 bittrBufferUnlimitedTypeClass m =
   lumpUp 1
-    $ getAndRunBittrWriterHoley
+    $ runBittrWriterHoley
+    $ toHoley
     $ BittrBufferUnlimited 0x01020304050607 (64 * m)
 
 bittrBufferUnlimitedTypeClassMTimes m =
@@ -181,7 +190,7 @@ bittrBufferUnlimitedTypeClassMTimes m =
     $ runBittrWriterHoley
     $ foldr (.) id
     $ replicate m
-    $ getBittrWriterHoley (BittrBufferUnlimited 0x01020304050607 64)
+    $ toHoley (BittrBufferUnlimited 0x01020304050607 64)
 
 bittrBufferWord64Direct m =
   lumpUp 1

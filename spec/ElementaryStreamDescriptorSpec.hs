@@ -8,6 +8,7 @@ import           Data.ByteString.Builder
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.Type.BitRecords
+import           Data.Type.BitRecords.Builder.StaticPolyBuilder
 import qualified Data.ByteString.Lazy                                 as B
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import           Data.Word
@@ -38,6 +39,7 @@ type StaticBoxContentHoley rec a =
 
 
 type TestBox = "test" :=> Field 8
+
 
 mkTestBox
   :: Holey (BitRecordBuilder TestBox) r (Tagged "test" Integer -> r)

@@ -3,7 +3,8 @@ module BitRecordsSpec (spec) where
 
 import Data.Bits
 import Data.Type.BitRecords
-import Data.Type.BitRecords.DynByteStringBuilder
+import Data.Type.BitRecords.Builder.PolyBuilder
+import Data.Type.BitRecords.Builder.StaticPolyBuilder
 import Data.Proxy
 import Data.Word
 import Data.Type.Equality ()
@@ -447,7 +448,8 @@ spec = do
           let expected = "<< 00 01 02 03 04 05 06 07 >>"
               actual =
                 printBuilder
-                  (getAndRunBittrWriterHoley
-                      (BittrBufferUnlimited 0x01020304050607 64))
+                  (runBittrWriterHoley
+                   (toHoley
+                       (BittrBufferUnlimited 0x01020304050607 64)))
               in actual `shouldBe` expected
 -- * Bit Buffering
