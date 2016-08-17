@@ -3,6 +3,7 @@ module BitRecordsSpec (spec) where
 
 import Data.Bits
 import Data.Type.BitRecords
+import Data.Type.BitRecords.DynByteStringBuilder
 import Data.Proxy
 import Data.Word
 import Data.Type.Equality ()
@@ -381,7 +382,7 @@ spec = do
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBitBuffer actualB
+            actual = printBuilder actualB
             in  actual `shouldBe`
                   "<< 01 00 06 00 00 00 00 0f fc 00 00 00 00 00 00 00 >>"
     describe "formatBits align32 big endian" $ do
@@ -396,7 +397,7 @@ spec = do
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBitBuffer actualB
+            actual = printBuilder actualB
             in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 00 00 >>"
     describe "formatBits align16 big endian" $ do
       it "writes fields" $
@@ -410,7 +411,7 @@ spec = do
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Integer)
                           (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBitBuffer actualB
+            actual = printBuilder actualB
             in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 >>"
     describe "formatBits align8" $ do
       it "writes fields" $
@@ -421,7 +422,7 @@ spec = do
                         (Tagged 1 :: Tagged "bar" Integer)
                         (Tagged 3 :: Tagged "baz" Integer)
                         (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBitBuffer actualB
+            actual = printBuilder actualB
             in actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc >>"
     describe "Formatting sub-byte fields" $ do
       it "only the addressed bits are copied to the output" $
@@ -431,15 +432,22 @@ spec = do
               actualB :: Builder
               actualB = toFlushedBuilder $ formatBits align8 rec
                           (Tagged value :: Tagged "here" Integer)
-              actual = printBitBuffer actualB
+              actual = printBuilder actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
               in actual `shouldBe` expected
       it "renders (Flag := 0 :>: (Field 7 := 130)) to << 02 >>" $
         let rec = Proxy
             rec :: Proxy (Flag := 0 :>: (Field 7 := 130))
-            actual = printBitBuffer b
+            actual = printBuilder b
               where b = toBuilder $ formatAlignedBits rec
         in actual `shouldBe` "<< 02 >>"
-
-
+    describe "DynByteStringBuilder" $
+      describe "appendUnlimited" $
+        it "0x01020304050607 to << 00 01 02 03 04 05 06 07 >>" $
+          let expected = "<< 00 01 02 03 04 05 06 07 >>"
+              actual =
+                printBuilder
+                  (getAndRunBittrWriterHoley
+                      (BittrBufferUnlimited 0x01020304050607 64))
+              in actual `shouldBe` expected
 -- * Bit Buffering

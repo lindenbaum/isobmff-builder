@@ -61,6 +61,16 @@ instance (KnownAlignment a) => IsBitBuffer (BitBuffer a) where
         !restBits = bits .&. (1 `unsafeShiftL` restLen - 1)
         !buff' = buff .|. (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
         in (buff', spaceLeft, restLen, restBits)
+  bufferBitsInteger !len !bits !offset !buff =
+    let buffLen = fromIntegral $ natVal (Proxy :: Proxy (GetAlignmentBits a))
+        !spaceAvailable = buffLen - offset
+        !writeLen = min spaceAvailable len
+        !spaceLeft = spaceAvailable - writeLen
+        !writeOffset = spaceLeft
+        !restLen = len - writeLen
+        !restBits = bits .&. (1 `unsafeShiftL` restLen - 1)
+        !buff' = buff .|. fromIntegral (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
+        in (buff', spaceLeft, restLen, restBits)
 
 -- | A bitbuffer that holds as much bits as an aligned word.
 newtype BitBuffer (a :: Alignment) = BitBuffer {unBitBuffer :: ToAlignedWord a}

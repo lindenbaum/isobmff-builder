@@ -123,14 +123,14 @@ data BBState (a :: Alignment) (offset :: Nat) =
 instance (KnownNat o, Show (BitBuffer a)) => Show (BBState a o) where
   showsPrec d st@(BBState b p) =
     showParen (d > 10) $
-          showString (printf "BBState %s" (printBitBuffer b))
+          showString (printf "BBState %s" (printBuilder b))
         . showChar ' '
         . showsPrec 11 p
         . showChar ' '
         . showsPrec 11 (natVal st)
 
-printBitBuffer :: Builder -> String
-printBitBuffer b =
+printBuilder :: Builder -> String
+printBuilder b =
       ("<< " ++)
    $  (++" >>")
    $  unwords

@@ -2,15 +2,20 @@
 {-# LANGUAGE CPP #-}
 module Main where
 
-import Criterion.Main
-import Data.Type.BitRecords
-import qualified Data.ByteString.Lazy as L
+import Prelude hiding ((.), id)
+import Control.Category
+import           Criterion.Main
 import qualified Data.ByteString.Builder as L
-import Data.Word
-import Data.Type.Equality
-import Data.Proxy
-import Test.TypeSpecCrazy
-import GHC.TypeLits ()
+import qualified Data.ByteString.Lazy as L
+import           Data.Foldable
+import           Data.Monoid
+import           Data.Proxy
+import           Data.Type.BitRecords
+import           Data.Type.BitRecords.DynByteStringBuilder
+import           Data.Type.Equality
+import           Data.Word
+import           GHC.TypeLits ()
+import           Test.TypeSpecCrazy
 
 #ifdef FULLBENCHMARKS
 
@@ -95,7 +100,7 @@ staticPlain512bitBaseline m =
 #endif
 
 main = do
-  putStrLn $ show aboutStatic64
+  print aboutStatic64
   defaultMain
     [bgroup "static-records"
       [
@@ -135,5 +140,53 @@ main = do
               ,bench "auto aligned" $ nf staticAutoAligned64 1
               ]
 #endif
+      ,bgroup "BittrWriter"
+        [bgroup "BittrBufferUnlimited-direct"
+              [bench "1" $ nf bittrBufferUnlimitedDirect 1
+              ,bench "5" $ nf bittrBufferUnlimitedDirect 5
+              ,bench "100" $ nf bittrBufferUnlimitedDirect 100
+              ]
+        ,bgroup "BittrBufferUnlimited-typeclass"
+              [bench "1" $ nf bittrBufferUnlimitedTypeClass 1
+              ,bench "5" $ nf bittrBufferUnlimitedTypeClass 5
+              ,bench "100" $ nf bittrBufferUnlimitedTypeClass 100
+              ]
+        ,bgroup "BittrBufferUnlimited-typeclass-M-Times"
+              [bench "1" $ nf bittrBufferUnlimitedTypeClassMTimes 1
+              ,bench "5" $ nf bittrBufferUnlimitedTypeClassMTimes 5
+              ,bench "100" $ nf bittrBufferUnlimitedTypeClassMTimes 100
+              ]
+        ,bgroup "BittrBufferWord64-direct"
+              [bench "1" $ nf bittrBufferWord64Direct 1
+              ,bench "5" $ nf bittrBufferWord64Direct 5
+              ,bench "100" $ nf bittrBufferWord64Direct 100
+              ]
+        ]
       ]
     ]
+
+bittrBufferUnlimitedDirect m =
+  lumpUp 1
+    $ runBittrWriter
+    $ appendUnlimited
+    $ BittrBufferUnlimited 0x01020304050607 (64 * m)
+
+bittrBufferUnlimitedTypeClass m =
+  lumpUp 1
+    $ getAndRunBittrWriterHoley
+    $ BittrBufferUnlimited 0x01020304050607 (64 * m)
+
+bittrBufferUnlimitedTypeClassMTimes m =
+  lumpUp 1
+    $ runBittrWriterHoley
+    $ foldr (.) id
+    $ replicate m
+    $ getBittrWriterHoley (BittrBufferUnlimited 0x01020304050607 64)
+
+bittrBufferWord64Direct m =
+  lumpUp 1
+    $ runBittrWriter
+    $ mconcat
+    $ replicate m
+    $ appendBittrBuffer
+    $ BittrBuffer 0x01020304050607 64

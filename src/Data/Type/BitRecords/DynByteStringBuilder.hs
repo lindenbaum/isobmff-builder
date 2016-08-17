@@ -1,25 +1,23 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.DynByteStringBuilder where
 
-import Data.Type.BitRecords.Builder.Alignment
-import Data.Type.BitRecords.Builder.BitBuffer
-import Data.Type.BitRecords.Builder.Holey
-import Data.Type.BitRecords.Core
-import Data.Type.BitRecords.ByteStringBuilder
+import           Data.Type.BitRecords.Builder.Alignment
+import           Data.Type.BitRecords.Builder.BitBuffer
+import           Data.Type.BitRecords.Builder.Holey
+import           Data.Type.BitRecords.ByteStringBuilder
+import           Data.Type.BitRecords.Core
+import           Data.Word
 
-import Data.Bits
-import Data.Proxy
-import Data.Monoid
-import Data.ByteString.Builder
-import Control.Category
-import GHC.TypeLits
-import Text.Printf
+import           Data.Bits
+import           Data.Proxy
+import           Data.Monoid
+import           Data.ByteString.Builder
+import           Control.Category
+import           GHC.TypeLits
+import           Text.Printf
 import qualified Data.ByteString.Lazy as B
-import Prelude hiding ((.), id)
-import Data.Tagged
-
--- toBittrWriterBuilder :: Holey BittrWriter r a
--- toBittrWriterBuilder =
+import           Prelude hiding ((.), id)
+import           Data.Tagged
 
 ----------------
 ----------------
@@ -28,18 +26,17 @@ import Data.Tagged
 newtype BittrWriter = BittrWriter { unBittrWriter :: Endo BittrWriterState }
   deriving Monoid
 
-appBittrWriter :: BittrWriter -> BittrWriterState -> BittrWriterState
-appBittrWriter = appEndo . unBittrWriter
+runBittrWriter :: BittrWriter -> Builder
+runBittrWriter !w =
+  evalBittrWriterState $ appBittrWriter w initialBittrWriterState
 
--- runBittrWriter
---   :: (HasBittrWriter x Builder, HasBittrWriter x BittrWriterState)
---   => x -> ToBittrWriter x Builder
--- runBittrWriter = runHoley . xxx . getBittrWriterBuilder
---   where
---     xxx :: Holey t BittrWriterState a ->
---     xxx (HM f) = HM $ \k -> f (appBittrWriter mempty . k)
+appBittrWriter :: BittrWriter -> BittrWriterState -> BittrWriterState
+appBittrWriter !w = appEndo (unBittrWriter w)
 
 data BittrWriterState = BittrWriterState !Builder !BittrBuffer
+
+initialBittrWriterState :: BittrWriterState
+initialBittrWriterState = BittrWriterState mempty (BittrBuffer 0 0)
 
 evalBittrWriterState :: BittrWriterState -> Builder
 evalBittrWriterState (BittrWriterState !builder (BittrBuffer !_rest !restLen)) =
@@ -54,37 +51,24 @@ data BittrBuffer = BittrBuffer !(BitBuffer 'Align64) !Int
 
 ---
 
-type BittrWriterBuilder result toResult = Holey BittrWriter result toResult
-
-runBittrWriterBuilder :: BittrWriterBuilder BittrWriter toResult -> toResult
-runBittrWriterBuilder = runHoley
-
-class HasBittrWriter x result where
-  type ToBittrWriter x result
-  type ToBittrWriter x result = result
-  getBittrWriterBuilder
-    :: x -> BittrWriterBuilder result (ToBittrWriter x result)
-
-getAndRunBittrWriterBuilder
-  :: HasBittrWriter x BittrWriter
-  => x -> ToBittrWriter x BittrWriter
-getAndRunBittrWriterBuilder = runBittrWriterBuilder . getBittrWriterBuilder
-
----
-
-data BittrBufferUnlimited = BittrBufferUnlimited !Integer !Int
+-- | Content of unrestricted length.
+data BittrBufferUnlimited =
+  -- | Parameters are the content as well as the number of bits from the
+  -- content.
+  BittrBufferUnlimited
+    !Integer
+    !Int
 
 -- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
 -- in the 'BittrWriterState' as often as necessary.
-appendUnlimiteBittrs :: BittrBufferUnlimited -> BittrWriterBuilder r r
-appendUnlimiteBittrs (BittrBufferUnlimited !allBits !totalLen) =
-  immediate $
+appendUnlimited :: BittrBufferUnlimited -> BittrWriter
+appendUnlimited (BittrBufferUnlimited !allBits !totalLen) =
   BittrWriter $
   Endo $
     \(BittrWriterState !builder (BittrBuffer !part !offset)) ->
-      let !maskeBittrs = allBits .&. mask
+      let !maskBittrs = allBits .&. mask
           !mask = (1 `unsafeShiftL` totalLen) - 1
-      in go totalLen maskeBittrs builder part offset
+      in go totalLen maskBittrs builder part offset
   where
     go !len !bits !builder !part !offset
       | len == 0 = BittrWriterState builder (BittrBuffer part offset)
@@ -100,121 +84,31 @@ appendUnlimiteBittrs (BittrBufferUnlimited !allBits !totalLen) =
                       in go restLen rest nextBuilder 0 0
 
 
--- formatAligneBittrs
---   :: forall proxy0 rec alignment recSize off
---    . ( recSize ~ GetRecordSize rec
---      , KnownNat recSize
---      , off ~ GetRemainingUnaligned recSize alignment
---      , 'Just alignment ~ SelectAlignment (GetRecordSize rec)
---      , FiniteBits (ToAlignedWord alignment)
---      , HasBuilder alignment
---      , KnownNat off
---      , ToHoley (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off))
---   => proxy0 rec
---   -> ToM (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off)
--- formatAligneBittrs !pRec = runHoley toHoley'
---   where
---     toHoley' ::
---       Holey
---         (BitBuilder alignment 0 off)
---         (BitBuilder alignment 0 off)
---         (ToM (BitBuilder alignment 0 off) rec (BitBuilder alignment 0 off))
---     !toHoley' = toHoley pRec
---
--- toBuilder :: (Num (BitBuffer a)) => BitBuilder a 0 0 -> Builder
--- toBuilder = appBitBuilder mempty
---
--- toFlushedBuilder :: (KnownNat off, HasBuilder a, Num (BitBuffer a))
---   => BitBuilder a 0 off -> Builder
--- toFlushedBuilder !bb = toBuilder (bb `ixAppend` flushBuilder)
---
--- flushBuilder
---   :: forall a off . (KnownNat off, Num (BitBuffer a), HasBuilder a)
---   => BitBuilder a off 0
--- flushBuilder =
---     let flushBBState :: BBState a off -> BBState a 0
---         flushBBState !bb@(BBState bldr part) =
---           let !off = natVal bb
---           in initialBBState $
---               if off == 0
---                 then bldr
---                 else bldr <> toBitBufferBuilder part
---     in  modifyBitBuilder flushBBState
---
--- appBitBuilder :: Num (BitBuffer a) => Builder -> BitBuilder a 0 0 -> Builder
--- appBitBuilder !b (BitBuilder !f) =
---   bbStateBuilder (appIxEndo f (initialBBState b))
---
--- startBitBuilder :: Num (BitBuffer a) => Builder -> BitBuilder a 0 0
--- startBitBuilder !b = modifyBitBuilder (const (initialBBState b))
---
--- newtype BitBuilder (a          :: Alignment)
---                    (fromOffset :: Nat)
---                    (toOffset   :: Nat) =
---     BitBuilder (IxEndo (BBState a) fromOffset toOffset)
---   deriving IxMonoid
---
--- modifyBitBuilder
---   :: (BBState a fromOffset -> BBState a toOffset)
---   -> BitBuilder a fromOffset toOffset
--- modifyBitBuilder = BitBuilder . IxEndo
---
---
--- data BBState (a :: Alignment) (offset :: Nat) =
---   BBState {  bbStateBuilder    :: !Builder  -- TODO HasBuilder in BBState
---           , _bbStatePart       :: !(BitBuffer a)}
---
--- instance (KnownNat o, Show (BitBuffer a)) => Show (BBState a o) where
---   showsPrec d st@(BBState b p) =
---     showParen (d > 10) $
---           showString (printf "BBState %s" (printBitBuffer b))
---         . (showChar ' ')
---         . (showsPrec 11 p)
---         . (showChar ' ')
---         . (showsPrec 11 (natVal st))
---
--- printBitBuffer :: Builder -> String
--- printBitBuffer b =
---       ("<< " ++)
---    $  (++" >>")
---    $  unwords
---    $  printf "%0.2x"
---   <$> (B.unpack $ toLazyByteString b)
---
---
--- initialBBState :: Num (BitBuffer a) => Builder -> BBState a 0
--- initialBBState b = BBState b 0
---
---
--- -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
--- -- in the 'BitBuilder' as often as necessary.
--- dwriteBits
---       :: ( KnownNat len
---          , KnownNat fromOffset
---          , buff ~ BitBuffer a
---          , HasBuilder a
---          , IsBitBuffer (BitBuffer a)
---          , KnownNat toOffset
---          , toOffset ~ AlignmentOffsetAdd a len fromOffset)
---       => proxy (len :: Nat) -- TODO add a len to BitBuffer, then remove this
---       -> BitBuffer a
---       -> BitBuilder a fromOffset toOffset
--- writeBits !pLen !pBits =
---   modifyBitBuilder $
---     \bb@(BBState !bldr !part) ->
---       let pLenVal = fromIntegral (natVal pLen)
---           maskeBittrs = let mask = (1 `unsafeShiftL` pLenVal) - 1
---                            in pBits .&. mask
---           offset = fromIntegral (natVal bb)
---           in go pLenVal maskeBittrs bldr part offset
---   where
---     go 0 _bits !bldr !part _ =  BBState bldr part
---     go !len !bits !builder !part !offset =
---       let (part', spaceLeft, restLen, restBits) = bufferBits len bits offset part
---           in if spaceLeft > 0
---                 then BBState builder part'
---                 else let nextBuilder = builder <> toBitBufferBuilder part'
---                          in go restLen restBits nextBuilder 0 0
+-- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
+-- in the 'BittrWriterState' as often as necessary.
+appendBittrBuffer :: BittrBuffer -> BittrWriter
+appendBittrBuffer (BittrBuffer !allBits !totalLen) =
+  BittrWriter $
+  Endo $
+    \(BittrWriterState !builder (BittrBuffer !part !offset)) ->
+      let !maskBittrs = allBits .&. mask
+          !mask = (1 `unsafeShiftL` totalLen) - 1
+      in go totalLen maskBittrs builder part offset
+  where
+    go !len !bits !builder !part !offset
+      | len == 0 = BittrWriterState builder (BittrBuffer part offset)
+      | otherwise =
+          let (!part', !spaceLeft, !restLen, !rest) =
+                bufferBits len bits offset part
+          in if spaceLeft > 0
+                then
+                  let !offset' = offset + len
+                      in BittrWriterState builder (BittrBuffer part' offset')
+                else
+                  let !nextBuilder = builder <> toBitBufferBuilder part'
+                      in go restLen rest nextBuilder 0 0
+
+
 --
 -- -------------------------
 --
@@ -309,3 +203,28 @@ appendUnlimiteBittrs (BittrBufferUnlimited !allBits !totalLen) =
 --         pf1 = Proxy :: Proxy f1
 --
 -- -------------------------------------------------------------
+
+class HasBittrWriter x result where
+  type ToBittrWriter x result
+  type ToBittrWriter x result = result
+  getBittrWriterHoley
+    :: x -> Holey BittrWriter result (ToBittrWriter x result)
+
+getAndRunBittrWriterHoley
+        :: (HasBittrWriter x Builder)
+  => x -> ToBittrWriter x Builder
+getAndRunBittrWriterHoley x =
+  runHoley
+    (hoistM (evalBittrWriterState . flip appBittrWriter initialBittrWriterState)
+                    (getBittrWriterHoley x))
+
+runBittrWriterHoley
+  :: Holey BittrWriter Builder a -> a
+runBittrWriterHoley (HM !x) = x runBittrWriter
+
+
+instance HasBittrWriter BittrBufferUnlimited r where
+  getBittrWriterHoley = immediate . appendUnlimited
+
+instance HasBittrWriter BittrBuffer r where
+  getBittrWriterHoley = immediate . appendBittrBuffer

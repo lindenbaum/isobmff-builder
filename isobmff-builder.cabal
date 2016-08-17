@@ -226,14 +226,14 @@ benchmark bit-records
                      , TypeInType
                      , TypeOperators
                      , TypeSynonymInstances
+  ghc-options:       -O2 -j +RTS -A256m -n2m -RTS
+                     -Wall -fwarn-unused-binds
+                     -fno-warn-unused-do-bind
   if flag(fullbenchmarks)
+
     cpp-options:       -DFULLBENCHMARKS
-    ghc-options:       -O2 -j +RTS -A256m -n2m -RTS
-                       -Wall -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
   else
     cpp-options:       -DNFULLBENCHMARKS
-    ghc-options:       -O0 -j +RTS -A256m -n2m -RTS
-                       -Wall -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
 
 source-repository head
   type:     git
