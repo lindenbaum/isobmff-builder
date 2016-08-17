@@ -67,13 +67,13 @@ flushBuilder
   => BitBuilder a off 0
 flushBuilder =
     let flushBBState :: BBState a off -> BBState a 0
-        flushBBState !bb@(BBState bldr part) =
+        flushBBState bb@(BBState bldr part) =
           let !off = natVal bb
           in initialBBState $
               if off == 0
                 then bldr
                 else bldr <> toBitBufferBuilder part
-    in  modifyBitBuilder flushBBState
+    in modifyBitBuilder flushBBState
 
 appBitBuilder :: Num (BitBuffer a) => Builder -> BitBuilder a 0 0 -> Builder
 appBitBuilder !b (BitBuilder !f) =
