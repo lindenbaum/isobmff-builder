@@ -357,9 +357,8 @@ spec = do
                                         :>: Flag)))
         (0xcafe0000 `shiftR` 3 :: Word32)
        `shouldBe` (0xcafe :: Word32)
-  describe "unaligned bit records" $ do
-    describe "formatBits align64 big endian" $ do
-      it "writes fields" $
+  describe "StaticLazybytestringbuilder" $ do
+    it "writes (and flushes) bits" $
         let rec = Proxy
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
@@ -371,42 +370,7 @@ spec = do
                           (Tagged 7 :: Tagged "foo" Integer)
             actual = printBuilder actualB
             in  actual `shouldBe`
-                  "<< 01 00 06 00 00 00 00 0f fc 00 00 00 00 00 00 00 >>"
-    describe "formatBits align32 big endian" $ do
-      it "writes fields" $
-        let rec = Proxy
-            rec :: Proxy TestRecUnAligned
-            actualB :: Builder
-            actualB = runBittrWriterHoley
-                         (toHoley rec)
-                          1 -- because instance Num a => Num (Tagged t a)
-                          (Tagged 3 :: Tagged "baz" Integer)
-                          (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBuilder actualB
-            in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 00 00 >>"
-    describe "formatBits align16 big endian" $ do
-      it "writes fields" $
-        let rec = Proxy
-            rec :: Proxy TestRecUnAligned
-            actualB :: Builder
-            actualB = runBittrWriterHoley
-                          (toHoley rec)
-                          1 -- because instance Num a => Num (Tagged t a)
-                          (Tagged 3 :: Tagged "baz" Integer)
-                          (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBuilder actualB
-            in  actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc 00 >>"
-    describe "formatBits align8" $ do
-      it "writes fields" $
-        let rec = Proxy
-            rec :: Proxy TestRecUnAligned
-            actualB :: Builder
-            actualB = runBittrWriterHoley (toHoley rec)
-                        (Tagged 1 :: Tagged "bar" Integer)
-                        (Tagged 3 :: Tagged "baz" Integer)
-                        (Tagged 7 :: Tagged "foo" Integer)
-            actual = printBuilder actualB
-            in actual `shouldBe` "<< 01 00 06 00 00 00 00 0f fc >>"
+                  "<< 01 00 06 00 00 00 00 0f fc >>"
     describe "Formatting sub-byte fields" $ do
       it "only the addressed bits are copied to the output" $
         property $ \value ->
@@ -424,14 +388,14 @@ spec = do
             actual = printBuilder b
               where b = runBittrWriterHoley (toHoley rec)
         in actual `shouldBe` "<< 02 >>"
-    describe "DynByteStringBuilder" $
-      describe "appendUnlimited" $
-        it "0x01020304050607 to << 00 01 02 03 04 05 06 07 >>" $
-          let expected = "<< 00 01 02 03 04 05 06 07 >>"
-              actual =
-                 printBuilder
-                  (LB.runBittrWriterHoley
-                   (toHoley
-                       (bittrBufferUnlimited 0x01020304050607 64)))
-              in actual `shouldBe` expected
+  describe "ByteStringBuilder" $
+    describe "appendUnlimited" $
+      it "0x01020304050607 to << 00 01 02 03 04 05 06 07 >>" $
+        let expected = "<< 00 01 02 03 04 05 06 07 >>"
+            actual =
+               printBuilder
+                (LB.runBittrWriterHoley
+                 (toHoley
+                     (bittrBufferUnlimited 0x01020304050607 64)))
+            in actual `shouldBe` expected
 -- * Bit Buffering

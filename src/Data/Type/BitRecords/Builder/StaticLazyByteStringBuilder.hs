@@ -8,14 +8,8 @@ import Data.Type.BitRecords.Core
 import Data.Bits
 import Data.Proxy
 import Data.Monoid
---import Control.Category
 import GHC.TypeLits
-import Text.Printf
---import Prelude hiding ((.), id)
 import Data.Tagged
-import Debug.Trace
-import Data.Type.BitRecords.Builder.Poly
-import qualified Data.ByteString.Lazy as B
 import Data.ByteString.Builder
 
 
@@ -41,38 +35,28 @@ runBittrWriter !w = evalBittrWriterState $
 --
 flushBittrWriterState :: (KnownNat off) => BittrWriterState off -> BittrWriterState 0
 flushBittrWriterState bb@(BittrWriterState bldr part) =
-    trace "Flush" $
-        traceShow part $
-            let !off = fromIntegral $ natVal bb
-                -- write bytes from msb to lsb until the offset is reached
-                -- >  63  ...  (63-off-1)(63-off)  ...  0
-                -- >  ^^^^^^^^^^^^^^^^^^^
-                -- >  AAAAAAAABBBBBBBBCCC00000
-                -- >  |byte A| byte B| byte C|
-                writeRestBytes !bldr' !flushOffset =
-                    if off <= flushOffset
-                    then bldr'
-                    else let !flushOffset' = flushOffset + 8
-                             !bldr'' = bldr' <>
-                                 toByteBuilder (traceShow ( (bitBufferSize -
-                                                                 flushOffset')
-                                                          , off
-                                                          ) $
-                                                    traceShowId $
-                                                        (part `unsafeShiftR`
-                                                             (bitBufferSize -
-                                                                  flushOffset')) .&.
-                                                            0xFF)
-                         in
-                             writeRestBytes bldr'' flushOffset'
-            in
-                BittrWriterState (writeRestBytes bldr 0) 0
+    let !off = fromIntegral $ natVal bb
+        -- write bytes from msb to lsb until the offset is reached
+        -- >  63  ...  (63-off-1)(63-off)  ...  0
+        -- >  ^^^^^^^^^^^^^^^^^^^
+        -- >  AAAAAAAABBBBBBBBCCC00000
+        -- >  |byte A| byte B| byte C|
+        writeRestBytes !bldr' !flushOffset =
+            if off <= flushOffset
+            then bldr'
+            else let !flushOffset' = flushOffset + 8
+                     !bldr'' = bldr' <>
+                         word8 (fromIntegral (unBitBuffer ((part `unsafeShiftR`
+                                                                (bitBufferSize -
+                                                                     flushOffset')) .&.
+                                                               0xFF)))
+                 in
+                     writeRestBytes bldr'' flushOffset'
+    in
+        BittrWriterState (writeRestBytes bldr 0) 0
 
 appBittrWriter :: BittrWriter from to -> BittrWriterState from -> BittrWriterState to
 appBittrWriter !w = appIxEndo (unBittrWriter w)
-
--- startBittrWriter :: Builder -> BittrWriter 0 0
--- startBittrWriter !b = modifyBittrWriterState (const (initialBittrWriterState b))
 
 modifyBittrWriterState
   :: (BittrWriterState fromOffset -> BittrWriterState toOffset)
@@ -91,14 +75,12 @@ initialBittrWriterState = BittrWriterState mempty 0
 evalBittrWriterState :: BittrWriterState 0 -> Builder
 evalBittrWriterState (BittrWriterState !builder _) = builder
 
---  printBuilder (runBittrWriterHoley (toHoley (Proxy :: Proxy (Field 8 := 1 :>: Field 8 := 0 :>: Field 7 := 3 :>: Field 32 := 0 :>: Field 8 := 7 :>: Field 8 := 0xfe ))))
 -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
 -- in the 'BittrWriter' as often as necessary.
 writeBits
       :: ( KnownNat len
          , KnownNat fromOffset
          , buff ~ BitBuffer
-         , HasBuilder
          , KnownNat toOffset
          , toOffset ~ AlignmentOffsetAdd 'Align64 len fromOffset)
       => proxy (len :: Nat) -- TODO add a len to BitBuffer, then remove this
@@ -111,45 +93,28 @@ writeBits !pLen !pBits =
                 offset = fromIntegral (natVal bb)
             in
                 go (bittrBuffer pBits pLenVal)
-                        builder
+                   builder
                    (bitOutBuffer part offset)
   where
     go !arg !builder !buff
         | isBittrBufferEmpty arg =
-              trace "Aligned" $
-                  BittrWriterState builder (bitOutBufferContent buff)
-        | otherwise = let (arg', buff') =
-                              trace
-                              (printf "    appending to: %s\n    partial bits: %64b offset: %d\n      input data: %64b len: %d\n"
-                                  (printBuilder builder)
-                                  (unBitBuffer (bitOutBufferContent buff))
-                                  (bitOutBufferLength buff)
-                                  (unBitBuffer (bittrBufferContent arg))
-                                  (bittrBufferLength arg)) $
-                              bufferBits arg buff
+              BittrWriterState builder (bitOutBufferContent buff)
+        | otherwise = let (arg', buff') = bufferBits arg buff
                       in
-                              trace
-                              (printf "    --->\n        partial bits: %64b offset: %d\n          input data: %64b len: %d\n"
-                                  (unBitBuffer (bitOutBufferContent buff'))
-                                  (bitOutBufferLength buff')
-                                  (unBitBuffer (bittrBufferContent arg'))
-                                  (bittrBufferLength arg')) $
                           if bitOutBufferSpaceLeft buff' > 0
-                          then trace "Partially" $
-                              BittrWriterState builder
-                                               (bitOutBufferContent buff')
+                          then BittrWriterState builder
+                                                (bitOutBufferContent buff')
                           else let builder' = builder <>
-                                       toBitBufferBuilder (bitOutBufferContent buff')
+                                       word64BE (unBitBuffer (bitOutBufferContent buff'))
                                in
-                                   trace "recurse" $
-                                       go arg' builder' emptyBitOutBuffer
+                                   go arg' builder' emptyBitOutBuffer
 
 -------------------------
 
 runBittrWriterHoley :: KnownNat off => Holey (BittrWriter 0 off) Builder r -> r
 runBittrWriterHoley (HM !x) = x runBittrWriter
 
-instance ( KnownNat oF, KnownNat oT, HasBuilder
+instance ( KnownNat oF, KnownNat oT
          , KnownNat (GetRecordSize f)
          , oT ~ AlignmentOffsetAdd 'Align64 (GetRecordSize f) oF)
   => ToHoley (BittrWriter oF oT) (Proxy (l :=> f)) r where
@@ -160,8 +125,7 @@ instance ( KnownNat oF, KnownNat oT, HasBuilder
       where
         fieldLen = Proxy :: Proxy (GetRecordSize f)
 
-instance  ( HasBuilder
-          , KnownNat oF, KnownNat oT
+instance  ( KnownNat oF, KnownNat oT
           , KnownNat v
           , KnownNat (GetRecordSize f)
           , oT ~ AlignmentOffsetAdd 'Align64 (GetRecordSize f) oF)
@@ -173,8 +137,7 @@ instance  ( HasBuilder
         fieldVal = fromIntegral (natVal (Proxy :: Proxy v))
 
 instance forall oT n oF r .
-          ( HasBuilder
-          , KnownNat n
+          ( KnownNat n
           , KnownNat oF
           , oT ~ AlignmentOffsetAdd 'Align64 n oF
           , KnownNat oT)
@@ -213,8 +176,7 @@ instance forall f0 f1 toM oF oT .
          , oT ~ (AlignmentOffsetAdd 'Align64 (GetRecordSize f1) (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
          , KnownNat oF
          , KnownNat (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF)
-         , KnownNat oT
-         , HasBuilder)
+         , KnownNat oT)
   => ToHoley (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM where
     type ToM (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM =
       ToM

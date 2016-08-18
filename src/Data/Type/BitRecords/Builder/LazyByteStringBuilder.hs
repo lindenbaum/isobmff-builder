@@ -3,13 +3,10 @@ module Data.Type.BitRecords.Builder.LazyByteStringBuilder where
 
 import Data.Type.BitRecords.Builder.BitBuffer
 import Data.Type.BitRecords.Builder.Holey
-
-import Data.Bits
 import Data.Monoid
 import Control.Category
 import Prelude hiding ((.), id)
 import Data.ByteString.Builder
-import Debug.Trace
 
 ----------------
 ----------------
@@ -26,16 +23,16 @@ appBittrWriter :: BittrWriter -> BittrWriterState -> BittrWriterState
 appBittrWriter !w = appEndo (unBittrWriter w)
 
 data BittrWriterState where
-    BittrWriterState :: !Builder -> !BittrBuffer -> BittrWriterState
+    BittrWriterState :: !Builder -> !BitOutBuffer -> BittrWriterState
 
 initialBittrWriterState :: BittrWriterState
-initialBittrWriterState = BittrWriterState mempty emptyBittrBuffer
+initialBittrWriterState = BittrWriterState mempty emptyBitOutBuffer
 
 evalBittrWriterState :: BittrWriterState -> Builder
 evalBittrWriterState (BittrWriterState !builder !buff) =
     flushedBuilder
   where
-    !flushedBuilder = if isBittrBufferEmpty buff
+    !flushedBuilder = if isBitOutBufferEmpty buff
                       then builder
                       else error "TODO implement flush"
 
@@ -53,12 +50,12 @@ appendUnlimited x' = BittrWriter $
               BittrWriterState builder buff
         | otherwise = let (!rest, !buff') = bufferBitsInteger x buff
                       in
-                          if bittrBufferSpaceLeft buff' > 0
+                          if bitOutBufferSpaceLeft buff' > 0
                           then BittrWriterState builder buff'
                           else let !nextBuilder = builder <>
-                                       word64BE (unBitBuffer (bittrBufferContent buff'))
+                                       word64BE (unBitBuffer (bitOutBufferContent buff'))
                                in
-                                   go rest nextBuilder emptyBittrBuffer
+                                   go rest nextBuilder emptyBitOutBuffer
 
 
 -- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
@@ -73,12 +70,12 @@ appendBittrBuffer x' = BittrWriter $
               BittrWriterState builder buff
         | otherwise = let (!rest, !buff') = bufferBits x buff
                       in
-                          if bittrBufferSpaceLeft buff' > 0
+                          if bitOutBufferSpaceLeft buff' > 0
                           then BittrWriterState builder buff'
                           else let !nextBuilder = builder <>
-                                       word64BE (unBitBuffer (bittrBufferContent buff'))
+                                       word64BE (unBitBuffer (bitOutBufferContent buff'))
                                in
-                                   go rest nextBuilder emptyBittrBuffer
+                                   go rest nextBuilder emptyBitOutBuffer
 
 runBittrWriterHoley :: Holey BittrWriter Builder a -> a
 runBittrWriterHoley (HM !x) = x runBittrWriter

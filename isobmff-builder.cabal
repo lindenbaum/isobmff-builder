@@ -85,7 +85,6 @@ library
                      , Data.Type.BitRecords.Builder.LazyByteStringBuilder
                      , Data.Type.BitRecords.Builder.PolyBuilder
                      , Data.Type.BitRecords.Builder.Poly
-                     , Data.Type.BitRecords.Builder.StaticPolyBuilder
                      , Data.Type.BitRecords.Builder.StaticLazyByteStringBuilder
                      , Data.Type.BitRecords.Core
   build-depends:       base >= 4.9 && < 5

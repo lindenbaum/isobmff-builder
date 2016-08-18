@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# LANGUAGE CPP #-}
 module Main where
 
@@ -61,21 +62,21 @@ lumpUp :: Int -> L.Builder -> [Word8]
 lumpUp m = L.unpack . L.toLazyByteString . mconcat . replicate m
 
 static64SB m =
-  lumpUp m $ SB.toBuilder $ SB.formatBits (Proxy :: Proxy Static64)
+  lumpUp m $ SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static64)
 
 #ifdef FULLBENCHMARKS
 
 static128SB m =
-  lumpUp m $ SB.toBuilder $ SB.formatBits (Proxy :: Proxy Static128)
+  lumpUp m $ SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static128)
 
 static256SB m =
-  lumpUp m $ SB.toBuilder $ SB.formatBits (Proxy :: Proxy Static256)
+  lumpUp m $ SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static256)
 
 static517SB m =
-  lumpUp m $ SB.toBuilder $ SB.formatBits (Proxy :: Proxy Static517)
+  lumpUp m $ SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static517)
 
 staticPlain512bitBaselineSB m =
-  lumpUp m $ SB.toBuilder $ SB.formatBits
+  lumpUp m $ SB.runBittrWriterHoley $ toHoley
     (Proxy :: Proxy (
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64 :>:
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64
