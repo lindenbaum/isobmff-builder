@@ -31,25 +31,6 @@ instance
 
 type KnownRecord rec = (KnownNat (GetRecordSize rec)) -- TODO move to core bit record module
 
-type BitRecordBuilder rec =  -- TODO move to ByteStringBuilder
-  BitBuilder (SelectAlignmentUnsafe (GetRecordSize rec)) 0 0
-
-type StaticBoxContentHoley rec a =
-  Holey (BitRecordBuilder rec) (StaticBoxContent rec) a
-
-
-type TestBox = "test" :=> Field 8
-
-
-mkTestBox
-  :: Holey (BitRecordBuilder TestBox) r (Tagged "test" Integer -> r)
-mkTestBox =
-  toHoley (Proxy :: Proxy TestBox)
-
-toStaticBoxContent :: Num (BitBuffer a) => BitBuilder a 0 0 -> StaticBoxContent rec
-toStaticBoxContent = StaticBoxContent . toBuilder
-
-
 
 -- addBitBuilder
 --   :: (IsBitBuffer (BitBuffer buffAlign))

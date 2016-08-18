@@ -1,7 +1,9 @@
 module Data.Type.BitRecords.Builder.Poly where
 
 import           Data.ByteString.Builder
+import qualified Data.ByteString.Lazy                   as B
 import           Data.Type.BitRecords.Builder.BitBuffer
+import           Text.Printf
 
 type HasBuilder = (ToBitBufferBuilder Builder)
 
@@ -19,3 +21,11 @@ newtype LittleEndianBuilder = LittleEndianBuilder Builder
 instance ToBitBufferBuilder LittleEndianBuilder where
   toByteBuilder = LittleEndianBuilder . word8 . fromIntegral . unBitBuffer
   toBitBufferBuilder = LittleEndianBuilder . word64LE . unBitBuffer
+
+printBuilder :: Builder -> String
+printBuilder b =
+      ("<< " ++)
+   $  (++" >>")
+   $  unwords
+   $  printf "%0.2x"
+  <$>  B.unpack (toLazyByteString b)

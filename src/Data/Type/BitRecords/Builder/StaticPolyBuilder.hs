@@ -33,7 +33,7 @@ formatBits pRec = runHoley toHoley'
         (ToM (BitBuilder 0 off) (Proxy rec) (BitBuilder 0 off))
     toHoley' = toHoley pRec
 
-toBuilder :: (KnownNat off, HasBuilder)
+toBuilder :: (KnownNat off, HasBuilder, Bits (ToAlignedWord 'Align64), Num (BitBuffer))
   => BitBuilder 0 off -> Builder
 toBuilder !bb = appBitBuilder mempty (bb `ixAppend` flushBuilder)
   where
@@ -54,11 +54,11 @@ toBuilder !bb = appBitBuilder mempty (bb `ixAppend` flushBuilder)
             in
                 initialBBState $ writeRestBytes part off bldr
 
-appBitBuilder :: Builder -> BitBuilder 0 0 -> Builder
+appBitBuilder :: Num (BitBuffer) => Builder -> BitBuilder 0 0 -> Builder
 appBitBuilder !b (BitBuilder !f) =
   bbStateBuilder (appIxEndo f (initialBBState b))
 
-startBitBuilder :: Builder -> BitBuilder 0 0
+startBitBuilder :: Num (BitBuffer) => Builder -> BitBuilder 0 0
 startBitBuilder !b = modifyBitBuilder (const (initialBBState b))
 
 newtype BitBuilder (fromOffset :: Nat)
@@ -73,8 +73,8 @@ modifyBitBuilder = BitBuilder . IxEndo
 
 
 data BBState (offset :: Nat) =
-  BBState {  bbStateBuilder    :: !Builder  -- TODO HasBuilder in BBState
-          , _bbStatePart       :: !(BitBuffer)}
+  BBState {  bbStateBuilder    :: !Builder
+          , _bbStatePart       :: !BitBuffer }
 
 instance (KnownNat o, Show (BitBuffer)) => Show (BBState o) where
   showsPrec d st@(BBState b p) =
@@ -85,16 +85,8 @@ instance (KnownNat o, Show (BitBuffer)) => Show (BBState o) where
         . showChar ' '
         . showsPrec 11 (natVal st)
 
-printBuilder :: Builder -> String
-printBuilder b =
-      ("<< " ++)
-   $  (++" >>")
-   $  unwords
-   $  printf "%0.2x"
-  <$> (B.unpack $ toLazyByteString b)
 
-
-initialBBState :: Num (BitBuffer) => Builder -> BBState 0
+initialBBState :: Num BitBuffer => Builder -> BBState 0
 initialBBState b = BBState b 0
 
 
@@ -111,21 +103,21 @@ writeBits
       -> BitBuffer
       -> BitBuilder fromOffset toOffset
 writeBits !pLen !pBits =
-  modifyBitBuilder $
-    \bb@(BBState !bldr !part) ->
-      let pLenVal = fromIntegral (natVal pLen)
-          maskedBits = let mask = (1 `unsafeShiftL` pLenVal) - 1
-                           in pBits .&. mask
-          offset = fromIntegral (natVal bb)
-          in go pLenVal maskedBits bldr part offset
+    modifyBitBuilder $
+        \bb@(BBState !builder !part) ->
+            let pLenVal = fromIntegral (natVal pLen)
+                offset = fromIntegral (natVal bb)
+            in
+                go (bittrBuffer pBits pLenVal) builder (bittrBuffer part offset)
   where
-    go 0 _bits !bldr !part _ =  BBState bldr part
-    go !len !bits !builder !part !offset =
-      let (part', spaceLeft, restLen, restBits) = bufferBits len bits offset part
-          in if spaceLeft > 0
-                then BBState builder part'
-                else let nextBuilder = builder <> toBitBufferBuilder part'
-                         in go restLen restBits nextBuilder 0 0
+    go !arg !builder !buff
+        | isBittrBufferEmpty arg = BBState builder (bittrBufferContent buff)
+        | otherwise = let (arg', buff') = bufferBits arg buff
+                      in
+                          if bittrBufferSpaceLeft buff' > 0
+                          then BBState builder (bittrBufferContent buff')
+                          else let builder' = builder <>  toBitBufferBuilder (bittrBufferContent buff')
+                               in  go arg' builder' buff'
 
 -------------------------
 

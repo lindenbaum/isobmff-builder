@@ -13,93 +13,87 @@ import GHC.TypeLits
 import Text.Printf
 import Prelude hiding ((.), id)
 import Data.Tagged
-
+import Debug.Trace
 import Data.Type.BitRecords.Builder.Poly
 import qualified Data.ByteString.Lazy as B
 import Data.ByteString.Builder
 
-formatBits
-  :: forall rec off
-   . ( off ~ GetRemainingUnaligned (GetRecordSize rec) 'Align64
-     , ToHoley (BitBuilder 0 off) (Proxy rec) (BitBuilder 0 off))
-  => Proxy rec
-  -> ToM (BitBuilder 0 off) (Proxy rec) (BitBuilder 0 off)
-formatBits pRec = runHoley toHoley'
-  where
-    toHoley' ::
-      Holey
-        (BitBuilder 0 off)
-        (BitBuilder 0 off)
-        (ToM (BitBuilder 0 off) (Proxy rec) (BitBuilder 0 off))
-    toHoley' = toHoley pRec
 
-toBuilder :: (KnownNat off, HasBuilder, Bits (ToAlignedWord 'Align64), Num (BitBuffer))
-  => BitBuilder 0 off -> Builder
-toBuilder !bb = appBitBuilder mempty (bb `ixAppend` flushBuilder)
-  where
-    flushBuilder :: forall off.
-                 (KnownNat off)
-                 => BitBuilder off 0
-    flushBuilder = modifyBitBuilder flushBBState
-      where
-        flushBBState :: BBState off -> BBState 0
-        flushBBState bb'@(BBState bldr part) =
-            let !off = natVal bb'
-                writeRestBytes !part' !off' !bldr' =
-                    if off' == 0
-                    then bldr'
-                    else writeRestBytes (part' `unsafeShiftR` 8)
-                                        (max 0 (off' - 8))
-                                        (bldr' <> toByteBuilder part')
-            in
-                initialBBState $ writeRestBytes part off bldr
-
-appBitBuilder :: Num (BitBuffer) => Builder -> BitBuilder 0 0 -> Builder
-appBitBuilder !b (BitBuilder !f) =
-  bbStateBuilder (appIxEndo f (initialBBState b))
-
-startBitBuilder :: Num (BitBuffer) => Builder -> BitBuilder 0 0
-startBitBuilder !b = modifyBitBuilder (const (initialBBState b))
-
-newtype BitBuilder (fromOffset :: Nat)
-                   (toOffset   :: Nat) =
-    BitBuilder (IxEndo BBState fromOffset toOffset)
+newtype BittrWriter (fromOffset :: Nat)
+                    (toOffset   :: Nat) =
+    BittrWriter {unBittrWriter :: IxEndo BittrWriterState fromOffset toOffset}
   deriving IxMonoid
 
-modifyBitBuilder
-  :: (BBState fromOffset -> BBState toOffset)
-  -> BitBuilder fromOffset toOffset
-modifyBitBuilder = BitBuilder . IxEndo
+runBittrWriter :: (KnownNat off) => BittrWriter 0 off -> Builder
+runBittrWriter !w = evalBittrWriterState $
+    appBittrWriter (w `ixAppend` flushBuilder) initialBittrWriterState
+  where
+    flushBuilder :: forall off. (KnownNat off) => BittrWriter off 0
+    flushBuilder = modifyBittrWriter flushBittrWriterState
+
+-- | Write the partial buffer contents using  any number of 'word8'
+--   The unwritten parts of the bittr buffer are at the top.
+--   If the
+--
+-- >     63  ...  (63-off-1)(63-off)  ...  0
+-- >     ^^^^^^^^^^^^^^^^^^^
+-- > Relevant bits start to the top!
+--
+flushBittrWriterState :: (KnownNat off) => BittrWriterState off -> BittrWriterState 0
+flushBittrWriterState bb@(BittrWriterState bldr part) =
+    trace "Flush" $
+        traceShow part $
+            let !off = fromIntegral $ natVal bb
+                -- write bytes from msb to lsb until the offset is reached
+                -- >  63  ...  (63-off-1)(63-off)  ...  0
+                -- >  ^^^^^^^^^^^^^^^^^^^
+                -- >  AAAAAAAABBBBBBBBCCC00000
+                -- >  |byte A| byte B| byte C|
+                writeRestBytes !bldr' !flushOffset =
+                    if off <= flushOffset
+                    then bldr'
+                    else let !flushOffset' = flushOffset + 8
+                             !bldr'' = bldr' <>
+                                 toByteBuilder (traceShow ( (bitBufferSize -
+                                                                 flushOffset')
+                                                          , off
+                                                          ) $
+                                                    traceShowId $
+                                                        (part `unsafeShiftR`
+                                                             (bitBufferSize -
+                                                                  flushOffset')) .&.
+                                                            0xFF)
+                         in
+                             writeRestBytes bldr'' flushOffset'
+            in
+                BittrWriterState (writeRestBytes bldr 0) 0
+
+appBittrWriter :: BittrWriter from to -> BittrWriterState from -> BittrWriterState to
+appBittrWriter !w = appIxEndo (unBittrWriter w)
+
+-- startBittrWriter :: Builder -> BittrWriter 0 0
+-- startBittrWriter !b = modifyBittrWriter (const (initialBittrWriterState b))
+
+modifyBittrWriter
+  :: (BittrWriterState fromOffset -> BittrWriterState toOffset)
+  -> BittrWriter fromOffset toOffset
+modifyBittrWriter = BittrWriter . IxEndo
 
 
-data BBState (offset :: Nat) =
-  BBState {  bbStateBuilder    :: !Builder
-          , _bbStatePart       :: !(BitBuffer)}
+data BittrWriterState (offset :: Nat) =
+      BittrWriterState { bbStateBuilder :: !Builder
+                       , _bbStatePart   :: !BitBuffer
+                       }
 
-instance (KnownNat o, Show (BitBuffer)) => Show (BBState o) where
-  showsPrec d st@(BBState b p) =
-    showParen (d > 10) $
-          showString (printf "BBState %s" (printBuilder b))
-        . showChar ' '
-        . showsPrec 11 p
-        . showChar ' '
-        . showsPrec 11 (natVal st)
+initialBittrWriterState :: BittrWriterState 0
+initialBittrWriterState = BittrWriterState mempty 0
 
-printBuilder :: Builder -> String
-printBuilder b =
-      ("<< " ++)
-   $  (++" >>")
-   $  unwords
-   $  printf "%0.2x"
-  <$> (B.unpack $ toLazyByteString b)
+evalBittrWriterState :: BittrWriterState 0 -> Builder
+evalBittrWriterState (BittrWriterState !builder _) = builder
 
-
-initialBBState :: Num (BitBuffer) => Builder -> BBState 0
-initialBBState b = BBState b 0
-
-
+--  printBuilder (runBittrWriterHoley (toHoley (Proxy :: Proxy (Field 8 := 1 :>: Field 8 := 0 :>: Field 7 := 3 :>: Field 32 := 0 :>: Field 8 := 7 :>: Field 8 := 0xfe ))))
 -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
--- in the 'BitBuilder' as often as necessary.
+-- in the 'BittrWriter' as often as necessary.
 writeBits
       :: ( KnownNat len
          , KnownNat fromOffset
@@ -109,31 +103,49 @@ writeBits
          , toOffset ~ AlignmentOffsetAdd 'Align64 len fromOffset)
       => proxy (len :: Nat) -- TODO add a len to BitBuffer, then remove this
       -> BitBuffer
-      -> BitBuilder fromOffset toOffset
+      -> BittrWriter fromOffset toOffset
 writeBits !pLen !pBits =
-  modifyBitBuilder $
-    \bb@(BBState !bldr !part) ->
-      let pLenVal = fromIntegral (natVal pLen)
-          maskedBits = let mask = (1 `unsafeShiftL` pLenVal) - 1
-                           in pBits .&. mask
-          offset = fromIntegral (natVal bb)
-          in go pLenVal maskedBits bldr part offset
+    modifyBittrWriter $
+        \bb@(BittrWriterState !builder !part) ->
+            let pLenVal = fromIntegral (natVal pLen)
+                offset = fromIntegral (natVal bb)
+            in
+                go (bittrBuffer pBits pLenVal)
+                   (trace (printf "writeBits. Appending to: %s  partial bits: %64b offset: %d, input data: %64b len: %d"
+                                  (printBuilder builder)
+                                  (unBitBuffer part)
+                                  offset
+                                  (unBitBuffer pBits)
+                                  pLenVal) $
+                        builder)
+                   (bittrBuffer part offset)
   where
-    go 0 _bits !bldr !part _ =  BBState bldr part
-    go !len !bits !builder !part !offset =
-      let (part', spaceLeft, restLen, restBits) = bufferBits len bits offset part
-          in if spaceLeft > 0
-                then BBState builder part'
-                else let nextBuilder = builder <> toBitBufferBuilder part'
-                         in go restLen restBits nextBuilder 0 0
+    go !arg !builder !buff
+        | isBittrBufferEmpty arg =
+              trace "Aligned" $
+                  BittrWriterState builder (bittrBufferContent buff)
+        | otherwise = let (arg', buff') = bufferBits arg buff
+                      in
+                          if bittrBufferSpaceLeft buff' > 0
+                          then trace "Partially" $
+                              BittrWriterState builder
+                                               (bittrBufferContent buff')
+                          else let builder' = builder <>
+                                       toBitBufferBuilder (bittrBufferContent buff')
+                               in
+                                   trace "recurse" $
+                                       go arg' builder' emptyBittrBuffer
 
 -------------------------
+
+runBittrWriterHoley :: KnownNat off => Holey (BittrWriter 0 off) Builder r -> r
+runBittrWriterHoley (HM !x) = x runBittrWriter
 
 instance ( KnownNat oF, KnownNat oT, HasBuilder
          , KnownNat (GetRecordSize f)
          , oT ~ AlignmentOffsetAdd 'Align64 (GetRecordSize f) oF)
-  => ToHoley (BitBuilder oF oT) (Proxy (l :=> f)) r where
-    type ToM (BitBuilder oF oT) (Proxy (l :=> f)) r =
+  => ToHoley (BittrWriter oF oT) (Proxy (l :=> f)) r where
+    type ToM (BittrWriter oF oT) (Proxy (l :=> f)) r =
       Tagged l Integer -> r
     toHoley _ =
         indirect (writeBits fieldLen . fromIntegral)
@@ -145,7 +157,7 @@ instance  ( HasBuilder
           , KnownNat v
           , KnownNat (GetRecordSize f)
           , oT ~ AlignmentOffsetAdd 'Align64 (GetRecordSize f) oF)
-  => ToHoley (BitBuilder oF oT) (Proxy (f := v)) r where
+  => ToHoley (BittrWriter oF oT) (Proxy (f := v)) r where
     toHoley _ =
         immediate (writeBits fieldLen fieldVal)
       where
@@ -158,7 +170,7 @@ instance forall oT n oF r .
           , KnownNat oF
           , oT ~ AlignmentOffsetAdd 'Align64 n oF
           , KnownNat oT)
-  => ToHoley (BitBuilder oF oT) (Proxy (Field n)) r where
+  => ToHoley (BittrWriter oF oT) (Proxy (Field n)) r where
     toHoley _ = immediate (writeBits (Proxy :: Proxy n) 0)
 -- TODO
 -- | An instance that when given:
@@ -184,20 +196,20 @@ instance forall oT n oF r .
 --  Value: |0     ..     1|0       ..      10| X    ..      X|
 -- @
 instance forall f0 f1 toM oF oT .
-         ( ToHoley (BitBuilder oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF)) (Proxy f0) (ToM (BitBuilder (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
-         , ToHoley (BitBuilder (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM
+         ( ToHoley (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF)) (Proxy f0) (ToM (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
+         , ToHoley (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM
          , oT ~ (AlignmentOffsetAdd 'Align64 (GetRecordSize f1) (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
          , KnownNat oF
          , KnownNat (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF)
          , KnownNat oT
          , HasBuilder)
-  => ToHoley (BitBuilder oF oT) (Proxy (f0 :>: f1)) toM where
-    type ToM (BitBuilder oF oT) (Proxy (f0 :>: f1)) toM =
+  => ToHoley (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM where
+    type ToM (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM =
       ToM
-        (BitBuilder oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
+        (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
         (Proxy f0)
         (ToM
-          (BitBuilder (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT)
+          (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT)
           (Proxy f1)
           toM)
     toHoley _ = fmt0 % fmt1
@@ -205,11 +217,11 @@ instance forall f0 f1 toM oF oT .
         fmt0 :: Holey -- rely on ScopedTypeVariables and apply the types
                       -- so the compiler knows the result type of
                       -- toHoley. Only then 'o' and
-                      -- 'c ~ (ToM (BitBuilder oF oT) (f0 :>: f1) toM)'
+                      -- 'c ~ (ToM (BittrWriter oF oT) (f0 :>: f1) toM)'
                       -- is known, yeah figure 'c' out ;)
-                 (BitBuilder oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
-                 (ToM (BitBuilder (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
-                 (ToM (BitBuilder oF oT) (Proxy (f0 :>: f1)) toM)
+                 (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
+                 (ToM (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
+                 (ToM (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM)
         fmt0 = toHoley pf0
         fmt1 = toHoley pf1
         pf0 = Proxy :: Proxy f0
