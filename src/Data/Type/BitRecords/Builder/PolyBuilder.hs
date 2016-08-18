@@ -40,7 +40,25 @@ evalBittrWriterState (BittrWriterState !builder !buff) =
 
 -- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
 -- in the 'BittrWriterState' as often as necessary.
+append :: (Monoid wi, ToBitBufferBuilder wi, BitString a) => a -> BittrWriter wi
+append !x' = BittrWriter $
+    Endo $
+        \(BittrWriterState !builder !buff) -> go x' builder buff
+  where
+    go !x !builder !buff
+        | isBitStringEmpty x =
+              BittrWriterState builder buff
+        | otherwise = let (!rest, !buff') = appendBitStrings x buff -- bufferBitsInteger x buff
+                      in
+                          if bitOutBufferSpaceLeft buff' > 0
+                          then BittrWriterState builder buff'
+                          else let !nextBuilder = builder <>
+                                       toBitBufferBuilder (bitOutBufferContent buff')
+                               in
+                                   go rest nextBuilder emptyBitOutBuffer
 
+-- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
+-- in the 'BittrWriterState' as often as necessary.
 appendUnlimited :: (Monoid wi, ToBitBufferBuilder wi)
                 => BittrBufferUnlimited
                 -> BittrWriter wi
@@ -86,10 +104,6 @@ runBittrWriterHoley (HM !x) =
     x runBittrWriter
 
 
-instance (ToBitBufferBuilder wi, Monoid wi) =>
-         ToHoley (BittrWriter wi) BittrBufferUnlimited r where
-    toHoley = immediate . appendUnlimited
-
-instance (ToBitBufferBuilder wi, Monoid wi) =>
-         ToHoley (BittrWriter wi) BittrBuffer r where
-    toHoley = immediate . appendBittrBuffer
+instance (ToBitBufferBuilder wi, Monoid wi, BitString a) =>
+         ToHoley (BittrWriter wi) a r where
+    toHoley = immediate . append

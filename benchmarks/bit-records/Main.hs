@@ -150,8 +150,16 @@ main = do
                                                nf bittrBufferWord64DirectP 1
                                            , bench "5" $
                                                nf bittrBufferWord64DirectP 5
-                                           , bench "100" $
-                                               nf bittrBufferWord64DirectP 100
+                                           , bench "1000" $
+                                               nf bittrBufferWord64DirectP 1000
+                                           ]
+                                  , bgroup "BittrBufferWord64-holey"
+                                           [ bench "1" $
+                                               nf bittrBufferWord64HoleyP 1
+                                           , bench "5" $
+                                               nf bittrBufferWord64HoleyP 5
+                                           , bench "1000" $
+                                               nf bittrBufferWord64HoleyP 1000
                                            ]
                                   ]
                          , bgroup "ByteStringBuilder"
@@ -160,17 +168,25 @@ main = do
                                                nf bittrBufferUnlimitedDirectB 1
                                            , bench "5" $
                                                nf bittrBufferUnlimitedDirectB 5
-                                           , bench "100" $
+                                           , bench "1000" $
                                                nf bittrBufferUnlimitedDirectB
-                                                  100
+                                                  1000
                                            ]
                                   , bgroup "BittrBufferWord64-direct"
                                            [ bench "1" $
                                                nf bittrBufferWord64DirectB 1
                                            , bench "5" $
                                                nf bittrBufferWord64DirectB 5
-                                           , bench "100" $
-                                               nf bittrBufferWord64DirectB 100
+                                           , bench "1000" $
+                                               nf bittrBufferWord64DirectB 1000
+                                           ]
+                                  , bgroup "BittrBufferWord64-holey"
+                                           [ bench "1" $
+                                               nf bittrBufferWord64HoleyB 1
+                                           , bench "5" $
+                                               nf bittrBufferWord64HoleyB 5
+                                           , bench "1000" $
+                                               nf bittrBufferWord64HoleyB 1000
                                            ]
                                   ]
                          ]
@@ -191,6 +207,14 @@ bittrBufferWord64DirectP m =
     $ P.appendBittrBuffer
     $ bittrBuffer 0x01020304050607 64
 
+bittrBufferWord64HoleyP m =
+  lumpUp 1
+    $ P.runBittrWriterHoley
+    $ mconcat
+    $ replicate m
+    $ toHoley
+    $ bittrBuffer 0x01020304050607 64
+
 bittrBufferUnlimitedDirectB m =
   lumpUp 1
     $ B.runBittrWriter
@@ -203,4 +227,12 @@ bittrBufferWord64DirectB m =
     $ mconcat
     $ replicate m
     $ B.appendBittrBuffer
+    $ bittrBuffer 0x01020304050607 64
+
+bittrBufferWord64HoleyB m =
+  lumpUp 1
+    $ B.runBittrWriterHoley
+    $ mconcat
+    $ replicate m
+    $ toHoley
     $ bittrBuffer 0x01020304050607 64
