@@ -12,6 +12,13 @@ module Data.Type.BitRecords.Builder.BitBuffer
     , bittrBufferSpaceLeft
     , bittrBuffer
     , emptyBittrBuffer
+    , BitOutBuffer()
+    , bitOutBufferContent
+    , bitOutBufferLength
+    , isBitOutBufferEmpty
+    , bitOutBufferSpaceLeft
+    , bitOutBuffer
+    , emptyBitOutBuffer
     , bufferBits
     , BittrBufferUnlimited()
     , bittrBufferUnlimitedContent
@@ -79,13 +86,44 @@ bittrBufferSpaceLeft :: BittrBuffer -> Int
 bittrBufferSpaceLeft (BittrBuffer _ !len) =
     bitBufferSize - len
 
--- | Create a 'BittrBuffer' that is properly masked.
+-- | Create a 'BittrBuffer' containing @len@ bits from LSB to MSB, properly
+-- masked, such that only @len@ least significant bits are kept..
 bittrBuffer :: BitBuffer -> Int -> BittrBuffer
-bittrBuffer !b !len = BittrBuffer (b .&. ((1 `unsafeShiftL` len) - 1)) len
+bittrBuffer !b !len = BittrBuffer (let !s = bitBufferSize - len in ((b `unsafeShiftL` s) `unsafeShiftR` s)) len
 
 -- | Create an empty 'BittrBuffer'.
 emptyBittrBuffer :: BittrBuffer
 emptyBittrBuffer = BittrBuffer 0 0
+
+-- | An output 'BitBuffer' bundled with a size that indicates how many bits are defined.
+-- The number of bits must be smaller that 'bitBufferSize'.
+data BitOutBuffer = BitOutBuffer !BitBuffer !Int
+
+bitOutBufferContent :: BitOutBuffer -> BitBuffer
+bitOutBufferContent (BitOutBuffer !c _) =
+    c
+
+bitOutBufferLength :: BitOutBuffer -> Int
+bitOutBufferLength (BitOutBuffer _ !len) =
+    len
+
+isBitOutBufferEmpty :: BitOutBuffer -> Bool
+isBitOutBufferEmpty (BitOutBuffer _ !len) =
+    len == 0
+
+bitOutBufferSpaceLeft :: BitOutBuffer -> Int
+bitOutBufferSpaceLeft (BitOutBuffer _ !len) =
+    bitBufferSize - len
+
+-- | Create a 'BitOutBuffer' containing @len@ bits from LSB to MSB, properly
+-- masked, such that only @len@ least significant bits are kept..
+bitOutBuffer :: BitBuffer -> Int -> BitOutBuffer
+bitOutBuffer !b !len = BitOutBuffer b len
+
+-- | Create an empty 'BitOutBuffer'.
+emptyBitOutBuffer :: BitOutBuffer
+emptyBitOutBuffer = BitOutBuffer 0 0
+
 
 -- | Copy bits starting at a specific offset from one @a@ the the other.
 -- Set bits starting from the most significant bit to the least.
@@ -99,10 +137,10 @@ emptyBittrBuffer = BittrBuffer 0 0
 -- @
 --
 bufferBits :: BittrBuffer -- ^ The value to write (in the lower @length@ bits).
-           -> BittrBuffer -- ^ The input to write to
-           -> (BittrBuffer, BittrBuffer) -- ^ The remaining bits that did not fit
+           -> BitOutBuffer -- ^ The input to write to
+           -> (BittrBuffer, BitOutBuffer) -- ^ The remaining bits that did not fit
                                         -- in the buffer and the output buffer.
-bufferBits (BittrBuffer !bits !len) (BittrBuffer !buff !offset) =
+bufferBits (BittrBuffer !bits !len) (BitOutBuffer !buff !offset) =
     let !spaceAvailable = bitBufferSize - offset
         !writeLen = min spaceAvailable len
         !writeOffset = spaceAvailable - writeLen
@@ -111,7 +149,7 @@ bufferBits (BittrBuffer !bits !len) (BittrBuffer !buff !offset) =
         !buff' = buff .|.
             (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
     in
-        (BittrBuffer restBits restLen, BittrBuffer buff' (offset + writeLen))
+        (BittrBuffer restBits restLen, BitOutBuffer buff' (offset + writeLen))
 
 -- | A 'BitBuffer' bundled with a size, just like 'BittrBuffer' but based in an
 -- 'Integer' with an nrestricted length.
@@ -149,11 +187,11 @@ emptyBittrBufferUnlimited =
 -- efficient, than 'bufferBits', because the input and rest bits don't need to
 -- be constantly converted with 'fromIntegral'.
 bufferBitsInteger :: BittrBufferUnlimited -- ^ The value to write (in the lower @length@ bits).
-                  -> BittrBuffer -- ^ The buffer to write to
-                  -> (BittrBufferUnlimited, BittrBuffer) -- ^ The remaining bits that did not
+                  -> BitOutBuffer -- ^ The buffer to write to
+                  -> (BittrBufferUnlimited, BitOutBuffer) -- ^ The remaining bits that did not
                                                         -- fit in the buffer and the output
                                                         -- buffer.
-bufferBitsInteger (BittrBufferUnlimited !bits !len) (BittrBuffer !buff !offset) =
+bufferBitsInteger (BittrBufferUnlimited !bits !len) (BitOutBuffer !buff !offset) =
     let !spaceAvailable = bitBufferSize - offset
         !writeLen = min spaceAvailable len
         !writeOffset = spaceAvailable - writeLen
@@ -163,7 +201,7 @@ bufferBitsInteger (BittrBufferUnlimited !bits !len) (BittrBuffer !buff !offset) 
             fromIntegral (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
     in
         ( BittrBufferUnlimited restBits restLen
-        , BittrBuffer buff' (offset + writeLen)
+        , BitOutBuffer buff' (offset + writeLen)
         )
 
 -- | A 'BitBuffer' with a size known at compile time. This buffer holds only

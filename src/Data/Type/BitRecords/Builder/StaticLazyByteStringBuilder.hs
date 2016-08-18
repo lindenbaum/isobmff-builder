@@ -8,10 +8,10 @@ import Data.Type.BitRecords.Core
 import Data.Bits
 import Data.Proxy
 import Data.Monoid
-import Control.Category
+--import Control.Category
 import GHC.TypeLits
 import Text.Printf
-import Prelude hiding ((.), id)
+--import Prelude hiding ((.), id)
 import Data.Tagged
 import Debug.Trace
 import Data.Type.BitRecords.Builder.Poly
@@ -29,7 +29,7 @@ runBittrWriter !w = evalBittrWriterState $
     appBittrWriter (w `ixAppend` flushBuilder) initialBittrWriterState
   where
     flushBuilder :: forall off. (KnownNat off) => BittrWriter off 0
-    flushBuilder = modifyBittrWriter flushBittrWriterState
+    flushBuilder = modifyBittrWriterState flushBittrWriterState
 
 -- | Write the partial buffer contents using  any number of 'word8'
 --   The unwritten parts of the bittr buffer are at the top.
@@ -72,12 +72,12 @@ appBittrWriter :: BittrWriter from to -> BittrWriterState from -> BittrWriterSta
 appBittrWriter !w = appIxEndo (unBittrWriter w)
 
 -- startBittrWriter :: Builder -> BittrWriter 0 0
--- startBittrWriter !b = modifyBittrWriter (const (initialBittrWriterState b))
+-- startBittrWriter !b = modifyBittrWriterState (const (initialBittrWriterState b))
 
-modifyBittrWriter
+modifyBittrWriterState
   :: (BittrWriterState fromOffset -> BittrWriterState toOffset)
   -> BittrWriter fromOffset toOffset
-modifyBittrWriter = BittrWriter . IxEndo
+modifyBittrWriterState = BittrWriter . IxEndo
 
 
 data BittrWriterState (offset :: Nat) =
@@ -105,36 +105,44 @@ writeBits
       -> BitBuffer
       -> BittrWriter fromOffset toOffset
 writeBits !pLen !pBits =
-    modifyBittrWriter $
+    modifyBittrWriterState $
         \bb@(BittrWriterState !builder !part) ->
             let pLenVal = fromIntegral (natVal pLen)
                 offset = fromIntegral (natVal bb)
             in
                 go (bittrBuffer pBits pLenVal)
-                   (trace (printf "writeBits. Appending to: %s  partial bits: %64b offset: %d, input data: %64b len: %d"
-                                  (printBuilder builder)
-                                  (unBitBuffer part)
-                                  offset
-                                  (unBitBuffer pBits)
-                                  pLenVal) $
-                        builder)
-                   (bittrBuffer part offset)
+                        builder
+                   (bitOutBuffer part offset)
   where
     go !arg !builder !buff
         | isBittrBufferEmpty arg =
               trace "Aligned" $
-                  BittrWriterState builder (bittrBufferContent buff)
-        | otherwise = let (arg', buff') = bufferBits arg buff
+                  BittrWriterState builder (bitOutBufferContent buff)
+        | otherwise = let (arg', buff') =
+                              trace
+                              (printf "    appending to: %s\n    partial bits: %64b offset: %d\n      input data: %64b len: %d\n"
+                                  (printBuilder builder)
+                                  (unBitBuffer (bitOutBufferContent buff))
+                                  (bitOutBufferLength buff)
+                                  (unBitBuffer (bittrBufferContent arg))
+                                  (bittrBufferLength arg)) $
+                              bufferBits arg buff
                       in
-                          if bittrBufferSpaceLeft buff' > 0
+                              trace
+                              (printf "    --->\n        partial bits: %64b offset: %d\n          input data: %64b len: %d\n"
+                                  (unBitBuffer (bitOutBufferContent buff'))
+                                  (bitOutBufferLength buff')
+                                  (unBitBuffer (bittrBufferContent arg'))
+                                  (bittrBufferLength arg')) $
+                          if bitOutBufferSpaceLeft buff' > 0
                           then trace "Partially" $
                               BittrWriterState builder
-                                               (bittrBufferContent buff')
+                                               (bitOutBufferContent buff')
                           else let builder' = builder <>
-                                       toBitBufferBuilder (bittrBufferContent buff')
+                                       toBitBufferBuilder (bitOutBufferContent buff')
                                in
                                    trace "recurse" $
-                                       go arg' builder' emptyBittrBuffer
+                                       go arg' builder' emptyBitOutBuffer
 
 -------------------------
 
@@ -196,8 +204,12 @@ instance forall oT n oF r .
 --  Value: |0     ..     1|0       ..      10| X    ..      X|
 -- @
 instance forall f0 f1 toM oF oT .
-         ( ToHoley (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF)) (Proxy f0) (ToM (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
-         , ToHoley (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM
+         ( ToHoley  (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
+                   (Proxy f0)
+                    (ToM (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
+         , ToHoley  (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT)
+                   (Proxy f1)
+                    toM
          , oT ~ (AlignmentOffsetAdd 'Align64 (GetRecordSize f1) (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
          , KnownNat oF
          , KnownNat (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF)
@@ -216,7 +228,7 @@ instance forall f0 f1 toM oF oT .
       where
         fmt0 :: Holey -- rely on ScopedTypeVariables and apply the types
                       -- so the compiler knows the result type of
-                      -- toHoley. Only then 'o' and
+                      -- t11oHoley. Only then 'o' and
                       -- 'c ~ (ToM (BittrWriter oF oT) (f0 :>: f1) toM)'
                       -- is known, yeah figure 'c' out ;)
                  (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
