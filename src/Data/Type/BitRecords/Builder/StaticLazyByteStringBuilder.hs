@@ -1,7 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Builder.StaticLazyByteStringBuilder where
 
-import Data.Type.BitRecords.Builder.Alignment
 import Data.Type.BitRecords.Builder.BitBuffer
 import Data.Type.BitRecords.Builder.Holey
 import Data.Type.BitRecords.Core
@@ -78,11 +77,10 @@ evalBittrWriterState (BittrWriterState !builder _) = builder
 -- | Write all the bits, in chunks, filling and writing the 'BitBuffer'
 -- in the 'BittrWriter' as often as necessary.
 writeBits
-      :: ( KnownNat len
-         , KnownNat fromOffset
-         , buff ~ BitBuffer
-         , KnownNat toOffset
-         , toOffset ~ AlignmentOffsetAdd 'Align64 len fromOffset)
+      :: ( KnownBitBufferSize len
+         , KnownBitBufferSize fromOffset
+         , KnownBitBufferSize toOffset
+         , toOffset ~ AppendNewBuffOffset len fromOffset)
       => proxy (len :: Nat) -- TODO add a len to BitBuffer, then remove this
       -> BitBuffer
       -> BittrWriter fromOffset toOffset
@@ -111,12 +109,12 @@ writeBits !pLen !pBits =
 
 -------------------------
 
-runBittrWriterHoley :: KnownNat off => Holey (BittrWriter 0 off) Builder r -> r
+runBittrWriterHoley :: KnownBitBufferSize off => Holey (BittrWriter 0 off) Builder r -> r
 runBittrWriterHoley (HM !x) = x runBittrWriter
 
-instance ( KnownNat oF, KnownNat oT
-         , KnownNat (GetRecordSize f)
-         , oT ~ AlignmentOffsetAdd 'Align64 (GetRecordSize f) oF)
+instance ( KnownBitBufferSize oF, KnownBitBufferSize oT
+         , KnownBitBufferSize (GetRecordSize f)
+         , oT ~ AppendNewBuffOffset (GetRecordSize f) oF)
   => ToHoley (BittrWriter oF oT) (Proxy (l :=> f)) r where
     type ToM (BittrWriter oF oT) (Proxy (l :=> f)) r =
       Tagged l Integer -> r
@@ -125,10 +123,10 @@ instance ( KnownNat oF, KnownNat oT
       where
         fieldLen = Proxy :: Proxy (GetRecordSize f)
 
-instance  ( KnownNat oF, KnownNat oT
-          , KnownNat v
-          , KnownNat (GetRecordSize f)
-          , oT ~ AlignmentOffsetAdd 'Align64 (GetRecordSize f) oF)
+instance  ( KnownBitBufferSize oF, KnownBitBufferSize oT
+          , KnownBitBufferSize v
+          , KnownBitBufferSize (GetRecordSize f)
+          , oT ~ AppendNewBuffOffset (GetRecordSize f) oF)
   => ToHoley (BittrWriter oF oT) (Proxy (f := v)) r where
     toHoley _ =
         immediate (writeBits fieldLen fieldVal)
@@ -137,10 +135,10 @@ instance  ( KnownNat oF, KnownNat oT
         fieldVal = fromIntegral (natVal (Proxy :: Proxy v))
 
 instance forall oT n oF r .
-          ( KnownNat n
-          , KnownNat oF
-          , oT ~ AlignmentOffsetAdd 'Align64 n oF
-          , KnownNat oT)
+          ( KnownBitBufferSize n
+          , KnownBitBufferSize oF
+          , oT ~ AppendNewBuffOffset n oF
+          , KnownBitBufferSize oT)
   => ToHoley (BittrWriter oF oT) (Proxy (Field n)) r where
     toHoley _ = immediate (writeBits (Proxy :: Proxy n) 0)
 -- TODO
@@ -167,23 +165,23 @@ instance forall oT n oF r .
 --  Value: |0     ..     1|0       ..      10| X    ..      X|
 -- @
 instance forall f0 f1 toM oF oT .
-         ( ToHoley  (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
+         ( ToHoley  (BittrWriter oF (AppendNewBuffOffset (GetRecordSize f0) oF))
                    (Proxy f0)
-                    (ToM (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
-         , ToHoley  (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT)
+                    (ToM (BittrWriter (AppendNewBuffOffset (GetRecordSize f0) oF) oT) (Proxy f1) toM)
+         , ToHoley  (BittrWriter (AppendNewBuffOffset (GetRecordSize f0) oF) oT)
                    (Proxy f1)
                     toM
-         , oT ~ (AlignmentOffsetAdd 'Align64 (GetRecordSize f1) (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
-         , KnownNat oF
-         , KnownNat (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF)
-         , KnownNat oT)
+         , oT ~ (AppendNewBuffOffset (GetRecordSize f1) (AppendNewBuffOffset (GetRecordSize f0) oF))
+         , KnownBitBufferSize oF
+         , KnownBitBufferSize (AppendNewBuffOffset (GetRecordSize f0) oF)
+         , KnownBitBufferSize oT)
   => ToHoley (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM where
     type ToM (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM =
       ToM
-        (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
+        (BittrWriter oF (AppendNewBuffOffset (GetRecordSize f0) oF))
         (Proxy f0)
         (ToM
-          (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT)
+          (BittrWriter (AppendNewBuffOffset (GetRecordSize f0) oF) oT)
           (Proxy f1)
           toM)
     toHoley _ = fmt0 % fmt1
@@ -193,8 +191,8 @@ instance forall f0 f1 toM oF oT .
                       -- t11oHoley. Only then 'o' and
                       -- 'c ~ (ToM (BittrWriter oF oT) (f0 :>: f1) toM)'
                       -- is known, yeah figure 'c' out ;)
-                 (BittrWriter oF (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF))
-                 (ToM (BittrWriter (AlignmentOffsetAdd 'Align64 (GetRecordSize f0) oF) oT) (Proxy f1) toM)
+                 (BittrWriter oF (AppendNewBuffOffset (GetRecordSize f0) oF))
+                 (ToM (BittrWriter (AppendNewBuffOffset (GetRecordSize f0) oF) oT) (Proxy f1) toM)
                  (ToM (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM)
         fmt0 = toHoley pf0
         fmt1 = toHoley pf1

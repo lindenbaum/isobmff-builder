@@ -27,16 +27,9 @@ module Data.Type.BitRecords.Builder.BitBuffer
     , bittrBufferUnlimited
     , emptyBittrBufferUnlimited
     , bufferBitsInteger
-    , StaticBittrBuffer()
-    , staticBittrBufferContent
-    , staticBittrBufferLength
-    , isStaticBittrBufferEmpty
-    , staticBittrBufferSpaceLeft
     , type StaticBittrBufferSpaceLeft
-    , staticBittrBuffer
-    , staticBittrBufferP
-    , emptyStaticBittrBuffer
-    , appendStaticBittrBuffer
+    , type AppendRestLen
+    , type AppendNewBuffOffset
     , type KnownBitBufferSize
     , BitString(..)
     , FiniteBitString(..)
@@ -203,108 +196,27 @@ bufferBitsInteger (BittrBufferUnlimited !bits !len) (BitOutBuffer !buff !offset)
         , BitOutBuffer buff' (offset + writeLen)
         )
 
--- | A 'BitBuffer' with a size known at compile time. This buffer holds only
---  'BitBufferSize' bits.
-newtype StaticBittrBuffer (size :: Nat) = StaticBittrBuffer BitBuffer
-    deriving (Ord, Eq, Num, Bits, FiniteBits)
-
-staticBittrBufferContent :: KnownBitBufferSize size => StaticBittrBuffer size -> BitBuffer
-staticBittrBufferContent (StaticBittrBuffer !c) =
-    c
-
-staticBittrBufferLength :: KnownBitBufferSize size => StaticBittrBuffer size -> Int
-staticBittrBufferLength sb =
-    fromIntegral (natVal sb)
-
-isStaticBittrBufferEmpty :: KnownBitBufferSize size => StaticBittrBuffer size -> Bool
-isStaticBittrBufferEmpty sb =
-    staticBittrBufferLength sb == 0
-
-staticBittrBufferSpaceLeft :: KnownBitBufferSize size => StaticBittrBuffer size -> Int
-staticBittrBufferSpaceLeft sb =
-    bitBufferSize - staticBittrBufferLength sb
 
 type family StaticBittrBufferSpaceLeft (sb :: Nat) :: Nat where
         StaticBittrBufferSpaceLeft size = BitBufferSize - size
-
-
--- | Create a 'StaticBittrBuffer' that is properly masked.
-staticBittrBuffer :: (KnownNat size, size <= 64)
-                  => BitBuffer
-                  -> proxy size
-                  -> StaticBittrBuffer size
-staticBittrBuffer !b pxlen =
-    StaticBittrBuffer (b .&. ((1 `unsafeShiftL` len) - 1))
-  where
-    !len = fromIntegral (natVal pxlen)
-
--- | Create a 'StaticBittrBuffer' that is properly masked.
-staticBittrBufferP :: (KnownNat bits, KnownNat size, size <= 64)
-                   => proxy0 bits
-                   -> proxy1 size
-                   -> StaticBittrBuffer size
-staticBittrBufferP !pxbits !pxlen =
-    StaticBittrBuffer (b .&. ((1 `unsafeShiftL` len) - 1))
-  where
-    !len = fromIntegral (natVal pxlen)
-    !b = fromIntegral (natVal pxbits)
-
--- | Create an empty 'BittrBuffer'.
-emptyStaticBittrBuffer :: StaticBittrBuffer 0
-emptyStaticBittrBuffer =
-    StaticBittrBuffer 0
-
--- | Copy bits starting at a specific offset from one @a@ the the other.
--- Set bits starting from the most significant bit to the least.
---   For example @writeBits m 1 <> writeBits n 2@ would result in:
---
--- @
---         MSB                                             LSB
---    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
---  Value: |0     ..     1|0        ..     10|  ...          |
---          ->             ->                 ->     (direction of writing)
--- @
---
-appendStaticBittrBuffer :: forall sizeArg sizeBuff.
-                        ( KnownBitBufferSize sizeBuff
-                        , KnownBitBufferSize (AppendWriteLen_ sizeArg sizeBuff)
-                        , KnownBitBufferSize (AppendRestLen_ sizeArg sizeBuff)
-                        , KnownBitBufferSize (AppendNewBuffLen_ sizeArg sizeBuff))
-                        => StaticBittrBuffer sizeArg -- ^ The value to write (in the lower @length@ bits).
-                        -> StaticBittrBuffer sizeBuff -- ^ The input to write to
-                        -> ( StaticBittrBuffer (AppendRestLen_ sizeArg sizeBuff)
-                           , StaticBittrBuffer (AppendNewBuffLen_ sizeArg sizeBuff)
-                           )-- ^ The remaining bits that did not fit in the buffer and the output
-                            -- buffer.
-appendStaticBittrBuffer (StaticBittrBuffer !argC) (StaticBittrBuffer !buffC) =
-    let !spaceAvailable = fromIntegral (natVal (Proxy :: Proxy (StaticBittrBufferSpaceLeft sizeBuff)))
-        !writeLen = fromIntegral (natVal (Proxy :: Proxy (AppendWriteLen_ sizeArg sizeBuff)))
-        !writeOffset = spaceAvailable - writeLen
-        !restLen = staticBittrBufferLength rest
-        !buffC' = buffC .|.
-            (argC `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
-        rest = StaticBittrBuffer (argC .&. (1 `unsafeShiftL` restLen - 1))
-        buff' = StaticBittrBuffer buffC'
-    in
-        (rest, buff')
 
 type family KnownBitBufferSize (s :: Nat) :: Constraint where
         KnownBitBufferSize size =
                                 (KnownNat size, size <= BitBufferSize,
                                  KnownNat (StaticBittrBufferSpaceLeft size))
 
-type family AppendRestLen_ (argLen :: Nat) (buffLen :: Nat) :: Nat
+type family AppendRestLen (argLen :: Nat) (buffLen :: Nat) :: Nat
      where
-        AppendRestLen_ argLen buffLen =
-                                      argLen - AppendWriteLen_ argLen buffLen
+        AppendRestLen argLen buffLen =
+                                     argLen - AppendWriteLen_ argLen buffLen
 
-type family AppendNewBuffLen_ (argLen :: Nat) (buffLen :: Nat) ::
+type family AppendNewBuffOffset (argLen :: Nat) (buffLen :: Nat) ::
      Nat where
-        AppendNewBuffLen_ argLen buffLen =
-                                         buffLen +
-                                           If (StaticBittrBufferSpaceLeft buffLen <=? argLen)
-                                             (StaticBittrBufferSpaceLeft buffLen)
-                                             argLen
+        AppendNewBuffOffset argLen buffLen =
+                                           buffLen +
+                                             If (StaticBittrBufferSpaceLeft buffLen <=? argLen)
+                                               (StaticBittrBufferSpaceLeft buffLen)
+                                               argLen
 
 type family AppendWriteLen_ (argLen :: Nat) (buffLen :: Nat) :: Nat
      where
@@ -312,7 +224,6 @@ type family AppendWriteLen_ (argLen :: Nat) (buffLen :: Nat) :: Nat
                                        If (StaticBittrBufferSpaceLeft buffLen <=? argLen)
                                          (StaticBittrBufferSpaceLeft buffLen)
                                          argLen
-
 
 -- | A type class for types that store an exact known number of bits.
 class BitString a where
