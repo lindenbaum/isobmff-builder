@@ -6,6 +6,7 @@ import Data.Type.BitRecords.Builder.Holey
 import Data.Type.BitRecords.Core
 import Data.Bits
 import Data.Proxy
+import Data.Word
 import Data.Monoid
 import GHC.TypeLits
 import Data.Tagged
@@ -87,8 +88,8 @@ writeBits
 writeBits !pLen !pBits =
     modifyBittrWriterState $
         \bb@(BittrWriterState !builder !part) ->
-            let pLenVal = fromIntegral (natVal pLen)
-                offset = fromIntegral (natVal bb)
+            let !pLenVal = fromIntegral (natVal pLen)
+                !offset = fromIntegral (natVal bb)
             in
                 go (bittrBuffer pBits pLenVal)
                    builder
@@ -97,12 +98,12 @@ writeBits !pLen !pBits =
     go !arg !builder !buff
         | isBittrBufferEmpty arg =
               BittrWriterState builder (bitOutBufferContent buff)
-        | otherwise = let (arg', buff') = bufferBits arg buff
+        | otherwise = let (!arg', !buff') = bufferBits arg buff
                       in
                           if bitOutBufferSpaceLeft buff' > 0
                           then BittrWriterState builder
                                                 (bitOutBufferContent buff')
-                          else let builder' = builder <>
+                          else let !builder' = builder <>
                                        word64BE (unBitBuffer (bitOutBufferContent buff'))
                                in
                                    go arg' builder' emptyBitOutBuffer
@@ -117,22 +118,22 @@ instance ( KnownBitBufferSize oF, KnownBitBufferSize oT
          , oT ~ AppendNewBuffOffset (GetRecordSize f) oF)
   => ToHoley (BittrWriter oF oT) (Proxy (l :=> f)) r where
     type ToM (BittrWriter oF oT) (Proxy (l :=> f)) r =
-      Tagged l Integer -> r
+      Tagged l Word64 -> r
     toHoley _ =
         indirect (writeBits fieldLen . fromIntegral)
       where
         fieldLen = Proxy :: Proxy (GetRecordSize f)
 
 instance  ( KnownBitBufferSize oF, KnownBitBufferSize oT
-          , KnownBitBufferSize v
+          , KnownNat v
           , KnownBitBufferSize (GetRecordSize f)
           , oT ~ AppendNewBuffOffset (GetRecordSize f) oF)
   => ToHoley (BittrWriter oF oT) (Proxy (f := v)) r where
     toHoley _ =
         immediate (writeBits fieldLen fieldVal)
       where
-        fieldLen = Proxy :: Proxy (GetRecordSize f)
-        fieldVal = fromIntegral (natVal (Proxy :: Proxy v))
+        !fieldLen = Proxy :: Proxy (GetRecordSize f)
+        !fieldVal = fromIntegral (natVal (Proxy :: Proxy v))
 
 instance forall oT n oF r .
           ( KnownBitBufferSize n
@@ -174,7 +175,8 @@ instance forall f0 f1 toM oF oT .
          , oT ~ (AppendNewBuffOffset (GetRecordSize f1) (AppendNewBuffOffset (GetRecordSize f0) oF))
          , KnownBitBufferSize oF
          , KnownBitBufferSize (AppendNewBuffOffset (GetRecordSize f0) oF)
-         , KnownBitBufferSize oT)
+         , KnownBitBufferSize oT
+         )
   => ToHoley (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM where
     type ToM (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM =
       ToM
@@ -194,8 +196,8 @@ instance forall f0 f1 toM oF oT .
                  (BittrWriter oF (AppendNewBuffOffset (GetRecordSize f0) oF))
                  (ToM (BittrWriter (AppendNewBuffOffset (GetRecordSize f0) oF) oT) (Proxy f1) toM)
                  (ToM (BittrWriter oF oT) (Proxy (f0 :>: f1)) toM)
-        fmt0 = toHoley pf0
-        fmt1 = toHoley pf1
+        !fmt0 = toHoley pf0
+        !fmt1 = toHoley pf1
         pf0 = Proxy :: Proxy f0
         pf1 = Proxy :: Proxy f1
 

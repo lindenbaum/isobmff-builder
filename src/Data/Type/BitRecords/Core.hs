@@ -35,15 +35,13 @@ type FieldPosition = (Nat, Nat)
 data (:>:) :: Type -> Type -> Type
 infixl 3 :>:
 
--- * Nested Records
+-- | A field with a constant fixed value
+data (:=) :: Type -> Nat -> Type
+infixr 5 :=
 
 -- | A field with a name
 data (:=>) :: label -> Type -> Type where
 infixr 6 :=>
-
--- | A field with a constant fixed value
-data (:=) :: Type -> Nat -> Type
-infixr 5 :=
 
 -- | A wrapper around 'Constraint' that propagates 'TypeError'.
 type ConstraintE = Either Constraint Constraint

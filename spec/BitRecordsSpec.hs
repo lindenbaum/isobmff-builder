@@ -3,8 +3,8 @@ module BitRecordsSpec (spec) where
 
 import Data.Bits
 import Data.Type.BitRecords
-import Data.Type.BitRecords.Builder.StaticLazyByteStringBuilder
-import qualified Data.Type.BitRecords.Builder.LazyByteStringBuilder as LB
+import qualified Data.Type.BitRecords.Builder.StaticLazyByteStringBuilder as SB
+import Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import Data.Proxy
 import Data.Word
 import Data.Type.Equality ()
@@ -290,13 +290,6 @@ testFieldPositionToList
        '[15,16,17,18,19,20,21,22,23])
 testFieldPositionToList = Valid
 
-testGetRemainingUnaligned ::
-  TypeSpec '[ GetRemainingUnaligned 1 'Align32  `ShouldBe` 1
-            , GetRemainingUnaligned 16 'Align16  `ShouldBe` 0
-            , GetRemainingUnaligned 31 'Align16  `ShouldBe` 15
-            ]
-testGetRemainingUnaligned = Valid
-
 spec :: Spec
 spec = do
   describe "The Set of Type Functions" $
@@ -316,7 +309,6 @@ spec = do
       print testFieldPositionToList
       print checkTestRecAligned
       print checkTestRecUnAligned
-      print testGetRemainingUnaligned
   describe "showRecord" $ do
     it "prints (Field 4 :>: (Field 4 := 0x96)) to \"<..>0110\"" $
       let actual = showRecord (Proxy :: Proxy (Field 4 :>: (Field 4 := 0x96)))
@@ -366,8 +358,8 @@ spec = do
                   runBittrWriterHoley
                   (toHoley rec)
                           1 -- because instance Num a => Num (Tagged t a)
-                          (Tagged 3 :: Tagged "baz" Integer)
-                          (Tagged 7 :: Tagged "foo" Integer)
+                          (Tagged 3 :: Tagged "baz" Word64)
+                          (Tagged 7 :: Tagged "foo" Word64)
             actual = printBuilder actualB
             in  actual `shouldBe`
                   "<< 01 00 06 00 00 00 00 0f fc >>"
@@ -378,7 +370,7 @@ spec = do
               rec :: Proxy (Field 4 := 0 :>: "here" :=> Field 4)
               actualB :: Builder
               actualB = runBittrWriterHoley (toHoley rec)
-                          (Tagged value :: Tagged "here" Integer)
+                          (Tagged value :: Tagged "here" Word64)
               actual = printBuilder actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
               in actual `shouldBe` expected
@@ -394,7 +386,7 @@ spec = do
         let expected = "<< 00 01 02 03 04 05 06 07 >>"
             actual =
                printBuilder
-                (LB.runBittrWriterHoley
+                (runBittrWriterHoley
                  (toHoley
                      (bittrBufferUnlimited 0x01020304050607 64)))
             in actual `shouldBe` expected

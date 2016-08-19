@@ -21,11 +21,3 @@ newtype LittleEndianBuilder = LittleEndianBuilder Builder
 instance ToBitBufferBuilder LittleEndianBuilder where
   toByteBuilder = LittleEndianBuilder . word8 . fromIntegral . unBitBuffer
   toBitBufferBuilder = LittleEndianBuilder . word64LE . unBitBuffer
-
-printBuilder :: Builder -> String
-printBuilder b =
-      ("<< " ++)
-   $  (++" >>")
-   $  unwords
-   $  printf "%0.2x"
-  <$>  B.unpack (toLazyByteString b)

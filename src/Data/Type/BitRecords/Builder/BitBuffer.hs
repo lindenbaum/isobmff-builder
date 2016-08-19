@@ -12,6 +12,7 @@ module Data.Type.BitRecords.Builder.BitBuffer
     , bittrBufferSpaceLeft
     , bittrBuffer
     , emptyBittrBuffer
+    , bittrBufferProxyLength
     , BitOutBuffer()
     , bitOutBufferContent
     , bitOutBufferLength
@@ -31,11 +32,9 @@ module Data.Type.BitRecords.Builder.BitBuffer
     , type AppendRestLen
     , type AppendNewBuffOffset
     , type KnownBitBufferSize
-    , BitString(..)
-    , FiniteBitString(..)
     ) where
 
-import           Data.Proxy
+import Data.Proxy
 import           Data.Type.Bool
 import           Data.Type.BitRecords.Arithmetic
 import           Data.Bits
@@ -115,6 +114,13 @@ bitOutBuffer !b !len = BitOutBuffer b len
 -- | Create an empty 'BitOutBuffer'.
 emptyBitOutBuffer :: BitOutBuffer
 emptyBitOutBuffer = BitOutBuffer 0 0
+
+-- | Create a 'BitOutBuffer' with a length given by a 'Proxy' to a type level
+-- 'Nat'.
+bittrBufferProxyLength :: (KnownBitBufferSize n) => Proxy n -> Word64 -> BittrBuffer
+bittrBufferProxyLength !plen !v = bittrBuffer (BitBuffer v) fieldLen
+    where
+      !fieldLen = fromIntegral (natVal plen)
 
 
 -- | Copy bits starting at a specific offset from one @a@ the the other.
@@ -224,158 +230,3 @@ type family AppendWriteLen_ (argLen :: Nat) (buffLen :: Nat) :: Nat
                                        If (StaticBittrBufferSpaceLeft buffLen <=? argLen)
                                          (StaticBittrBufferSpaceLeft buffLen)
                                          argLen
-
--- | A type class for types that store an exact known number of bits.
-class BitString a where
-    takeFirstBitBuffer :: a -> BitBuffer
-    takeFirstByte :: a -> Word8
-    prependZeros :: Int -> a -> a
-    takeFirstBits :: Int -> a -> a
-    dropFirstBits :: Int -> a -> a
-    dropLastBits :: Int -> a -> a
-    bitStringLength :: a -> Int
-    isBitStringEmpty :: a -> Bool
-    bitString :: (Integral x) => x -> Int -> a
-    unsafeBitString :: BitBuffer -> Int -> a
-    emptyBitString :: a
-
--- | A type class for types that store an exact known number of bits, but never
--- more than a fixed, finite number.
-class BitString a =>
-      FiniteBitString a where
-    bitStringMaxLength :: proxy a -> Int
-    bitStringMaxLength _ = bitBufferSize
-    bitStringSpaceLeft :: a -> Int
-    bitStringSpaceLeft x = bitStringMaxLength (Proxy :: Proxy a) -
-        bitStringLength x
-    -- | Like 'bufferBits' but work on an 'Integer' as bit source. This makes
-    -- writing more the larger number of bits than 'BitBufferAlignment' more
-    -- efficient, than 'bufferBits', because the input and rest bits don't need to
-    -- be constantly converted with 'fromIntegral'.
-    appendBitStrings :: (BitString arg, FiniteBitString a)
-                     => arg -- ^ The value to write (in the lower @length@ bits).
-                     -> a   -- ^ The 'BitString' to append to
-                     -> (arg, a) -- ^ The remaining bits that did not fit in the buffer and the
-                                   -- output string.
-
--- * 'BitString' instances
-
-instance BitString BittrBuffer where
-    takeFirstBitBuffer (BittrBuffer !c _) =
-        c
-    takeFirstByte (BittrBuffer !c _) =
-        fromIntegral (unBitBuffer c)
-    prependZeros !n (BittrBuffer !c !l) =
-        BittrBuffer (c `unsafeShiftL` n) (max bitBufferSize (n + l))
-    takeFirstBits !n (BittrBuffer !c !l) =
-        BittrBuffer c' n'
-      where
-        !c' = (c `unsafeShiftL` s) `unsafeShiftR` s
-        !s = bitBufferSize - n
-        !n' = min n l
-    dropFirstBits !n (BittrBuffer !c !l) =
-        BittrBuffer c' l'
-      where
-        !c' = c `unsafeShiftR` n
-        !l' = if n >= l then 0 else l - n
-    dropLastBits !n (BittrBuffer !c !l) =
-        BittrBuffer c' l'
-      where
-        !c' = (c `unsafeShiftL` s) `unsafeShiftR` s
-        !s = bitBufferSize - l'
-        !l' = if n >= l then 0 else l - n
-    bitStringLength (BittrBuffer _ !l) =
-        l
-    isBitStringEmpty (BittrBuffer _ !l) =
-        l == 0
-    bitString = bittrBuffer . fromIntegral
-    unsafeBitString = BittrBuffer
-    emptyBitString = emptyBittrBuffer
-
-instance BitString BitOutBuffer where
-    takeFirstBitBuffer (BitOutBuffer !c _) =
-        c
-    takeFirstByte (BitOutBuffer !c _) =
-        fromIntegral (unBitBuffer c `unsafeShiftR` (bitBufferSize - 8))
-    prependZeros !n (BitOutBuffer !c !l) =
-        BitOutBuffer (c `unsafeShiftR` n) (max bitBufferSize (n + l))
-    takeFirstBits !n = dropLastBits (bitBufferSize - n)
-    dropFirstBits !n (BitOutBuffer !c !l) =
-        BitOutBuffer c' l'
-      where
-        !c' = c `unsafeShiftL` n
-        !l' = if n >= l then 0 else l - n
-    dropLastBits !n (BitOutBuffer !c !l) =
-        BitOutBuffer c' l'
-      where
-        !c' = (c `unsafeShiftR` s) `unsafeShiftL` s
-        !s = bitBufferSize - l'
-        !l' = if n >= l then 0 else l - n
-    bitStringLength (BitOutBuffer _ !l) =
-        l
-    isBitStringEmpty (BitOutBuffer _ !l) =
-        l == 0
-    bitString = bitOutBuffer . fromIntegral
-    unsafeBitString = BitOutBuffer
-    emptyBitString = emptyBitOutBuffer
-
-instance FiniteBitString BitOutBuffer where
-    bitStringSpaceLeft (BitOutBuffer _ !l) =
-        bitBufferSize - l
-    -- appendBitStrings !arg (BitOutBuffer !buff !offset) =
-    --    let !spaceAvailable = bitBufferSize - offset
-    --        !writeLen = min spaceAvailable len
-    --        !len = bitStringLength arg
-    --        !bits = takeFirstBitBuffer arg
-    --        !writeOffset = spaceAvailable - writeLen
-    --        !restLen = len - writeLen
-    --        !restBits = bits .&. (1 `unsafeShiftL` restLen - 1)
-    --        !buff' = buff .|.
-    --            (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
-    --    in
-    --        ( unsafeBitString restBits restLen
-    --        , BitOutBuffer buff' (offset + writeLen)
-    --        )
-
-    appendBitStrings !arg (BitOutBuffer !buffBits !offset) =
-        let !spaceAvailable = bitBufferSize - offset
-            !len = bitStringLength arg
-            !writeArg = prependZeros writeOffset (dropFirstBits restLen arg)
-            !writeLen = min spaceAvailable len
-            !writeOffset = spaceAvailable - writeLen
-            !restLen = len - writeLen
-            !rest = dropLastBits writeLen arg
-            !buffBits' = buffBits .|. takeFirstBitBuffer writeArg
-        in
-            ( rest , BitOutBuffer buffBits' (offset + writeLen) )
-
-instance BitString BittrBufferUnlimited where
-    takeFirstBitBuffer (BittrBufferUnlimited !c _) =
-        fromIntegral c
-    takeFirstByte (BittrBufferUnlimited !c _) =
-        fromIntegral c
-    prependZeros !n (BittrBufferUnlimited !c !l) =
-        BittrBufferUnlimited (c `unsafeShiftL` n) (l + n)
-    takeFirstBits !n (BittrBufferUnlimited !c !l) =
-        BittrBufferUnlimited (c .&. (2 ^ n' - 1)) n'
-      where
-        !n' = min n l
-    dropFirstBits !n (BittrBufferUnlimited !c !l) =
-        BittrBufferUnlimited c' l'
-      where
-        !c' = c `unsafeShiftR` n
-        !l' = if n >= l then 0 else l - n
-    dropLastBits !n (BittrBufferUnlimited !c !l) =
-        BittrBufferUnlimited c' l'
-      where
-        !c' = (c `unsafeShiftL` s) `unsafeShiftR` s
-        !s = bitBufferSize - l'
-        !l' = if n >= l then 0 else l - n
-    bitStringLength (BittrBufferUnlimited _ !l) =
-        l
-    isBitStringEmpty (BittrBufferUnlimited _ !l) =
-        l == 0
-    bitString = bittrBufferUnlimited . fromIntegral
-    unsafeBitString !b !l = BittrBufferUnlimited (fromIntegral (unBitBuffer b))
-                                                 l
-    emptyBitString = emptyBittrBufferUnlimited
