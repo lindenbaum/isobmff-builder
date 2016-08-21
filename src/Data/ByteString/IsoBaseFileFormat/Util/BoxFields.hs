@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- | Mini EDSL for labelled box fields. The boxfields can be 'Scalar' or
 -- 'ScalarArray's.
 module Data.ByteString.IsoBaseFileFormat.Util.BoxFields
@@ -6,6 +7,7 @@ module Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.Singletons
+import Data.Type.BitRecords
 import Data.Singletons.Prelude.List
 import qualified Data.Vector.Sized as Vec
 import qualified Data.Text as T
@@ -296,3 +298,32 @@ instance KnownSymbol str => FromTypeLit (U32Text label) (str :: Symbol) where
 
 instance Default (U32Text label) where
   def = U32Text 0x20202020
+
+
+-- * BoxContent from Bits
+
+newtype BitBox record where
+  BitBox :: Builder -> BitBox record
+  deriving (Monoid)
+
+bitBoxWithArgs :: forall record . ToHoley BitStringBuilder (Proxy record) (BitBox record)
+       => Proxy record -> ToM BitStringBuilder (Proxy record) (BitBox record)
+bitBoxWithArgs = runHoley . bitBoxHoley
+
+bitBox :: forall record . (ToHoley BitStringBuilder (Proxy record) (BitBox record),
+                           ToM BitStringBuilder (Proxy record) (BitBox record) ~ (BitBox record))
+       => Proxy record -> BitBox record
+bitBox = bitBoxWithArgs
+
+bitBoxHoley :: forall record r . ToHoley BitStringBuilder (Proxy record) r
+       => Proxy record -> Holey (BitBox record) r (ToM BitStringBuilder (Proxy record) r)
+bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (toHoley px)
+
+
+instance
+      ( KnownNat (GetRecordSize content) )
+   => IsBoxContent (BitBox content) where
+  boxSize cnt =
+    -- convert from bits to bytes
+    fromIntegral (getRecordSizeFromProxy cnt `unsafeShiftR` 3)
+  boxBuilder (BitBox cnt) = cnt
