@@ -8,7 +8,6 @@ import           Data.ByteString.Builder
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.Type.BitRecords
-import           Data.Type.BitRecords.Builder.StaticLazyByteStringBuilder
 import qualified Data.ByteString.Lazy                                 as B
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import           Data.Word

@@ -1,40 +1,32 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 module Data.Type.BitRecords.Builder.BitBuffer
-    ( BitBuffer(..)
-    , type BitBufferSize
-    , type ModuloBitBufferSize
-    , bitBufferSize
-    , BittrBuffer()
-    , bittrBufferContent
-    , bittrBufferLength
-    , isBittrBufferEmpty
-    , bittrBufferSpaceLeft
-    , bittrBuffer
-    , emptyBittrBuffer
-    , bittrBufferProxyLength
-    , BitOutBuffer()
-    , bitOutBufferContent
-    , bitOutBufferLength
-    , isBitOutBufferEmpty
-    , bitOutBufferSpaceLeft
-    , bitOutBuffer
-    , emptyBitOutBuffer
+    ( type BitStringMaxLength
+    , type ModuloBitStringMaxLength
+    , bitStringMaxLength
+    , BitString()
+    , bitStringContent
+    , bitStringLength
+    , isBitStringEmpty
+    , bitStringSpaceLeft
+    , bitString
+    , emptyBitString
+    , bitStringProxyLength
+    , BitStringBuilderChunk()
+    , bitStringBuilderChunkContent
+    , bitStringBuilderChunkLength
+    , isBitStringBuilderChunkEmpty
+    , bitStringBuilderChunkSpaceLeft
+    , bitStringBuilderChunk
+    , emptyBitStringBuilderChunk
     , bufferBits
-    , BittrBufferUnlimited()
-    , bittrBufferUnlimitedContent
-    , bittrBufferUnlimitedLength
-    , isBittrBufferUnlimitedEmpty
-    , bittrBufferUnlimited
-    , emptyBittrBufferUnlimited
-    , bufferBitsInteger
-    , type StaticBittrBufferSpaceLeft
+    , type StaticBitStringSpaceLeft
     , type AppendRestLen
     , type AppendNewBuffOffset
-    , type KnownBitBufferSize
+    , type KnownChunkSize
     ) where
 
-import Data.Proxy
+import           Data.Proxy
 import           Data.Type.Bool
 import           Data.Type.BitRecords.Arithmetic
 import           Data.Bits
@@ -42,83 +34,99 @@ import           Data.Word
 import           Data.Kind ( Constraint )
 import           GHC.TypeLits
 
--- | A bitbuffer that holds as much bits as an aligned word.
-newtype BitBuffer = BitBuffer { unBitBuffer :: Word64 }
-    deriving (Eq, Ord, Num, Bits, FiniteBits, Show)
+-- | The maximum number of bits a 'BitBuffer' can hold.
+type BitStringMaxLength = 64
+
+-- | Calculate the modulus of a number and the 'BitStringMaxLength'.
+type family ModuloBitStringMaxLength (len :: Nat) :: Nat where
+        ModuloBitStringMaxLength len = len `RemPow2` 6
 
 -- | The maximum number of bits a 'BitBuffer' can hold.
-type BitBufferSize = 64
+bitStringMaxLength :: Num a => a
+bitStringMaxLength = 64
 
--- | Calculate the modulus of a number and the 'BitBufferSize'.
-type family ModuloBitBufferSize (len :: Nat) :: Nat where
-        ModuloBitBufferSize len = len `RemPow2` 6
+-- | A string of bits with a given length (but always @<= 'bitStringMaxLength'@.
+-- The number of bits must be smaller that 'bitStringMaxLength'.
+data BitString = BitString !Word64 !Int
 
--- | The maximum number of bits a 'BitBuffer' can hold.
-bitBufferSize :: Num a => a
-bitBufferSize = 64
-
--- | A 'BitBuffer' bundled with a size that indicates how many bits are defined.
--- The number of bits must be smaller that 'bitBufferSize'.
-data BittrBuffer = BittrBuffer !BitBuffer !Int
-
-bittrBufferContent :: BittrBuffer -> BitBuffer
-bittrBufferContent (BittrBuffer !c _) =
+bitStringContent :: BitString -> Word64
+bitStringContent (BitString !c _) =
     c
 
-bittrBufferLength :: BittrBuffer -> Int
-bittrBufferLength (BittrBuffer _ !len) =
+bitStringLength :: BitString -> Int
+bitStringLength (BitString _ !len) =
     len
 
-isBittrBufferEmpty :: BittrBuffer -> Bool
-isBittrBufferEmpty (BittrBuffer _ !len) =
+isBitStringEmpty :: BitString -> Bool
+isBitStringEmpty (BitString _ !len) =
     len == 0
 
-bittrBufferSpaceLeft :: BittrBuffer -> Int
-bittrBufferSpaceLeft (BittrBuffer _ !len) =
-    bitBufferSize - len
+bitStringSpaceLeft :: BitString -> Int
+bitStringSpaceLeft (BitString _ !len) =
+    bitStringMaxLength - len
 
--- | Create a 'BittrBuffer' containing @len@ bits from LSB to MSB, properly
+-- | Create a 'BitString' containing @len@ bits from LSB to MSB, properly
 -- masked, such that only @len@ least significant bits are kept..
-bittrBuffer :: BitBuffer -> Int -> BittrBuffer
-bittrBuffer !b !len = BittrBuffer (let !s = bitBufferSize - len in ((b `unsafeShiftL` s) `unsafeShiftR` s)) len
+bitString :: Word64 -> Int -> BitString
+bitString !b !len = BitString (let !s = bitStringMaxLength - len in ((b `unsafeShiftL` s) `unsafeShiftR` s)) len
 
--- | Create an empty 'BittrBuffer'.
-emptyBittrBuffer :: BittrBuffer
-emptyBittrBuffer = BittrBuffer 0 0
+-- | Create an empty 'BitString'.
+emptyBitString :: BitString
+emptyBitString = BitString 0 0
 
--- | An output 'BitBuffer' bundled with a size that indicates how many bits are defined.
--- The number of bits must be smaller that 'bitBufferSize'.
-data BitOutBuffer = BitOutBuffer !BitBuffer !Int
+-- | A buffer for 64 bits, such that the bits are written MSB to LSB.
+--
+-- > type TwoFields = "f0" :=> Field m :>: "f1" :=> Field n
+--
+-- Writes:
+-- @       MSB                                             LSB
+--    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)|k-(m+n)  ..  0|
+--  Value: |------f0------|--------f1--------|XXXXXXXXXXXXXX|
+-- @
+--
+-- Where @k@ is the current bit offset.
+-- The input values are expected to be in the order of the fields, i.e.:
+--
+-- @
+-- runHoley $ toHoley (Proxy :: Proxy TwoFields) 1 2
+-- @
+--
+-- Will result in:
+-- @       MSB                                             LSB
+--    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
+--  Value: |0     ..     1|0       ..      10| X    ..      X|
+-- @
+data BitStringBuilderChunk = BitStringBuilderChunk !Word64 !Int
 
-bitOutBufferContent :: BitOutBuffer -> BitBuffer
-bitOutBufferContent (BitOutBuffer !c _) =
+bitStringBuilderChunkContent :: BitStringBuilderChunk -> Word64
+bitStringBuilderChunkContent (BitStringBuilderChunk !c _) =
     c
 
-bitOutBufferLength :: BitOutBuffer -> Int
-bitOutBufferLength (BitOutBuffer _ !len) =
+bitStringBuilderChunkLength :: BitStringBuilderChunk -> Int
+bitStringBuilderChunkLength (BitStringBuilderChunk _ !len) =
     len
 
-isBitOutBufferEmpty :: BitOutBuffer -> Bool
-isBitOutBufferEmpty (BitOutBuffer _ !len) =
+isBitStringBuilderChunkEmpty :: BitStringBuilderChunk -> Bool
+isBitStringBuilderChunkEmpty (BitStringBuilderChunk _ !len) =
     len == 0
 
-bitOutBufferSpaceLeft :: BitOutBuffer -> Int
-bitOutBufferSpaceLeft (BitOutBuffer _ !len) =
-    bitBufferSize - len
+bitStringBuilderChunkSpaceLeft :: BitStringBuilderChunk -> Int
+bitStringBuilderChunkSpaceLeft (BitStringBuilderChunk _ !len) =
+    bitStringMaxLength - len
 
--- | Create a 'BitOutBuffer' containing @len@ bits from LSB to MSB, properly
+-- | Create a 'BitStringBuilderChunk' containing @len@ bits from LSB to MSB, properly
 -- masked, such that only @len@ least significant bits are kept..
-bitOutBuffer :: BitBuffer -> Int -> BitOutBuffer
-bitOutBuffer !b !len = BitOutBuffer b len
+bitStringBuilderChunk :: Word64 -> Int -> BitStringBuilderChunk
+bitStringBuilderChunk !b !len = BitStringBuilderChunk b len
 
--- | Create an empty 'BitOutBuffer'.
-emptyBitOutBuffer :: BitOutBuffer
-emptyBitOutBuffer = BitOutBuffer 0 0
+-- | Create an empty 'BitStringBuilderChunk'.
+emptyBitStringBuilderChunk :: BitStringBuilderChunk
+emptyBitStringBuilderChunk = BitStringBuilderChunk 0 0
 
--- | Create a 'BitOutBuffer' with a length given by a 'Proxy' to a type level
+-- | Create a 'BitStringBuilderChunk' with a length given by a 'Proxy' to a type level
 -- 'Nat'.
-bittrBufferProxyLength :: (KnownBitBufferSize n) => Proxy n -> Word64 -> BittrBuffer
-bittrBufferProxyLength !plen !v = bittrBuffer (BitBuffer v) fieldLen
+bitStringProxyLength :: (KnownChunkSize n) => Proxy n -> Word64 -> BitString
+bitStringProxyLength !plen !v = bitString v fieldLen
     where
       !fieldLen = fromIntegral (natVal plen)
 
@@ -134,12 +142,12 @@ bittrBufferProxyLength !plen !v = bittrBuffer (BitBuffer v) fieldLen
 --          ->             ->                 ->     (direction of writing)
 -- @
 --
-bufferBits :: BittrBuffer -- ^ The value to write (in the lower @length@ bits).
-           -> BitOutBuffer -- ^ The input to write to
-           -> (BittrBuffer, BitOutBuffer) -- ^ The remaining bits that did not fit
+bufferBits :: BitString -- ^ The value to write (in the lower @length@ bits).
+           -> BitStringBuilderChunk -- ^ The input to write to
+           -> (BitString, BitStringBuilderChunk) -- ^ The remaining bits that did not fit
                                         -- in the buffer and the output buffer.
-bufferBits (BittrBuffer !bits !len) (BitOutBuffer !buff !offset) =
-    let !spaceAvailable = bitBufferSize - offset
+bufferBits (BitString !bits !len) (BitStringBuilderChunk !buff !offset) =
+    let !spaceAvailable = bitStringMaxLength - offset
         !writeLen = min spaceAvailable len
         !writeOffset = spaceAvailable - writeLen
         !restLen = len - writeLen
@@ -147,69 +155,15 @@ bufferBits (BittrBuffer !bits !len) (BitOutBuffer !buff !offset) =
         !buff' = buff .|.
             (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
     in
-        (BittrBuffer restBits restLen, BitOutBuffer buff' (offset + writeLen))
+        (BitString restBits restLen, BitStringBuilderChunk buff' (offset + writeLen))
 
--- | A 'BitBuffer' bundled with a size, just like 'BittrBuffer' but based in an
--- 'Integer' with an nrestricted length.
-data BittrBufferUnlimited =
+type family StaticBitStringSpaceLeft (sb :: Nat) :: Nat where
+        StaticBitStringSpaceLeft size = BitStringMaxLength - size
 
-    -- | Parameters are the content as well as the number of bits from the
-    -- content.
-    BittrBufferUnlimited !Integer
-                         !Int
-
-bittrBufferUnlimitedContent :: BittrBufferUnlimited -> Integer
-bittrBufferUnlimitedContent (BittrBufferUnlimited !c _) =
-    c
-
-bittrBufferUnlimitedLength :: BittrBufferUnlimited -> Int
-bittrBufferUnlimitedLength (BittrBufferUnlimited _ !len) =
-    len
-
-isBittrBufferUnlimitedEmpty :: BittrBufferUnlimited -> Bool
-isBittrBufferUnlimitedEmpty (BittrBufferUnlimited _ !len) =
-    len == 0
-
--- | Create a 'BittrBuffer' that is properly masked.
-bittrBufferUnlimited :: Integer -> Int -> BittrBufferUnlimited
-bittrBufferUnlimited !b !len =
-    BittrBufferUnlimited (b .&. ((1 `unsafeShiftL` len) - 1)) len
-
--- | Create an empty 'BittrBufferUnlimited'.
-emptyBittrBufferUnlimited :: BittrBufferUnlimited
-emptyBittrBufferUnlimited =
-    BittrBufferUnlimited 0 0
-
--- | Like 'bufferBits' but work on an 'Integer' as bit source. This makes
--- writing more the larger number of bits than 'BitBufferAlignment' more
--- efficient, than 'bufferBits', because the input and rest bits don't need to
--- be constantly converted with 'fromIntegral'.
-bufferBitsInteger :: BittrBufferUnlimited -- ^ The value to write (in the lower @length@ bits).
-                  -> BitOutBuffer -- ^ The buffer to write to
-                  -> (BittrBufferUnlimited, BitOutBuffer) -- ^ The remaining bits that did not
-                                                        -- fit in the buffer and the output
-                                                        -- buffer.
-bufferBitsInteger (BittrBufferUnlimited !bits !len) (BitOutBuffer !buff !offset) =
-    let !spaceAvailable = bitBufferSize - offset
-        !writeLen = min spaceAvailable len
-        !writeOffset = spaceAvailable - writeLen
-        !restLen = len - writeLen
-        !restBits = bits .&. (1 `unsafeShiftL` restLen - 1)
-        !buff' = buff .|.
-            fromIntegral (bits `unsafeShiftR` restLen `unsafeShiftL` writeOffset)
-    in
-        ( BittrBufferUnlimited restBits restLen
-        , BitOutBuffer buff' (offset + writeLen)
-        )
-
-
-type family StaticBittrBufferSpaceLeft (sb :: Nat) :: Nat where
-        StaticBittrBufferSpaceLeft size = BitBufferSize - size
-
-type family KnownBitBufferSize (s :: Nat) :: Constraint where
-        KnownBitBufferSize size =
-                                (KnownNat size, size <= BitBufferSize,
-                                 KnownNat (StaticBittrBufferSpaceLeft size))
+type family KnownChunkSize (s :: Nat) :: Constraint where
+        KnownChunkSize size =
+                                (KnownNat size, size <= BitStringMaxLength,
+                                 KnownNat (StaticBitStringSpaceLeft size))
 
 type family AppendRestLen (argLen :: Nat) (buffLen :: Nat) :: Nat
      where
@@ -220,13 +174,13 @@ type family AppendNewBuffOffset (argLen :: Nat) (buffLen :: Nat) ::
      Nat where
         AppendNewBuffOffset argLen buffLen =
                                            buffLen +
-                                             If (StaticBittrBufferSpaceLeft buffLen <=? argLen)
-                                               (StaticBittrBufferSpaceLeft buffLen)
+                                             If (StaticBitStringSpaceLeft buffLen <=? argLen)
+                                               (StaticBitStringSpaceLeft buffLen)
                                                argLen
 
 type family AppendWriteLen_ (argLen :: Nat) (buffLen :: Nat) :: Nat
      where
         AppendWriteLen_ argLen buffLen =
-                                       If (StaticBittrBufferSpaceLeft buffLen <=? argLen)
-                                         (StaticBittrBufferSpaceLeft buffLen)
+                                       If (StaticBitStringSpaceLeft buffLen <=? argLen)
+                                         (StaticBitStringSpaceLeft buffLen)
                                          argLen

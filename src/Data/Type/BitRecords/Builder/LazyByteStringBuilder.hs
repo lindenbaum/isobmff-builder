@@ -20,42 +20,52 @@ import           Text.Printf
 ----------------
 ----------------
 
-newtype BittrWriter = BittrWriter { unBittrWriter :: Dual (Endo BittrWriterState) }
-  deriving Monoid
+newtype BitStringBuilder =
+      BitStringBuilder { unBitStringBuilder :: Dual (Endo BitStringBuilderState)
+                       }
+    deriving Monoid
 
-bittrWriter :: (BittrWriterState -> BittrWriterState) -> BittrWriter
-bittrWriter = BittrWriter . Dual . Endo
+bitStringBuilder :: (BitStringBuilderState -> BitStringBuilderState)
+                 -> BitStringBuilder
+bitStringBuilder = BitStringBuilder . Dual . Endo
 
-runBittrWriter :: BittrWriter -> Builder
-runBittrWriter !w = getBittrWriteStateBuilder $
-    flushBittrWriter $ appBittrWriter w initialBittrWriterState
+runBitStringBuilder :: BitStringBuilder -> Builder
+runBitStringBuilder !w =
+    getBitStringBuilderStateBuilder $
+        flushBitStringBuilder $
+            appBitStringBuilder w initialBitStringBuilderState
 
-appBittrWriter :: BittrWriter -> BittrWriterState -> BittrWriterState
-appBittrWriter !w = appEndo (getDual (unBittrWriter w))
+appBitStringBuilder :: BitStringBuilder
+                    -> BitStringBuilderState
+                    -> BitStringBuilderState
+appBitStringBuilder !w =
+    appEndo (getDual (unBitStringBuilder w))
 
-data BittrWriterState where
-    BittrWriterState :: !Builder -> !BitOutBuffer -> BittrWriterState
+data BitStringBuilderState where
+        BitStringBuilderState ::
+          !Builder -> !BitStringBuilderChunk -> BitStringBuilderState
 
-getBittrWriteStateBuilder :: BittrWriterState -> Builder
-getBittrWriteStateBuilder (BittrWriterState !builder _) = builder
+getBitStringBuilderStateBuilder :: BitStringBuilderState -> Builder
+getBitStringBuilderStateBuilder (BitStringBuilderState !builder _) =
+    builder
 
-initialBittrWriterState :: BittrWriterState
-initialBittrWriterState = BittrWriterState mempty emptyBitOutBuffer
+initialBitStringBuilderState :: BitStringBuilderState
+initialBitStringBuilderState =
+    BitStringBuilderState mempty emptyBitStringBuilderChunk
 
--- | Write the partial buffer contents using  any number of 'word8'
---   The unwritten parts of the bittr buffer are at the top.
---   If the
+-- | Write the partial buffer contents using any number of 'word8' The unwritten
+--   parts of the bittr buffer are at the top.  If the
 --
 -- >     63  ...  (63-off-1)(63-off)  ...  0
 -- >     ^^^^^^^^^^^^^^^^^^^
 -- > Relevant bits start to the top!
 --
-flushBittrWriter :: BittrWriterState -> BittrWriterState
-flushBittrWriter (BittrWriterState !bldr !buff) =
-    BittrWriterState (writeRestBytes bldr 0) emptyBitOutBuffer
+flushBitStringBuilder :: BitStringBuilderState -> BitStringBuilderState
+flushBitStringBuilder (BitStringBuilderState !bldr !buff) =
+    BitStringBuilderState (writeRestBytes bldr 0) emptyBitStringBuilderChunk
   where
-    !off = bitOutBufferLength buff
-    !part = unBitBuffer (bitOutBufferContent buff)
+    !off = bitStringBuilderChunkLength buff
+    !part = bitStringBuilderChunkContent buff
     -- write bytes from msb to lsb until the offset is reached
     -- >  63  ...  (63-off-1)(63-off)  ...  0
     -- >  ^^^^^^^^^^^^^^^^^^^
@@ -67,7 +77,7 @@ flushBittrWriter (BittrWriterState !bldr !buff) =
         else let !flushOffset' = flushOffset + 8
                  !bldr'' = bldr' <>
                      word8 (fromIntegral ((part `unsafeShiftR`
-                                               (bitBufferSize -
+                                               (bitStringMaxLength -
                                                     flushOffset')) .&.
                                               0xFF))
              in
@@ -76,109 +86,67 @@ flushBittrWriter (BittrWriterState !bldr !buff) =
 
 
 printBuilder :: Builder -> String
-printBuilder b =
-      ("<< " ++)
-   $  (++" >>")
-   $  unwords
-   $  printf "%0.2x"
-  <$>  B.unpack (toLazyByteString b)
+printBuilder b = ("<< " ++)
+    $ (++ " >>")
+        $ unwords
+            $ printf "%0.2x" <$> B.unpack (toLazyByteString b)
 
 ---
 
--- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
--- in the 'BittrWriterState' as often as necessary.
-appendUnlimited :: BittrBufferUnlimited -> BittrWriter
-appendUnlimited x' = bittrWriter $
-    \(BittrWriterState !builder !buff) -> go x' builder buff
+
+-- | Write all the bits, in chunks, filling and writing the 'BitString'
+-- in the 'BitStringBuilderState' as often as necessary.
+appendBitString :: BitString -> BitStringBuilder
+appendBitString x' = bitStringBuilder $
+    \(BitStringBuilderState !builder !buff) -> go x' builder buff
   where
     go !x !builder !buff
-        | isBittrBufferUnlimitedEmpty x =
-              BittrWriterState builder buff
-        | otherwise = let (!rest, !buff') = bufferBitsInteger x buff
-                      in
-                          if bitOutBufferSpaceLeft buff' > 0
-                          then BittrWriterState builder buff'
-                          else let !nextBuilder = builder <>
-                                       word64BE (unBitBuffer (bitOutBufferContent buff'))
-                               in
-                                   go rest nextBuilder emptyBitOutBuffer
-
-
--- | Write all the bits, in chunks, filling and writing the 'BittrBuffer'
--- in the 'BittrWriterState' as often as necessary.
-appendBittrBuffer :: BittrBuffer -> BittrWriter
-appendBittrBuffer x' = bittrWriter $
-    \(BittrWriterState !builder !buff) -> go x' builder buff
-  where
-    go !x !builder !buff
-        | bittrBufferLength x == 0 =
-              BittrWriterState builder buff
+        | bitStringLength x == 0 =
+              BitStringBuilderState builder buff
         | otherwise = let (!rest, !buff') = bufferBits x buff
                       in
-                          if bitOutBufferSpaceLeft buff' > 0
-                          then BittrWriterState builder buff'
+                          if bitStringBuilderChunkSpaceLeft buff' > 0
+                          then BitStringBuilderState builder buff'
                           else let !nextBuilder = builder <>
-                                       word64BE (unBitBuffer (bitOutBufferContent buff'))
+                                       word64BE (bitStringBuilderChunkContent buff')
                                in
-                                   go rest nextBuilder emptyBitOutBuffer
+                                   go rest nextBuilder emptyBitStringBuilderChunk
 
-runBittrWriterHoley :: Holey BittrWriter Builder a -> a
-runBittrWriterHoley (HM !x) = x runBittrWriter
+runBitStringBuilderHoley :: Holey BitStringBuilder Builder a -> a
+runBitStringBuilderHoley (HM !x) =
+    x runBitStringBuilder
 
-instance ToHoley BittrWriter BittrBuffer r where
-  toHoley = immediate . appendBittrBuffer
+instance ToHoley BitStringBuilder BitString r where
+    toHoley = immediate . appendBitString
 
-instance ToHoley BittrWriter BittrBufferUnlimited r where
-  toHoley = immediate . appendUnlimited
-
-instance KnownBitBufferSize (GetRecordSize f) =>
-         ToHoley BittrWriter (Proxy (l :=> f)) r where
-    type ToM BittrWriter (Proxy (l :=> f)) r = Tagged l Word64 -> r
-    toHoley _ = indirect (appendBittrBuffer . bittrBufferProxyLength fieldLen . untag)
+instance KnownChunkSize (GetRecordSize f) =>
+         ToHoley BitStringBuilder (Proxy (l :=> f)) r where
+    type ToM BitStringBuilder (Proxy (l :=> f)) r = Tagged l Word64 -> r
+    toHoley _ = indirect (appendBitString .
+                              bitStringProxyLength fieldLen . untag)
       where
         !fieldLen = Proxy :: Proxy (GetRecordSize f)
 
-instance (KnownNat v, KnownBitBufferSize (GetRecordSize f)) =>
-         ToHoley BittrWriter (Proxy (f := v)) r where
-    toHoley _ = immediate (appendBittrBuffer fieldBittrBuffer)
+instance (KnownNat v, KnownChunkSize (GetRecordSize f)) =>
+         ToHoley BitStringBuilder (Proxy (f := v)) r where
+    toHoley _ = immediate (appendBitString fieldBitString)
       where
-        !fieldBittrBuffer = bittrBufferProxyLength fieldLen (fromIntegral fieldVal)
+        !fieldBitString = bitStringProxyLength fieldLen
+                                                   (fromIntegral fieldVal)
           where
             !fieldLen = Proxy :: Proxy (GetRecordSize f)
             !fieldVal = natVal (Proxy :: Proxy v)
 
-instance (KnownBitBufferSize n) =>
-         ToHoley BittrWriter (Proxy (Field n)) r where
-    toHoley _ = immediate (appendBittrBuffer (bittrBufferProxyLength (Proxy :: Proxy n)
+instance (KnownChunkSize n) =>
+         ToHoley BitStringBuilder (Proxy (Field n)) r where
+    toHoley _ = immediate (appendBitString (bitStringProxyLength (Proxy :: Proxy n)
                                                                      0))
--- | An instance that when given:
---
--- > type TwoFields = "f0" :=> Field m :>: "f1" :=> Field n
---
--- Writes:
--- @       MSB                                             LSB
---    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
---  Value: \------f0-----/\--------f1--------/\--- empty ---/
--- @
---
--- Where @k@ is the current bit offset.
--- The input values are expected to be in the order of the fields, i.e.:
---
--- @
--- runHoley $ toHoley (Proxy :: Proxy TwoFields) 1 2
--- @
---
--- Will result in:
--- @       MSB                                             LSB
---    Bit: |k  ..  k-(m+1)|k-m  ..  k-(m+n+1)| k-(m+n)  ..  0|
---  Value: |0     ..     1|0       ..      10| X    ..      X|
--- @
 instance ( KnownNat (GetRecordSize (f0 :>: f1))
-         , ToHoley BittrWriter (Proxy f0) (ToM BittrWriter (Proxy f1) r)
-         , ToHoley BittrWriter (Proxy f1) r) =>
-         ToHoley BittrWriter (Proxy (f0 :>: f1)) r where
-    type ToM BittrWriter (Proxy (f0 :>: f1)) r =
-        ToM BittrWriter (Proxy f0) (ToM BittrWriter (Proxy f1) r)
+         , ToHoley BitStringBuilder (Proxy f0) (ToM BitStringBuilder (Proxy f1) r)
+         , ToHoley BitStringBuilder (Proxy f1) r) =>
+         ToHoley BitStringBuilder (Proxy (f0 :>: f1)) r where
+    type ToM BitStringBuilder (Proxy (f0 :>: f1)) r =
+        ToM BitStringBuilder (Proxy f0) (ToM BitStringBuilder (Proxy f1) r)
     toHoley _ = fmt0 . fmt1
       where
         !fmt0 = toHoley pf0

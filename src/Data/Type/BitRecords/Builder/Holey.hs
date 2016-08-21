@@ -3,7 +3,6 @@ module Data.Type.BitRecords.Builder.Holey where
 
 import Data.Monoid
 import Control.Category
-import Data.Kind hiding (type (*))
 import Prelude hiding ((.), id)
 
 class ToHoley m f r where
@@ -12,26 +11,6 @@ class ToHoley m f r where
   toHoley :: f -> Holey m r (ToM m f r)
 
 newtype Holey m r a = HM {runHM :: (m -> r) -> a }
-
--- * Indexec Monoid
-
-class IxMonoid (m :: k -> k -> Type)  where
-  ixEmpty :: m i i
-  ixAppend :: m h i -> m i j -> m h j
-
-newtype IxEndo (a :: k -> Type) (i :: k) (j:: k) where
-  IxEndo :: { appIxEndo :: a i -> a j } -> IxEndo a i j
-
-instance IxMonoid (IxEndo (a :: k -> Type)) where
-  ixEmpty = IxEndo id
-  ixAppend (IxEndo f) (IxEndo g) = IxEndo (g . f)
-
-(%) :: IxMonoid (m :: k ->  k -> Type) =>
-  Holey (m h i) b c ->
-  Holey (m i j) a b ->
-  Holey (m h j) a c
-(%) (HM f) (HM g) =
-  HM (\k -> (f (\m1 -> g (\m2 -> k (m1 `ixAppend` m2)))))
 
 -- * Normal Holey
 

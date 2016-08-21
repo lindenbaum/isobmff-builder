@@ -3,8 +3,6 @@ module BitRecordsSpec (spec) where
 
 import Data.Bits
 import Data.Type.BitRecords
-import qualified Data.Type.BitRecords.Builder.StaticLazyByteStringBuilder as SB
-import Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import Data.Proxy
 import Data.Word
 import Data.Type.Equality ()
@@ -355,7 +353,7 @@ spec = do
             rec :: Proxy TestRecUnAligned
             actualB :: Builder
             actualB =
-                  runBittrWriterHoley
+                  runBitStringBuilderHoley
                   (toHoley rec)
                           1 -- because instance Num a => Num (Tagged t a)
                           (Tagged 3 :: Tagged "baz" Word64)
@@ -369,7 +367,7 @@ spec = do
           let rec = Proxy
               rec :: Proxy (Field 4 := 0 :>: "here" :=> Field 4)
               actualB :: Builder
-              actualB = runBittrWriterHoley (toHoley rec)
+              actualB = runBitStringBuilderHoley (toHoley rec)
                           (Tagged value :: Tagged "here" Word64)
               actual = printBuilder actualB
               expected = printf "<< %.2x >>" (value .&. 0xf)
@@ -378,16 +376,16 @@ spec = do
         let rec = Proxy
             rec :: Proxy (Flag := 0 :>: (Field 7 := 130))
             actual = printBuilder b
-              where b = runBittrWriterHoley (toHoley rec)
+              where b = runBitStringBuilderHoley (toHoley rec)
         in actual `shouldBe` "<< 02 >>"
   describe "ByteStringBuilder" $
-    describe "appendUnlimited" $
+    describe "runBitStringBuilderHoley" $
       it "0x01020304050607 to << 00 01 02 03 04 05 06 07 >>" $
         let expected = "<< 00 01 02 03 04 05 06 07 >>"
             actual =
                printBuilder
-                (runBittrWriterHoley
+                (runBitStringBuilderHoley
                  (toHoley
-                     (bittrBufferUnlimited 0x01020304050607 64)))
+                     (bitString 0x01020304050607 64)))
             in actual `shouldBe` expected
 -- * Bit Buffering

@@ -2,18 +2,19 @@
 {-# LANGUAGE CPP #-}
 module Main where
 
-import Prelude hiding ((.), id)
-import Control.Category
+import           Prelude hiding ( (.), id )
+import           Control.Category
 import           Criterion.Main
 import qualified Data.ByteString.Builder as L
 import qualified Data.ByteString.Lazy as L
 import           Data.Proxy
 import           Data.Type.BitRecords
-import qualified Data.Type.BitRecords.Builder.StaticLazyByteStringBuilder as SB
-import qualified Data.Type.BitRecords.Builder.LazyByteStringBuilder as B
 import           Data.Word
-import Data.Tagged
+import           Data.Tagged
 import           GHC.TypeLits ()
+#ifdef FULLBENCHMARKS
+import           Data.Type.Equality
+#endif
 import           Test.TypeSpecCrazy
 
 #ifdef FULLBENCHMARKS
@@ -41,13 +42,11 @@ type Static64WithParams =
   :>: Field 2 := 0
   :>: Field 4 := 0
 
-type Static128 = Field 128 := 0xdeadbeef
+type Static128 = Field 64 := 3735928559 :>: Field 64 := 3405688830
 
-type Static256 =
-  Static64 :>: Static128 :>: Static64
+type Static256 = Static64 :>: Static128 :>: Static64
 
-type Static517 =
-   Static256 :>: Static256 :>: Field 5 := 0
+type Static517 = Static256 :>: Static256 :>: Field 5 := 0
 
 #else
 
@@ -79,215 +78,116 @@ aboutStatic64 =
 lumpUp :: Word64 -> L.Builder -> [Word8]
 lumpUp m = L.unpack . L.toLazyByteString . mconcat . replicate (fromIntegral m)
 
-static64SB m = lumpUp m $
-    SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static64)
+static64 m = lumpUp m $
+    runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static64)
 
-static64WithParamSB m = lumpUp m $
-    SB.runBittrWriterHoley (toHoley (Proxy :: Proxy Static64WithParams))
-                           (Tagged m)
-                           (Tagged m)
-
-static64B m = lumpUp m $
-    B.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static64)
-
-static64WithParamB m = lumpUp m $
-    B.runBittrWriterHoley (toHoley (Proxy :: Proxy Static64WithParams))
-                          (Tagged m)
-                          (Tagged m)
+static64WithParam m = lumpUp m $
+    runBitStringBuilderHoley (toHoley (Proxy :: Proxy Static64WithParams))
+                        (Tagged m)
+                        (Tagged m)
 
 #ifdef FULLBENCHMARKS
 
-static128SB m =
-  lumpUp m $ SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static128)
+static128 m =
+  lumpUp m $ runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static128)
 
-static256SB m =
-  lumpUp m $ SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static256)
+static256 m =
+  lumpUp m $ runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static256)
 
-static517SB m =
-  lumpUp m $ SB.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static517)
+static517 m =
+  lumpUp m $ runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static517)
 
-staticPlain512bitBaselineSB m =
-  lumpUp m $ SB.runBittrWriterHoley $ toHoley
+staticPlain512bitBaseline m =
+  lumpUp m $ runBitStringBuilderHoley $ toHoley
     (Proxy :: Proxy (
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64 :>:
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64
     ))
 
-static128B m =
-  lumpUp m $ B.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static128)
 
-static256B m =
-  lumpUp m $ B.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static256)
-
-static517B m =
-  lumpUp m $ B.runBittrWriterHoley $ toHoley (Proxy :: Proxy Static517)
-
-staticPlain512bitBaselineB m =
-  lumpUp m $ B.runBittrWriterHoley $ toHoley
-    (Proxy :: Proxy (
-      Field 64 :>: Field 64 :>: Field 64 :>: Field 64 :>:
-      Field 64 :>: Field 64 :>: Field 64 :>: Field 64
-    ))
 #endif
 
 main = do
     print aboutStatic64
-    defaultMain [ bgroup "Builder"
-                         [ bgroup "Static"
-                                  [ bgroup "ByteStringBuilder"
-                                           [ bgroup "64-bit"
-                                                    [ bench "1" $ nf static64SB 1
-                                                    , bench "5" $ nf static64SB 5
-                                                    , bench "1000" $
-                                                        nf static64SB 1000
-                                                    ]
-                                           , bgroup "64-bit parameterized"
-                                                    [ bench "1" $
-                                                        nf static64WithParamSB 1
-                                                    , bench "5" $
-                                                        nf static64WithParamSB 5
-                                                    , bench "1000" $
-                                                        nf static64WithParamSB 1000
-                                                    ]
-#ifdef FULLBENCHMARKS
-                                           , bgroup "128-bit"
-                                                    [ bench "1" $
-                                                        nf static128SB 1
-                                                    , bench "5" $
-                                                        nf static128SB 5
-                                                    , bench "100" $
-                                                        nf static128SB 100
-                                                    ]
-                                           , bgroup "256-bit"
-                                                    [ bench "1" $
-                                                        nf static256SB 1
-                                                    , bench "5" $
-                                                        nf static256SB 5
-                                                    , bench "100" $
-                                                        nf static256SB 100
-                                                    ]
-                                           , bgroup "517-bit"
-                                                    [ bench "1" $
-                                                        nf static517SB 1
-                                                    , bench "5" $
-                                                        nf static517SB 5
-                                                    , bench "100" $
-                                                        nf static517SB 100
-                                                    ]
-                                           , bgroup "512-bit baseline"
-                                                    [ bench "1" $
-                                                        nf staticPlain512bitBaselineSB
-                                                           1
-                                                    , bench "5" $
-                                                        nf staticPlain512bitBaselineSB
-                                                           5
-                                                    , bench "100" $
-                                                        nf staticPlain512bitBaselineSB
-                                                           100
-                                                    ]
-#endif
-                                           ]
+    defaultMain [ bgroup "ByteStringBuilder"
+                         [ bgroup "64-bit"
+                                  [ bench "1" $ nf static64 1
+                                  , bench "100" $ nf static64 5
+                                  , bench "1000" $ nf static64 1000
                                   ]
-                         ]
-                , bgroup "Runtime"
-                         [ bgroup "ByteStringBuilder"
-                                           [ bgroup "64-bit"
-                                                    [ bench "1" $ nf static64B 1
-                                                    , bench "5" $ nf static64B 5
-                                                    , bench "1000" $ nf static64B 1000
-                                                    ]
-                                           , bgroup "64-bit parameterized"
-                                                    [ bench "1" $
-                                                        nf static64WithParamB 1
-                                                    , bench "5" $
-                                                        nf static64WithParamB 5
-                                                    , bench "1000" $
-                                                        nf static64WithParamB 1000
-                                                    ]
+                         , bgroup "64-bit parameterized"
+                                  [ bench "1" $
+                                      nf static64WithParam 1
+                                  , bench "100" $
+                                      nf static64WithParam 5
+                                  , bench "1000" $
+                                      nf static64WithParam 1000
+                                  ]
 #ifdef FULLBENCHMARKS
-                                           , bgroup "128-bit"
-                                                    [ bench "1" $
-                                                        nf static128B 1
-                                                    , bench "5" $
-                                                        nf static128B 5
-                                                    , bench "100" $
-                                                        nf static128B 100
-                                                    ]
-                                           , bgroup "256-bit"
-                                                    [ bench "1" $
-                                                        nf static256B 1
-                                                    , bench "5" $
-                                                        nf static256B 5
-                                                    , bench "100" $
-                                                        nf static256B 100
-                                                    ]
-                                           , bgroup "517-bit"
-                                                    [ bench "1" $
-                                                        nf static517B 1
-                                                    , bench "5" $
-                                                        nf static517B 5
-                                                    , bench "100" $
-                                                        nf static517B 100
-                                                    ]
-                                           , bgroup "512-bit baseline"
-                                                    [ bench "1" $
-                                                        nf staticPlain512bitBaselineB
-                                                           1
-                                                    , bench "5" $
-                                                        nf staticPlain512bitBaselineB
-                                                           5
-                                                    , bench "100" $
-                                                        nf staticPlain512bitBaselineB
-                                                           100
-                                                    ]
+                         , bgroup "128-bit"
+                                  [ bench "1" $
+                                      nf static128 1
+                                  , bench "100" $
+                                      nf static128 5
+                                  , bench "1000" $
+                                      nf static128 1000
+                                  ]
+                         , bgroup "256-bit"
+                                  [ bench "1" $
+                                      nf static256 1
+                                  , bench "100" $
+                                      nf static256 5
+                                  , bench "1000" $
+                                      nf static256 1000
+                                  ]
+                         , bgroup "517-bit"
+                                  [ bench "1" $
+                                      nf static517 1
+                                  , bench "100" $
+                                      nf static517 5
+                                  , bench "1000" $
+                                      nf static517 1000
+                                  ]
+                         , bgroup "512-bit baseline"
+                                  [ bench "1" $
+                                      nf staticPlain512bitBaseline 1
+                                  , bench "100" $
+                                      nf staticPlain512bitBaseline 100
+                                  , bench "1000" $
+                                      nf staticPlain512bitBaseline 1000
+                                  ]
 #endif
-                                  , bgroup "BittrBufferUnlimited-direct"
-                                           [ bench "1" $
-                                               nf bittrBufferUnlimitedDirectB 1
-                                           , bench "5" $
-                                               nf bittrBufferUnlimitedDirectB 5
-                                           , bench "1000" $
-                                               nf bittrBufferUnlimitedDirectB
-                                                  1000
-                                           ]
-                                  , bgroup "BittrBufferWord64-direct"
-                                           [ bench "1" $
-                                               nf bittrBufferWord64DirectB 1
-                                           , bench "5" $
-                                               nf bittrBufferWord64DirectB 5
-                                           , bench "1000" $
-                                               nf bittrBufferWord64DirectB 1000
-                                           ]
-                                  , bgroup "BittrBufferWord64-holey"
-                                           [ bench "1" $
-                                               nf bittrBufferWord64HoleyB 1
-                                           , bench "5" $
-                                               nf bittrBufferWord64HoleyB 5
-                                           , bench "1000" $
-                                               nf bittrBufferWord64HoleyB 1000
-                                           ]
+                         , bgroup "BitString Word64 direct"
+                                  [ bench "1" $
+                                      nf bitStringWord64Direct 1
+                                  , bench "100" $
+                                      nf bitStringWord64Direct 5
+                                  , bench "1000" $
+                                      nf bitStringWord64Direct 1000
+                                  ]
+                         , bgroup "BitString Word64 holey"
+                                  [ bench "1" $
+                                      nf bitStringWord64Holey 1
+                                  , bench "100" $
+                                      nf bitStringWord64Holey 5
+                                  , bench "1000" $
+                                      nf bitStringWord64Holey 1000
                                   ]
                          ]
                 ]
 
-bittrBufferUnlimitedDirectB m =
+bitStringWord64Direct m =
   lumpUp 1
-    $ B.runBittrWriter
-    $ B.appendUnlimited
-    $ bittrBufferUnlimited 0x01020304050607 (64 * m)
-
-bittrBufferWord64DirectB m =
-  lumpUp 1
-    $ B.runBittrWriter
+    $ runBitStringBuilder
     $ mconcat
     $ replicate m
-    $ B.appendBittrBuffer
-    $ bittrBuffer 0x01020304050607 64
+    $ appendBitString
+    $ bitString 0x01020304050607 64
 
-bittrBufferWord64HoleyB m =
+bitStringWord64Holey m =
   lumpUp 1
-    $ B.runBittrWriterHoley
+    $ runBitStringBuilderHoley
     $ mconcat
     $ replicate m
     $ toHoley
-    $ bittrBuffer 0x01020304050607 64
+    $ bitString 0x01020304050607 64
