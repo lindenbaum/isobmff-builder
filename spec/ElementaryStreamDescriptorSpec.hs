@@ -8,61 +8,57 @@ import           Data.ByteString.Builder
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.Type.BitRecords
+import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import qualified Data.ByteString.Lazy                                 as B
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import           Data.Word
 import           Test.Hspec
 import           Test.QuickCheck
 
--- * Static BoxContent
-
-newtype StaticBoxContent record where
-  StaticBoxContent :: Builder -> StaticBoxContent record
-
-instance
-      ( KnownNat (GetRecordSize content) )
-   => IsBoxContent (StaticBoxContent content) where
-  boxSize cnt =
-    -- convert from bits to bytes
-    fromIntegral (getRecordSizeFromProxy cnt `unsafeShiftR` 3)
-  boxBuilder (StaticBoxContent cnt) = cnt
-
-
-type KnownRecord rec = (KnownNat (GetRecordSize rec)) -- TODO move to core bit record module
-
-
--- addBitBuilder
---   :: (IsBitBuffer (BitBuffer buffAlign))
---   => Holey Builder r (StaticBoxContent record)
---   -> Holey (BitBuilder buffAlign 0 0) r r
---   -> Holey Builder r a
--- addBitBuilder f g = f . (hoistM (appBitBuilder mempty)  g)
-
-
--- statix box content
--- toBoxContentSpec =
---   describe "Adding compile time generated content to runtime determined content" $
---     do
---       let sbc :: StaticBoxContent
 
 -- * Static Expandable
 
-staticExpandable :: proxy record -> StaticExpandable record
-staticExpandable _ = StaticExpandable (StaticBoxContent mempty) -- TODO
+staticExpandable
+  :: forall record
+   . (ToM BitStringBuilder
+          (Proxy (StaticExpandableContent record))
+          (StaticExpandable record)
+      ~ StaticExpandable record
+   , ToHoley BitStringBuilder
+          (Proxy (StaticExpandableContent record))
+          (StaticExpandable record)
+   , KnownExpandable record
+   )
+   => Proxy record -> StaticExpandable record
+staticExpandable = runHoley . staticExpandableHoley
 
+staticExpandableWithArgs
+  :: forall record
+   . ( ToHoley BitStringBuilder
+          (Proxy (StaticExpandableContent record))
+          (StaticExpandable record)
+   , KnownExpandable record )
+   => Proxy record -> ToM BitStringBuilder (Proxy (StaticExpandableContent record)) (StaticExpandable record)
+staticExpandableWithArgs = runHoley . staticExpandableHoley
 
-
----
+staticExpandableHoley
+  :: forall record r
+   . ( KnownExpandable record
+     , ToHoley BitStringBuilder (Proxy (StaticExpandableContent record)) r)
+   => Proxy record -> Holey (StaticExpandable record) r (ToM BitStringBuilder (Proxy (StaticExpandableContent record)) r)
+staticExpandableHoley _ =
+  hoistM StaticExpandable (bitBoxHoley (Proxy :: Proxy (StaticExpandableContent record)))
 
 newtype StaticExpandable r =
-  StaticExpandable (StaticBoxContent (StaticExpandableContent r))
+  StaticExpandable (BitBox (StaticExpandableContent r))
+  deriving (Monoid)
 
 deriving instance (KnownExpandable r) => IsBoxContent (StaticExpandable r)
 
-type KnownExpandable r =
+type KnownExpandable record =
   (KnownNat
     (GetRecordSize
-      (ExpandableSize (ShiftR 64 (GetRecordSize r) 3)  :>: r)))
+      (StaticExpandableContent record)))
 
 type StaticExpandableContent record =
   ExpandableSize (ShiftR 64 (GetRecordSize record) 3) :>: record
@@ -104,8 +100,11 @@ spec = do
         let actualStr = showRecord (Proxy :: Proxy (ExpandableSize 130))
         in actualStr `shouldBe` "1000000100000010"
 
-    it "has a box size 130 (128 + two bytes) if the content has a size of 128 " $
-      boxSize (staticExpandable (Proxy :: Proxy (Field (128 * 8) := 0))) `shouldBe` (BoxSize $ 128 + 2)
+    it "has a boxSize of 3 when using a 16-bit body value" $
+      boxSize (staticExpandable (Proxy :: Proxy (Field  16 := 1234 ))) `shouldBe` (BoxSize 3)
+    it "has a boxBuilder that writes the body in big endian byte order for a 32-bit body value" $
+      B.unpack (toLazyByteString (boxBuilder (staticExpandable (Proxy :: Proxy (Field  32 := 0x12345678 )))))
+      `shouldBe` [4, 0x12, 0x34, 0x56, 0x78]
 --     it "writes the size 128 as [ 0b10000001, 0b00000000 ] " $
 --       let actual = B.unpack $ toLazyByteString (boxBuilder (Expandable (ETC 128)))
 --           expected = [ 129, 0 ]
