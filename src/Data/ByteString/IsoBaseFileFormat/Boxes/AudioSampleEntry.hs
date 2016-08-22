@@ -27,4 +27,4 @@ instance Functor AudioSampleEntry where
 type DefaultSoundSamplerate = 48000
 
 type instance GetHandlerType (AudioSampleEntry b) = 'AudioTrack
-type instance BoxTypeSymbol (AudioSampleEntry c) = BoxTypeSymbol c
+type instance BoxTypeSymbol (AudioSampleEntry b) = BoxTypeSymbol b

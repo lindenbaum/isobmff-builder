@@ -15,6 +15,20 @@ import           Prelude                                              hiding
 import           Test.Hspec
 import           Test.QuickCheck
 
-
 spec :: Spec
-spec = return ()
+spec = describe "The Set of Type Functions" $
+    it "is sound" $ do
+        print testAudioObjectType
+
+testAudioObjectType = Valid
+testAudioObjectType ::
+      "Audio Object Types"
+      #####################
+
+      "Small Audio Object Types"
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        5 `ShouldBe` GetRecordSize (AudioObjectType 30)  -/-
+
+      "Big Audio Object Types"
+      ~~~~~~~~~~~~~~~~~~~~~~~~
+        11 `ShouldBe` GetRecordSize (AudioObjectType 32)
