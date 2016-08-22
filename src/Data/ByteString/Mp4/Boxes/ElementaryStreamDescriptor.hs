@@ -26,4 +26,10 @@ type AudioObjectTypeExt n =
        AudioObjectTypeSmall 31
   :>:  "audioObjectTypeExt" :=> Field 6 := (n - 32)
 
-type ElementaryStreamDescriptor = Tagged "TODO" Word32
+
+type MinimalAudioES_Descriptor =
+        "ES_ID"                :=> Word16
+    :>: "streamDependenceFlag" :=> Flag
+    :>: 'False
+    :>: "OCRstreamFlag"        :=> Bool
+    :>: "streamPriority"       :=> Field 5

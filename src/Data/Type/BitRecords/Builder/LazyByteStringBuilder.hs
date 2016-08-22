@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Builder.LazyByteStringBuilder where
 
+import           Data.Traversable
 import           Data.Type.BitRecords.Builder.BitBuffer
 import           Data.Type.BitRecords.Builder.Holey
 import           Data.Type.BitRecords.Core
@@ -180,6 +181,19 @@ instance ToHoley BitStringBuilder (Proxy Int8) r where
     toHoley _ =
       indirect (appendBitString . flip bitString 8 . fromIntegral . (fromIntegral :: FieldRep Int8 -> Word8))
 
+instance ToHoley BitStringBuilder (Proxy Bool) r where
+    type ToM BitStringBuilder (Proxy Bool) r = FieldRep Bool -> r
+    toHoley _ =
+      indirect (appendBitString . flip bitString 1 . fromIntegral . fromEnum)
+
+instance ToHoley BitStringBuilder (Proxy 'False) r where
+    type ToM BitStringBuilder (Proxy 'False) r = r
+    toHoley _ = immediate (appendBitString $ bitString 0 1)
+
+instance ToHoley BitStringBuilder (Proxy 'True) r where
+    type ToM BitStringBuilder (Proxy 'True) r = r
+    toHoley _ = immediate (appendBitString $ bitString 1 1)
+
 instance ( KnownNat v
          , Num (FieldRep f)
          , ToHoley BitStringBuilder (Proxy f) r
@@ -200,3 +214,29 @@ instance ( KnownNat v
     toHoley _ = let (HM !fm) = toHoley (Proxy :: Proxy f)
                     !fieldVal = natVal (Proxy :: Proxy v)
                 in HM (\ !k -> fm k (-1 * fromIntegral fieldVal))
+
+
+data Tree a = Node (Tree a) (Tree a) | Leaf a
+  deriving Show
+
+instance Functor Tree where
+    fmap f (Leaf a ) = Leaf (f a)
+    fmap f (l `Node` r) = Node (fmap f l) (fmap f r)
+
+instance Applicative Tree where
+    pure = Leaf
+    (<*>) (Leaf f) (Leaf a) = Leaf (f a)
+    (<*>) (Node fl fr) a = Node (fl <*> a) (fr <*> a)
+    (<*>) f (Node l r) = Node (f <*> l) (f <*> r)
+
+
+instance Foldable Tree where
+    foldMap f (Leaf a) = f a
+    foldMap f (Node l r) = foldMap f l <> foldMap f r
+
+instance Traversable Tree where
+    traverse f (Leaf a) = Leaf <$> f a
+    traverse f (l `Node` r) = Node <$> traverse f l <*> traverse f r
+
+    sequenceA (Leaf fa) = Leaf <$> fa
+    sequenceA (l `Node` r) = Node <$> sequenceA l <*> sequenceA r

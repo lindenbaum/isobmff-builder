@@ -34,7 +34,7 @@ type FieldPosition = (Nat, Nat)
 --  Value: \------f0-----/\--------f1--------/\--- empty ---/
 -- @
 --
-data (:>:) :: Type -> Type -> Type
+data (:>:) :: Type -> k -> Type
 infixl 3 :>:
 
 -- | A field with a name
@@ -75,6 +75,7 @@ type instance FieldRep Int64 = Int64
 type instance FieldRep Int32 = Int32
 type instance FieldRep Int16 = Int16
 type instance FieldRep Int8 = Int8
+type instance FieldRep Bool = Bool
 
 type family GetFieldSize (r :: rk) :: Nat
 type instance GetFieldSize (Field (n :: Nat)) = n
@@ -87,6 +88,9 @@ type instance GetFieldSize Int64 = 64
 type instance GetFieldSize Int32 = 32
 type instance GetFieldSize Int16 = 16
 type instance GetFieldSize Int8 = 8
+type instance GetFieldSize Bool = 1
+type instance GetFieldSize 'True = 1
+type instance GetFieldSize 'False = 1
 
 type family
   GetRecordSize (r :: rk) :: Nat where
