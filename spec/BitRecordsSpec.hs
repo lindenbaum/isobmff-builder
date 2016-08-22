@@ -336,17 +336,6 @@ spec = do
         (Proxy :: Proxy (Field 13 :>: "foo" :=> Field 16))
         (0xcafe0000 `shiftR` 3 :: Word32)
        `shouldBe` (0xcafe :: Word32)
-    it "returns 0xcafe for field 'foo'" $
-      getField
-        (Proxy :: Proxy "foo")
-        (Proxy :: Proxy (Field 13
-                         :>: "foo" :=> (    Field 7
-                                        :>: Flag
-                                        :>: Field 6
-                                        :>: Flag
-                                        :>: Flag)))
-        (0xcafe0000 `shiftR` 3 :: Word32)
-       `shouldBe` (0xcafe :: Word32)
   describe "StaticLazybytestringbuilder" $ do
     it "writes (and flushes) bits" $
         let rec = Proxy

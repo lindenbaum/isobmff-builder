@@ -6,24 +6,24 @@ import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.Type.BitRecords
 
--- * Expandable Classes
-
 -- * The base constructor
 
 type family GetClassTag t :: Nat
 
--- -- | the base descriptor
--- newtype BaseDescriptor t where
---   BaseDescriptor :: Expandable t -> BaseDescriptor t
---
--- instance (KnownNat (GetClassTag t), IsBoxContent t)
---   => IsBoxContent (BaseDescriptor t)
---   where
---     boxSize (BaseDescriptor et) = 1 + boxSize et
---     boxBuilder (BaseDescriptor et) =
---       word8 (fromIntegral (natVal (Proxy :: Proxy (GetClassTag t))))
---       <> boxBuilder et
---
+-- | the base descriptor
+newtype BaseDescriptor t where
+        BaseDescriptor :: t -> BaseDescriptor t
+
+
+instance (KnownNat (GetClassTag t), IsBoxContent t) =>
+         IsBoxContent (BaseDescriptor t) where
+    boxSize (BaseDescriptor et) =
+        1 + boxSize et
+    boxBuilder (BaseDescriptor et) =
+        word8 (fromIntegral (natVal (Proxy :: Proxy (GetClassTag t))))
+            <> boxBuilder et
+
+
 -- * Base Descriptor Class Tags
 
 data ObjectDescr -- TODO

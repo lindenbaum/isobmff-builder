@@ -74,8 +74,9 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Util.Time
                      , Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
                      , Data.ByteString.IsoBaseFileFormat.Util.Versioned
-                     , Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
                      , Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
+                     , Data.ByteString.Mp4.Boxes.Expandable
+                     , Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
                      , Data.ByteString.Mp4.AudioFile
                      , Data.Type.BitRecords
                      , Data.Type.BitRecords.Arithmetic
@@ -139,6 +140,7 @@ test-suite spec
                      , BoxFieldsSpec
                      , BoxSpec
                      , DataReferenceSpec
+                     , ExpandableSpec
                      , ElementaryStreamDescriptorSpec
                      , MediaFileSpec
                      , Mp4AudioFileSpec

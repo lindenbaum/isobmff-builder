@@ -68,7 +68,7 @@ newtype Scalar scalartype (label :: k) =
 -- | Relabel a scalar value, e.g. convert a @Scalar U32 "foo"@ to a @Scalar U32
 -- "bar"@.
 relabelScalar :: Scalar t l -> Scalar t l'
-relabelScalar (Scalar x) = (Scalar x)
+relabelScalar (Scalar x) = Scalar x
 
 instance IsBoxContent (Scalar Word8 label) where
   boxSize _ = 1
@@ -281,13 +281,13 @@ newtype U32Text (label :: Symbol) where
 
 instance IsString (U32Text label) where
   fromString str = U32Text $
-    let cw s c = (0xFF .&. (fromIntegral (fromEnum c))) `shiftL` s
+    let cw s c = (0xFF .&. fromIntegral (fromEnum c)) `shiftL` s
         in case str of
              []          -> 0x20202020
-             [a]         -> (cw 24 a .|. 0x00202020)
-             [a,b]       -> (cw 24 a .|. cw 16 b  .|. 0x00002020)
-             [a,b,c]     -> (cw 24 a .|. cw 16 b  .|. cw 8 c  .|. 0x20)
-             (a:b:c:d:_) -> (cw 24 a .|. cw 16 b  .|. cw 8 c  .|. cw 0 d)
+             [a]         -> cw 24 a .|. 0x00202020
+             [a,b]       -> cw 24 a .|. cw 16 b  .|. 0x00002020
+             [a,b,c]     -> cw 24 a .|. cw 16 b  .|. cw 8 c  .|. 0x20
+             (a:b:c:d:_) -> cw 24 a .|. cw 16 b  .|. cw 8 c  .|. cw 0 d
 
 instance IsBoxContent (U32Text label) where
   boxSize _ = 4

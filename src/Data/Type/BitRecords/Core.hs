@@ -1,14 +1,16 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Core where
 
-import Data.Type.BitRecords.Arithmetic
-import Data.Kind
-import Data.Type.Bool
-import GHC.TypeLits
 import Data.Bits
+import Data.Int
+import Data.Kind
 import Data.Proxy
-import Test.TypeSpecCrazy
+import Data.Type.BitRecords.Arithmetic
+import Data.Type.Bool
 import Data.Type.Pretty
+import Data.Word
+import GHC.TypeLits
+import Test.TypeSpecCrazy
 
 -- * Fields
 
@@ -35,13 +37,16 @@ type FieldPosition = (Nat, Nat)
 data (:>:) :: Type -> Type -> Type
 infixl 3 :>:
 
--- | A field with a constant fixed value
-data (:=) :: Type -> Nat -> Type
-infixr 5 :=
-
 -- | A field with a name
 data (:=>) :: label -> Type -> Type where
-infixr 6 :=>
+infixr 5 :=>
+
+-- | A field with a constant fixed value
+data (:=) :: Type -> k -> Type
+infixr 6 :=
+
+-- | Create a negative type level value for use in ':='
+data Negative :: Nat -> Type
 
 -- | A wrapper around 'Constraint' that propagates 'TypeError'.
 type ConstraintE = Either Constraint Constraint
@@ -59,18 +64,40 @@ getRecordSizeFromProxy
   :: forall px rec . KnownNat (GetRecordSize rec) => px rec -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (GetRecordSize rec))
 
+type family FieldRep (r :: rk)
+type instance FieldRep (Field (n :: Nat)) = Word64
+type instance FieldRep (f := v) = FieldRep f
+type instance FieldRep Word64 = Word64
+type instance FieldRep Word32 = Word32
+type instance FieldRep Word16 = Word16
+type instance FieldRep Word8 = Word8
+type instance FieldRep Int64 = Int64
+type instance FieldRep Int32 = Int32
+type instance FieldRep Int16 = Int16
+type instance FieldRep Int8 = Int8
+
+type family GetFieldSize (r :: rk) :: Nat
+type instance GetFieldSize (Field (n :: Nat)) = n
+type instance GetFieldSize (f := v) = GetFieldSize f
+type instance GetFieldSize Word64 = 64
+type instance GetFieldSize Word32 = 32
+type instance GetFieldSize Word16 = 16
+type instance GetFieldSize Word8 = 8
+type instance GetFieldSize Int64 = 64
+type instance GetFieldSize Int32 = 32
+type instance GetFieldSize Int16 = 16
+type instance GetFieldSize Int8 = 8
+
 type family
   GetRecordSize (r :: rk) :: Nat where
-  GetRecordSize (label :=> f) = GetRecordSize f
+  GetRecordSize (label :=> f) = GetFieldSize f
   GetRecordSize (l :>: r)     = GetRecordSize l + GetRecordSize r
-  GetRecordSize (Field n)     = n
-  GetRecordSize (r := v)      = GetRecordSize r
+  GetRecordSize e             = GetFieldSize e
 
 type family
   HasField (r :: rk) (l :: lk) :: Bool where
   HasField (l :=> f) l        = 'True
   HasField (f1 :>: f2) l      = HasField f1 l || HasField f2 l
-  HasField (r := v) l         = HasField r l
   HasField f l                = 'False
 
 type family
@@ -98,8 +125,7 @@ type family
 
 type family
   GetFieldPositionUnsafe (r :: rk) (l :: lk) :: FieldPosition where
-  GetFieldPositionUnsafe (l :=> f)  l        = '(0, GetRecordSize f - 1)
-  GetFieldPositionUnsafe (f := v)   l        = GetFieldPositionUnsafe f l
+  GetFieldPositionUnsafe (l :=> f)  l        = '(0, GetFieldSize f - 1)
   GetFieldPositionUnsafe (f :>: f') l        =
      If (HasField f l)
       (GetFieldPositionUnsafe f l)
@@ -207,6 +233,14 @@ showRecord _ = ptShow (Proxy :: Proxy (PrettyRecord rec))
 
 -- | A type family to pretty print @rec@ to a 'PrettyType'.
 type family PrettyRecord rec :: PrettyType where
+  PrettyRecord Word8  = PutStr "<Word8.>"
+  PrettyRecord Int8   = PutStr "<.Int8.>"
+  PrettyRecord Word16 = PutStr "<....Word16....>"
+  PrettyRecord Int16  = PutStr "<....Int16.....>"
+  PrettyRecord Word32 = PutStr "<............Word32............>"
+  PrettyRecord Int32  = PutStr "<............Int32.............>"
+  PrettyRecord Word64 = PutStr "<............................Word64............................>"
+  PrettyRecord Int64  = PutStr "<............................Int64.............................>"
   PrettyRecord (Field 0) = 'PrettyEmpty
   PrettyRecord (Field 1) = PutStr "X"
   PrettyRecord (Field n) =

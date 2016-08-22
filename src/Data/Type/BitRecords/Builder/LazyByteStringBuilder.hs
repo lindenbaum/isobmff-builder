@@ -5,6 +5,7 @@ import           Data.Type.BitRecords.Builder.BitBuffer
 import           Data.Type.BitRecords.Builder.Holey
 import           Data.Type.BitRecords.Core
 import           Data.Word
+import           Data.Int
 import           Data.Bits
 import           Data.Proxy
 import           GHC.TypeLits
@@ -119,28 +120,13 @@ runBitStringBuilderHoley (HM !x) =
 instance ToHoley BitStringBuilder BitString r where
     toHoley = immediate . appendBitString
 
-instance KnownChunkSize (GetRecordSize f) =>
-         ToHoley BitStringBuilder (Proxy (l :=> f)) r where
-    type ToM BitStringBuilder (Proxy (l :=> f)) r = Tagged l Word64 -> r
-    toHoley _ = indirect (appendBitString .
-                              bitStringProxyLength fieldLen . untag)
-      where
-        !fieldLen = Proxy :: Proxy (GetRecordSize f)
+instance forall f r l
+         . (ToHoley BitStringBuilder (Proxy f) r, ToM BitStringBuilder (Proxy f) r ~ (FieldRep f -> r))
+         => ToHoley BitStringBuilder (Proxy (l :=> f)) r where
+    type ToM BitStringBuilder (Proxy (l :=> f)) r = Tagged l (FieldRep f) -> r
+    toHoley _ = let (HM !fm) = toHoley (Proxy :: Proxy f)
+                in HM (\ !k !vt -> fm k (untag vt))
 
-instance (KnownNat v, KnownChunkSize (GetRecordSize f)) =>
-         ToHoley BitStringBuilder (Proxy (f := v)) r where
-    toHoley _ = immediate (appendBitString fieldBitString)
-      where
-        !fieldBitString = bitStringProxyLength fieldLen
-                                                   (fromIntegral fieldVal)
-          where
-            !fieldLen = Proxy :: Proxy (GetRecordSize f)
-            !fieldVal = natVal (Proxy :: Proxy v)
-
-instance (KnownChunkSize n) =>
-         ToHoley BitStringBuilder (Proxy (Field n)) r where
-    toHoley _ = immediate (appendBitString (bitStringProxyLength (Proxy :: Proxy n)
-                                                                     0))
 instance ( KnownNat (GetRecordSize (f0 :>: f1))
          , ToHoley BitStringBuilder (Proxy f0) (ToM BitStringBuilder (Proxy f1) r)
          , ToHoley BitStringBuilder (Proxy f1) r) =>
@@ -153,3 +139,64 @@ instance ( KnownNat (GetRecordSize (f0 :>: f1))
         !fmt1 = toHoley pf1
         pf0 = Proxy :: Proxy f0
         pf1 = Proxy :: Proxy f1
+
+instance forall n r . (KnownChunkSize n, FieldRep (Field n) ~ Word64) =>
+         ToHoley BitStringBuilder (Proxy (Field n)) r where
+    type ToM BitStringBuilder (Proxy (Field n)) r = FieldRep (Field n) -> r
+    toHoley _ = indirect (appendBitString . bitStringProxyLength (Proxy :: Proxy n))
+
+instance ToHoley BitStringBuilder (Proxy Word64) r where
+    type ToM BitStringBuilder (Proxy Word64) r = FieldRep Word64 -> r
+    toHoley _ = indirect (appendBitString . flip bitString 64)
+
+instance ToHoley BitStringBuilder (Proxy Word32) r where
+    type ToM BitStringBuilder (Proxy Word32) r = FieldRep Word32 -> r
+    toHoley _ = indirect (appendBitString . flip bitString 32 . fromIntegral)
+
+instance ToHoley BitStringBuilder (Proxy Word16) r where
+    type ToM BitStringBuilder (Proxy Word16) r = FieldRep Word16 -> r
+    toHoley _ = indirect (appendBitString . flip bitString 16 . fromIntegral)
+
+instance ToHoley BitStringBuilder (Proxy Word8) r where
+    type ToM BitStringBuilder (Proxy Word8) r = FieldRep Word8 -> r
+    toHoley _ = indirect (appendBitString . flip bitString 8 . fromIntegral)
+
+instance ToHoley BitStringBuilder (Proxy Int64) r where
+    type ToM BitStringBuilder (Proxy Int64) r = FieldRep Int64 -> r
+    toHoley _ = indirect (appendBitString . flip bitString 64 . fromIntegral)
+
+instance ToHoley BitStringBuilder (Proxy Int32) r where
+    type ToM BitStringBuilder (Proxy Int32) r = FieldRep Int32 -> r
+    toHoley _ =
+      indirect (appendBitString . flip bitString 32 . fromIntegral . (fromIntegral :: FieldRep Int32 -> Word32))
+
+instance ToHoley BitStringBuilder (Proxy Int16) r where
+    type ToM BitStringBuilder (Proxy Int16) r = FieldRep Int16 -> r
+    toHoley _ =
+      indirect (appendBitString . flip bitString 16 . fromIntegral . (fromIntegral :: FieldRep Int16 -> Word16))
+
+instance ToHoley BitStringBuilder (Proxy Int8) r where
+    type ToM BitStringBuilder (Proxy Int8) r = FieldRep Int8 -> r
+    toHoley _ =
+      indirect (appendBitString . flip bitString 8 . fromIntegral . (fromIntegral :: FieldRep Int8 -> Word8))
+
+instance ( KnownNat v
+         , Num (FieldRep f)
+         , ToHoley BitStringBuilder (Proxy f) r
+         , ToM BitStringBuilder (Proxy f) r ~ (FieldRep f -> r)
+         ) => ToHoley BitStringBuilder (Proxy (f := (v :: Nat))) r where
+
+    toHoley _ = let (HM !fm) = toHoley (Proxy :: Proxy f)
+                    !fieldVal = natVal (Proxy :: Proxy v)
+                in HM (\ !k -> fm k (fromIntegral fieldVal))
+
+
+instance ( KnownNat v
+         , Num (FieldRep f)
+         , ToHoley BitStringBuilder (Proxy f) r
+         , ToM BitStringBuilder (Proxy f) r ~ (FieldRep f -> r)
+         ) => ToHoley BitStringBuilder (Proxy (f := Negative v)) r where
+
+    toHoley _ = let (HM !fm) = toHoley (Proxy :: Proxy f)
+                    !fieldVal = natVal (Proxy :: Proxy v)
+                in HM (\ !k -> fm k (-1 * fromIntegral fieldVal))
