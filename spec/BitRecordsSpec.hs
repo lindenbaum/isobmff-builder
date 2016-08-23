@@ -15,6 +15,61 @@ import Prelude hiding ((.), id)
 import Data.Tagged
 import Test.QuickCheck (property)
 
+boolSpec = do
+  describe "Bool" $
+    describe "showRecord" $ do
+      it "prints a '1' if the parameter is 'True" $
+        showRecord (Proxy :: Proxy 'True) `shouldBe` "1"
+      it "prints a '0' if the parameter is 'False" $
+        showRecord (Proxy :: Proxy 'False) `shouldBe` "0"
+      it "prints a 'B' if the parameter is Bool" $
+        showRecord (Proxy :: Proxy Bool) `shouldBe` "B"
+  describe "FlagJust/FlagNothing" $ do
+    let checkFlagJust ::
+          "Flags from type level Just/Nothig"
+          ####################################
+
+          "The record size works"
+          ~~~~~~~~~~~~~~~~~~~~~~~~
+              1 `ShouldBe` GetRecordSize (FlagJust 'Nothing)
+          -*  1 `ShouldBe` GetRecordSize (FlagJust ('Just "Blah"))
+          -*  1 `ShouldBe` GetRecordSize Bool
+          -*  1 `ShouldBe` GetRecordSize 'True
+          -*  1 `ShouldBe` GetRecordSize 'False
+        checkFlagJust = Valid
+    print checkFlagJust
+    describe "showRecord" $ do
+      it "prints a '1' if the parameter is 'Just ..'" $
+        showRecord (Proxy :: Proxy (FlagJust (Just "123"))) `shouldBe` "1"
+      it "prints a '0' if the parameter is 'Nothing'" $
+        showRecord (Proxy :: Proxy (FlagJust 'Nothing)) `shouldBe` "0"
+
+type HelloWorld = SizedString "hello world" 11
+type TestSizedString =
+  ToStringLength Word8 HelloWorld
+  :>: ToStringLength Word64 HelloWorld
+  :>: HelloWorld
+checkSizedString ::
+  "SizedStrings"
+  ###############
+
+  "The record size works"
+  ~~~~~~~~~~~~~~~~~~~~~~~~
+               11 `ShouldBe` GetRecordSize HelloWorld
+  -* (1 + 8 + 11) `ShouldBe` GetRecordSize TestSizedString
+checkSizedString = Valid
+
+sizedStringSpec = do
+  descripe "TypeChecks" $
+    print checkSizedString
+  describe "SizedString" $
+    describe "showRecord" $
+      it "retuns an exact string rep if the size matches the string" $
+        showRecord (Proxy :: Proxy (SizedString "hello" 5)) "hello"
+      it "it appends exclamation marks if the size is bigger" $
+        showRecord (Proxy :: Proxy (SizedString "hello" 10)) "hello!!!!!"
+
+
 type TestRecAligned =
   "bar" :=> Field 8       :>:
             Field 8  := 0 :>:
@@ -290,6 +345,8 @@ testFieldPositionToList = Valid
 
 spec :: Spec
 spec = do
+  sizedStringSpec
+  boolSpec
   describe "The Set of Type Functions" $
     it "is sound" $ do
       print (Valid :: Expect (GetRecordSize (Flag :>: Field 7) `Is` 8))

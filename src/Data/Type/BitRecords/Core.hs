@@ -20,6 +20,20 @@ data Field :: Nat -> Type
 -- | Alias for a single bit field
 type Flag = Field 1
 
+-- | A Flag (1-bit) that is true if the type level maybe is 'Just'.
+data FlagJust :: Maybe a -> Type
+
+-- | A Flag (1-bit) that is true if the type level maybe is 'Nothing'.
+data FlagNothing :: Maybe a -> Type
+
+-- | A type level symbol paied with a type level length, that determines how
+-- many characters of the symbol may be used.
+data SizedString :: Symbol -> Nat -> Type
+
+-- | A field that renders to the length of a 'SizedString' using the given
+-- word type for the size.
+data ToStringLength :: Type -> Type -> Type
+
 type FieldPosition = (Nat, Nat)
 
 -- * Records

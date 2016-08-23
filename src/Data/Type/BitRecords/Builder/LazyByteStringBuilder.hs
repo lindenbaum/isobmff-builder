@@ -204,7 +204,6 @@ instance ( KnownNat v
                     !fieldVal = natVal (Proxy :: Proxy v)
                 in HM (\ !k -> fm k (fromIntegral fieldVal))
 
-
 instance ( KnownNat v
          , Num (FieldRep f)
          , ToHoley BitStringBuilder (Proxy f) r
@@ -214,29 +213,3 @@ instance ( KnownNat v
     toHoley _ = let (HM !fm) = toHoley (Proxy :: Proxy f)
                     !fieldVal = natVal (Proxy :: Proxy v)
                 in HM (\ !k -> fm k (-1 * fromIntegral fieldVal))
-
-
-data Tree a = Node (Tree a) (Tree a) | Leaf a
-  deriving Show
-
-instance Functor Tree where
-    fmap f (Leaf a ) = Leaf (f a)
-    fmap f (l `Node` r) = Node (fmap f l) (fmap f r)
-
-instance Applicative Tree where
-    pure = Leaf
-    (<*>) (Leaf f) (Leaf a) = Leaf (f a)
-    (<*>) (Node fl fr) a = Node (fl <*> a) (fr <*> a)
-    (<*>) f (Node l r) = Node (f <*> l) (f <*> r)
-
-
-instance Foldable Tree where
-    foldMap f (Leaf a) = f a
-    foldMap f (Node l r) = foldMap f l <> foldMap f r
-
-instance Traversable Tree where
-    traverse f (Leaf a) = Leaf <$> f a
-    traverse f (l `Node` r) = Node <$> traverse f l <*> traverse f r
-
-    sequenceA (Leaf fa) = Leaf <$> fa
-    sequenceA (l `Node` r) = Node <$> sequenceA l <*> sequenceA r

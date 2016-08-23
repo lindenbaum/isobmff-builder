@@ -75,7 +75,35 @@ type family ExpandableSizeNext (s :: Nat) where
 type ExpandableSizeNextChunk (s :: Nat) = Flag := 1 :>: (Field 7 := s)
 
 
--- * Dynamic Expandable
+-- * Runtime-value Expandable
 
 newtype Expandable t where
     Expandable :: t -> Expandable t
+
+instance IsBoxContent t => IsBoxContent (Expandable t) where
+  boxSize (Expandable x) = expandableSizeSize (boxSize x) + boxSize x
+  boxBuilder (Expandable x) = expandableSizeBuilder (boxSize x) <> boxBuilder x
+
+expandableSizeSize :: BoxSize -> BoxSize
+expandableSizeSize UnlimitedSize = error "Unlimited size not supported by expandable"
+expandableSizeSize (BoxSize s)
+  | s >= 2^28 = error "Expandable size >= 2^28"
+  | s >= 2^21 = 4
+  | s >= 2^14 = 3
+  | s >= 2^7 = 2
+  | otherwise = 1
+
+expandableSizeBuilder :: BoxSize -> Builder
+expandableSizeBuilder UnlimitedSize = error "Unlimited size not supported by expandable"
+expandableSizeBuilder (BoxSize s)
+    | s >= 2 ^ 28 = error "Expandable size >= 2^28"
+    | s >= 2 ^ 21 = word8 (fromIntegral (0x80 .|. (s `unsafeShiftR` 21))) <>
+          word8 (fromIntegral (0x80 .|. ((s `unsafeShiftR` 14) .&. 0x7F))) <>
+          word8 (fromIntegral (0x80 .|. ((s `unsafeShiftR` 7) .&. 0x7F))) <>
+          word8 (fromIntegral (s .&. 0x7F))
+    | s >= 2 ^ 14 = word8 (fromIntegral (0x80 .|. (s `unsafeShiftR` 14))) <>
+          word8 (fromIntegral (0x80 .|. ((s `unsafeShiftR` 7) .&. 0x7F))) <>
+          word8 (fromIntegral (s .&. 0x7F))
+    | s >= 2 ^ 7 = word8 (fromIntegral (0x80 .|. (s `unsafeShiftR` 7))) <>
+          word8 (fromIntegral (s .&. 0x7F))
+    | otherwise = word8 (fromIntegral s)

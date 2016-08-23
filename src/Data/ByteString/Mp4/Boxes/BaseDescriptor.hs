@@ -13,7 +13,6 @@ type family GetClassTag t :: Nat
 newtype BaseDescriptor t where
         BaseDescriptor :: t -> BaseDescriptor t
 
-
 instance (KnownNat (GetClassTag t), IsBoxContent t) =>
          IsBoxContent (BaseDescriptor t) where
     boxSize (BaseDescriptor et) =
