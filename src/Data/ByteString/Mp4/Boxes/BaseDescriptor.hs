@@ -3,6 +3,7 @@ module Data.ByteString.Mp4.Boxes.BaseDescriptor where
 
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
+import Data.ByteString.Mp4.Boxes.Expandable
 import Data.Type.BitRecords
 
 -- * The base constructor
@@ -11,13 +12,28 @@ type family GetClassTag t :: Nat
 
 -- | the base descriptor
 newtype BaseDescriptor t where
-        BaseDescriptor :: t -> BaseDescriptor t
+        BaseDescriptor :: Expandable t -> BaseDescriptor t
 
 instance (KnownNat (GetClassTag t), IsBoxContent t) =>
          IsBoxContent (BaseDescriptor t) where
     boxSize (BaseDescriptor et) =
         1 + boxSize et
     boxBuilder (BaseDescriptor et) =
+        word8 (fromIntegral (natVal (Proxy :: Proxy (GetClassTag t))))
+            <> boxBuilder et
+
+-- | base descriptors that are known at compile time
+newtype StaticBaseDescriptor t where
+        StaticBaseDescriptor :: StaticExpandable t -> StaticBaseDescriptor t
+  deriving (Monoid)
+
+deriving instance (KnownExpandable r) => IsBoxContent (StaticExpandable r)
+
+instance (KnownNat (GetClassTag t), IsBoxContent t) =>
+         IsBoxContent (StaticBaseDescriptor t) where
+    boxSize (StaticBaseDescriptor et) =
+        1 + boxSize et
+    boxBuilder (StaticBaseDescriptor et) =
         word8 (fromIntegral (natVal (Proxy :: Proxy (GetClassTag t))))
             <> boxBuilder et
 
