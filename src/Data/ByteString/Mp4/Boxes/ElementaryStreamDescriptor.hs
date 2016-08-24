@@ -20,8 +20,10 @@ type AudioObjectTypeSmall n = "audioObjectType" :=> Field 5 := n
 type AudioObjectTypeExt n =
   AudioObjectTypeSmall 31 :>: "audioObjectTypeExt" :=> Field 6 := (n - 32)
 
-type ES_Descriptor_Direct_Audio =
-  "ES_ID" :=> Word16 :>: "streamDependenceFlag" :=> Flag :>: 'False :>: "OCRstreamFlag" :=> Bool :>: "streamPriority" :=> Field 5
+type ESDescriptorAudioContent =
+  "ES_ID" :=> Word16 :>: "streamDependenceFlag" :=> Bool :>: 'False :>: "OCRstreamFlag" :=> Bool :>: "streamPriority" :=> Field 5
 
-staticESDescriptorDirectAudio :: StaticBaseDescriptorWithArgs (ES_DescrP ES_Descriptor_Direct_Audio)
-staticESDescriptorDirectAudio = staticBaseDescriptorWithArgs (ES_DescrP :: ES_DescrP ES_Descriptor_Direct_Audio)
+type StaticESDescriptorAudio = StaticBaseDescriptor (ES_DescrP ESDescriptorAudioContent)
+
+staticESDescriptorAudio :: StaticBaseDescriptorWithArgs (ES_DescrP ESDescriptorAudioContent)
+staticESDescriptorAudio = staticBaseDescriptorWithArgs (ES_DescrP :: ES_DescrP ESDescriptorAudioContent)
