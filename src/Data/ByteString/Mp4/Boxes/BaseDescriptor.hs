@@ -28,7 +28,6 @@ type StaticBaseDescrHoley t =
 type StaticBaseDescriptorWithArgs t =
     ToM BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t)
 
-
 staticBaseDescriptorWithArgs :: (StaticBaseDescrHoley t)
                          => t
                          -> StaticBaseDescriptorWithArgs t

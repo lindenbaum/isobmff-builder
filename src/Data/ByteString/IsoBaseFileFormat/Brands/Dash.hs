@@ -8,7 +8,7 @@ module Data.ByteString.IsoBaseFileFormat.Brands.Dash
        where
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.MediaFile
-import Data.ByteString.IsoBaseFileFormat.Boxes 
+import Data.ByteString.IsoBaseFileFormat.Boxes
 import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | A phantom type to indicate this branding. Version can be 0 or 1 it is used
@@ -52,7 +52,7 @@ type TrackLayout version handlerType =
                                (OneOf '[ OM_ DataEntryUrl
                                        , OM_ DataEntryUrn])]]
                 , OM  SampleTable
-                      '[ OM  (SampleDescription handlerType)
+                      '[ OM  SampleDescription
                             '[ SomeMandatoryX (MatchSampleEntry handlerType) ]
                        , OM_ TimeToSample
                        , OM_ SampleToChunk

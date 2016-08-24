@@ -18,13 +18,13 @@ import Test.QuickCheck (property)
 boolSpec = do
   describe "Bool" $
     describe "showRecord" $ do
-      it "prints a '1' if the parameter is 'True" $
-        showRecord (Proxy :: Proxy 'True) `shouldBe` "1"
-      it "prints a '0' if the parameter is 'False" $
-        showRecord (Proxy :: Proxy 'False) `shouldBe` "0"
+      it "prints a 'T' if the parameter is 'True" $
+        showRecord (Proxy :: Proxy 'True) `shouldBe` "T"
+      it "prints a 'F' if the parameter is 'False" $
+        showRecord (Proxy :: Proxy 'False) `shouldBe` "F"
       it "prints a 'B' if the parameter is Bool" $
         showRecord (Proxy :: Proxy Bool) `shouldBe` "B"
-  describe "FlagJust/FlagNothing" $ do
+  describe "FlagJust/FlagNothing type families" $ do
     let checkFlagJust ::
           "Flags from type level Just/Nothig"
           ####################################
@@ -33,16 +33,23 @@ boolSpec = do
           ~~~~~~~~~~~~~~~~~~~~~~~~
               1 `ShouldBe` GetRecordSize (FlagJust 'Nothing)
           -*  1 `ShouldBe` GetRecordSize (FlagJust ('Just "Blah"))
+          -*  1 `ShouldBe` GetRecordSize (FlagNothing ('Just "Blah"))
           -*  1 `ShouldBe` GetRecordSize Bool
           -*  1 `ShouldBe` GetRecordSize 'True
           -*  1 `ShouldBe` GetRecordSize 'False
         checkFlagJust = Valid
-    print checkFlagJust
-    describe "showRecord" $ do
-      it "prints a '1' if the parameter is 'Just ..'" $
-        showRecord (Proxy :: Proxy (FlagJust (Just "123"))) `shouldBe` "1"
-      it "prints a '0' if the parameter is 'Nothing'" $
-        showRecord (Proxy :: Proxy (FlagJust 'Nothing)) `shouldBe` "0"
+    runIO $ print checkFlagJust
+  describe "showRecord" $ do
+    describe "FlagJust" $ do
+      it "prints a 'T' if the parameter is 'Just ..'" $
+        showRecord (Proxy :: Proxy (FlagJust (Just "123"))) `shouldBe` "T"
+      it "prints a 'F' if the parameter is 'Nothing'" $
+        showRecord (Proxy :: Proxy (FlagJust 'Nothing)) `shouldBe` "F"
+    describe "FlagNothing" $ do
+      it "prints a 'F' if the parameter is 'Just ..'" $
+        showRecord (Proxy :: Proxy (FlagNothing (Just "123"))) `shouldBe` "F"
+      it "prints a 'T' if the parameter is 'Nothing'" $
+        showRecord (Proxy :: Proxy (FlagNothing 'Nothing)) `shouldBe` "T"
 
 type HelloWorld = SizedString "hello world" 11
 type TestSizedString =
@@ -58,16 +65,15 @@ checkSizedString ::
                11 `ShouldBe` GetRecordSize HelloWorld
   -* (1 + 8 + 11) `ShouldBe` GetRecordSize TestSizedString
 checkSizedString = Valid
-
 sizedStringSpec = do
-  descripe "TypeChecks" $
+  describe "TypeChecks" $
     print checkSizedString
   describe "SizedString" $
     describe "showRecord" $
       it "retuns an exact string rep if the size matches the string" $
         showRecord (Proxy :: Proxy (SizedString "hello" 5)) "hello"
       it "it appends exclamation marks if the size is bigger" $
-        showRecord (Proxy :: Proxy (SizedString "hello" 10)) "hello!!!!!"
+        showRecord (Proxy :: Proxy (SizedString "hello" 10)) "hello     "
 
 
 type TestRecAligned =

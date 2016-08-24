@@ -21,7 +21,7 @@ data SingleAudioTrackInit =
 mkSingleTrackInit
   :: SingleAudioTrackInit -> Builder
 mkSingleTrackInit doc = mediaBuilder dash $
-     fileTypeBox (FileType "dash" 0 ["isom","iso5","mp42"])
+     fileTypeBox (FileType "dash" 0 ["isom","iso5","mp42"]) -- TODO must be iso5 for the way we use elementary stream descriptors
   :| movie
       ( movieHeader (mvhd doc)
       :| track
@@ -33,7 +33,7 @@ mkSingleTrackInit doc = mediaBuilder dash $
                    ( soundMediaHeader (smhd doc)
                    :. (dataInformation $: localMediaDataReference)
                    :| sampleTable
-                       ((  sampleDescription $: sampleEntry 0 (mp4AudioSampleEntry def def))
+                       ((  sampleDescription $: sampleEntry 0 (staticMp4AudioSampleEntry def def))
                         :. timeToSample []
                         :. sampleToChunk []
                         :. chunkOffset32 []

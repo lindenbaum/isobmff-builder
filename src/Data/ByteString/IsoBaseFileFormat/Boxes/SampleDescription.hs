@@ -10,7 +10,7 @@ import Data.Singletons.Prelude.List (Length)
 import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- | A sample table contains no fieds.
-newtype SampleDescription handlerType =
+newtype SampleDescription =
   SampleDescription (U32 "entry_count")
   deriving (Default,IsBoxContent)
 
@@ -18,11 +18,11 @@ newtype SampleDescription handlerType =
 sampleDescription
   :: (KnownNat (Length ts))
   => Boxes ts
-  -> Box (ContainerBox (FullBox (SampleDescription h) 0) ts)
+  -> Box (ContainerBox (FullBox SampleDescription 0) ts)
 sampleDescription bs =
   containerBox (FullBox 0 $ SampleDescription (typeListLength bs))
                bs
 
-instance IsBox (SampleDescription h)
+instance IsBox SampleDescription
 
-type instance BoxTypeSymbol (SampleDescription  h) = "stsd"
+type instance BoxTypeSymbol SampleDescription = "stsd"

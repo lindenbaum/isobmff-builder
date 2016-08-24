@@ -7,10 +7,30 @@ import Data.Kind
 import Data.Proxy
 import Data.Type.BitRecords.Arithmetic
 import Data.Type.Bool
+import Data.Type.Equality
 import Data.Type.Pretty
 import Data.Word
 import GHC.TypeLits
 import Test.TypeSpecCrazy
+
+import qualified Language.Haskell.TH as TH
+import qualified Language.Haskell.TH.Quote as TH
+import Data.Maybe
+
+-- | A type level symbol paied with a type level length, that determines how
+-- many characters of the symbol may be used.
+data SizedString :: Symbol -> Nat -> Type
+
+sizedStr :: String -> TH.Q TH.Type
+sizedStr str = do
+  mssTy <- TH.lookupTypeName "SizedString"
+  ssTy <- maybe (fail "SizedString does not exist!") (return . TH.ConT) mssTy
+  let strT = TH.LitT (TH.StrTyLit str)
+      lenT = TH.LitT (TH.NumTyLit (fromIntegral (length str)))
+  return
+    (ssTy `TH.AppT` strT  `TH.AppT` lenT)
+tq :: TH.QuasiQuoter
+tq = TH.QuasiQuoter undefined undefined sizedStr undefined
 
 -- * Fields
 
@@ -25,10 +45,6 @@ data FlagJust :: Maybe a -> Type
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Nothing'.
 data FlagNothing :: Maybe a -> Type
-
--- | A type level symbol paied with a type level length, that determines how
--- many characters of the symbol may be used.
-data SizedString :: Symbol -> Nat -> Type
 
 -- | A field that renders to the length of a 'SizedString' using the given
 -- word type for the size.
@@ -103,8 +119,10 @@ type instance GetFieldSize Int32 = 32
 type instance GetFieldSize Int16 = 16
 type instance GetFieldSize Int8 = 8
 type instance GetFieldSize Bool = 1
-type instance GetFieldSize 'True = 1
-type instance GetFieldSize 'False = 1
+type instance GetFieldSize (bool :: Bool) = 1
+type instance GetFieldSize (FlagJust (k :: Maybe t)) = 1
+type instance GetFieldSize (FlagNothing (k :: Maybe t)) = 1
+type instance GetFieldSize (SizedString (str :: Symbol) (len :: Nat)) = 1
 
 type family
   GetRecordSize (r :: rk) :: Nat where
@@ -244,29 +262,42 @@ type IsFieldC field record first last =
 -- | Render @rec@ to a pretty, human readable form. Internally this is a wrapper
 -- around 'ptShow' using 'PrettyRecord'.
 showRecord
-  :: forall proxy (rec :: Type)
+  :: forall proxy (rec :: k)
   . PrettyTypeShow (PrettyRecord rec)
   => proxy rec -> String
 showRecord _ = ptShow (Proxy :: Proxy (PrettyRecord rec))
 
 -- | A type family to pretty print @rec@ to a 'PrettyType'.
-type family PrettyRecord rec :: PrettyType where
-  PrettyRecord Word8  = PutStr "<Word8.>"
-  PrettyRecord Int8   = PutStr "<.Int8.>"
-  PrettyRecord Word16 = PutStr "<....Word16....>"
-  PrettyRecord Int16  = PutStr "<....Int16.....>"
-  PrettyRecord Word32 = PutStr "<............Word32............>"
-  PrettyRecord Int32  = PutStr "<............Int32.............>"
-  PrettyRecord Word64 = PutStr "<............................Word64............................>"
-  PrettyRecord Int64  = PutStr "<............................Int64.............................>"
-  PrettyRecord (Field 0) = 'PrettyEmpty
-  PrettyRecord (Field 1) = PutStr "X"
-  PrettyRecord (Field n) =
-    PutStr "<" <++> PrettyOften (n - 2) (PutStr ".") <++> PutStr ">"
-  PrettyRecord (l :=> r) =
+type family PrettyRecord (rec :: k) :: PrettyType
+type instance PrettyRecord Word8  = PutStr "<Word8.>"
+type instance PrettyRecord Int8   = PutStr "<.Int8.>"
+type instance PrettyRecord Word16 = PutStr "<....Word16....>"
+type instance PrettyRecord Int16  = PutStr "<....Int16.....>"
+type instance PrettyRecord Word32 = PutStr "<............Word32............>"
+type instance PrettyRecord Int32  = PutStr "<............Int32.............>"
+type instance PrettyRecord Word64 = PutStr "<............................Word64............................>"
+type instance PrettyRecord Int64  = PutStr "<............................Int64.............................>"
+type instance PrettyRecord (SizedString str n) = 'PrettySymbol ('PrettyPadded n) ('PrettyPrecision n) str
+type instance PrettyRecord Bool = PutStr "B"
+type instance PrettyRecord (b :: Bool) = PutStr (If b "T" "F")
+type instance PrettyRecord (FlagJust x) =
+  If (x == 'Nothing)
+    (PutStr "F")
+    (PutStr "T")
+type instance PrettyRecord (FlagNothing x) =
+  If (x == 'Nothing)
+    (PutStr "T")
+    (PutStr "F")
+type instance PrettyRecord (Field n) =
+   If ( 1 <=? n )
+    (If ( 0 <=? n )
+      'PrettyEmpty
+      (PutStr "X"))
+    (PutStr "<" <++> PrettyOften (n - 2) (PutStr ".") <++> PutStr ">")
+type instance PrettyRecord  (l :=> r) =
     PutStr "<" <++>
     'PrettySymbol ('PrettyPadded ((GetRecordSize r) - 2)) ('PrettyPrecision ((GetRecordSize r) - 2)) l
     <++> PutStr ">"
-  PrettyRecord (r :=  v) =
+type instance PrettyRecord (r :=  v) =
     'PrettyNat 'PrettyUnpadded ('PrettyPrecision (GetRecordSize r)) 'PrettyBit (v `Rem` (2 ^ (GetRecordSize r)))
-  PrettyRecord (l :>: r) = PrettyRecord l <++> PrettyRecord r
+type instance PrettyRecord (l :>: r) = PrettyRecord l <++> PrettyRecord r

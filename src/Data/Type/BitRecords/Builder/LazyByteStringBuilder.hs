@@ -93,9 +93,6 @@ printBuilder b = ("<< " ++)
         $ unwords
             $ printf "%0.2x" <$> B.unpack (toLazyByteString b)
 
----
-
-
 -- | Write all the bits, in chunks, filling and writing the 'BitString'
 -- in the 'BitStringBuilderState' as often as necessary.
 appendBitString :: BitString -> BitStringBuilder
