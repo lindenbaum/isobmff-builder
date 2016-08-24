@@ -20,8 +20,8 @@ type AudioObjectTypeSmall n = "audioObjectType" :=> Field 5 := n
 type AudioObjectTypeExt n =
   AudioObjectTypeSmall 31 :>: "audioObjectTypeExt" :=> Field 6 := (n - 32)
 
-type ElementaryStreamDescriptor =
-  StaticExpandable MinimalAudioES_Descriptor -- TODO allow full-on yada yada yada EDDesc
-
-type MinimalAudioES_Descriptor =
+type ES_Descriptor_Direct_Audio =
   "ES_ID" :=> Word16 :>: "streamDependenceFlag" :=> Flag :>: 'False :>: "OCRstreamFlag" :=> Bool :>: "streamPriority" :=> Field 5
+
+staticESDescriptorDirectAudio :: StaticBaseDescriptorWithArgs (ES_DescrP ES_Descriptor_Direct_Audio)
+staticESDescriptorDirectAudio = staticBaseDescriptorWithArgs (ES_DescrP :: ES_DescrP ES_Descriptor_Direct_Audio)

@@ -1,16 +1,15 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.ByteString.Mp4.Boxes.BaseDescriptor where
 
-import Data.ByteString.IsoBaseFileFormat.Box
-import Data.ByteString.IsoBaseFileFormat.ReExports
-import Data.ByteString.Mp4.Boxes.Expandable
-import Data.Type.BitRecords
+import           Data.ByteString.IsoBaseFileFormat.Box
+import           Data.ByteString.IsoBaseFileFormat.ReExports
+import           Data.ByteString.Mp4.Boxes.Expandable
+import           Data.Type.BitRecords
+import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 
--- * The base constructor
+-- * The runtime base constructor
 
-type family GetClassTag t :: Nat
-
--- | the base descriptor
+-- | The base descriptor for runtime parameters
 newtype BaseDescriptor t where
         BaseDescriptor :: Expandable t -> BaseDescriptor t
 
@@ -22,31 +21,68 @@ instance (KnownNat (GetClassTag t), IsBoxContent t) =>
         word8 (fromIntegral (natVal (Proxy :: Proxy (GetClassTag t))))
             <> boxBuilder et
 
+-- * Static base constructor
+
+type StaticBaseDescrHoley t =
+    (KnownDescriptor t, ToHoley BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t))
+type StaticBaseDescriptorWithArgs t =
+    ToM BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t)
+
+
+staticBaseDescriptorWithArgs :: (StaticBaseDescrHoley t)
+                         => t
+                         -> StaticBaseDescriptorWithArgs t
+staticBaseDescriptorWithArgs prec = runHoley $ staticBaseDescriptorHoley prec
+
+staticBaseDescriptor :: ( KnownDescriptor t
+                       , ToHoley BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t)
+                       , ToM BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t) ~ (StaticBaseDescriptor t))
+                     => t
+                     -> StaticBaseDescriptor t
+staticBaseDescriptor prec = runHoley $ staticBaseDescriptorHoley prec
+
+staticBaseDescriptorHoley :: forall t r .
+                          ( KnownDescriptor t
+                          , ToHoley BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) r)
+                          => t
+                          -> Holey (StaticBaseDescriptor t) r (ToM BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) r)
+staticBaseDescriptorHoley _ =
+  hoistM StaticBaseDescriptor (bitBoxHoley (Proxy :: Proxy (StaticBaseDescriptorContent t)))
+
 -- | base descriptors that are known at compile time
+
+type KnownDescriptor t = ( KnownNat (GetClassTag t)
+                         , KnownNat (GetRecordSize (GetClassBody t))
+                         , KnownNat (GetRecordSize (StaticBaseDescriptorContent t)))
+
+type StaticBaseDescriptorContent t =
+    Word8 := GetClassTag t :>: StaticExpandableContent (GetClassBody t)
+
 newtype StaticBaseDescriptor t where
-        StaticBaseDescriptor :: StaticExpandable t -> StaticBaseDescriptor t
-  deriving (Monoid)
+        StaticBaseDescriptor ::
+          BitBox (StaticBaseDescriptorContent t) -> StaticBaseDescriptor t
+    deriving Monoid
 
-deriving instance (KnownExpandable r) => IsBoxContent (StaticExpandable r)
-
-instance (KnownNat (GetClassTag t), IsBoxContent t) =>
-         IsBoxContent (StaticBaseDescriptor t) where
-    boxSize (StaticBaseDescriptor et) =
-        1 + boxSize et
-    boxBuilder (StaticBaseDescriptor et) =
-        word8 (fromIntegral (natVal (Proxy :: Proxy (GetClassTag t))))
-            <> boxBuilder et
+deriving instance (KnownDescriptor t) => IsBoxContent (StaticBaseDescriptor t)
 
 -- * Base Descriptor Class Tags
 
+-- | Family of class tags indexed by a content type
+type family GetClassTag t :: Nat
+type family GetClassBody t :: Type
+
 data ObjectDescr -- TODO
-type instance GetClassTag ObjectDescr = 0x01
+type instance GetClassTag ObjectDescr = 1
 
 data InitialObjectDescr -- TODO
 type instance GetClassTag InitialObjectDescr = 0x02
 
 data ES_Descr -- TODO
 type instance GetClassTag ES_Descr = 0x03
+
+data ES_DescrP a = ES_DescrP -- TODO
+type instance GetClassTag (ES_DescrP a) = 0x03
+type instance GetClassBody (ES_DescrP a) = a
 
 data DecoderConfigDescr -- TODO
 type instance GetClassTag DecoderConfigDescr = 0x04

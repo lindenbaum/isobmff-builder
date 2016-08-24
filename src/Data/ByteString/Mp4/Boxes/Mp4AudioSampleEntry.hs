@@ -24,8 +24,11 @@ mp4Audio = fullBox 0 . Mp4AudioEsdContent
 
 -- | Consists of 'ElementaryStreamDescriptor's
 newtype Mp4AudioEsdContent =
-  Mp4AudioEsdContent ElementaryStreamDescriptor
-  deriving (IsBoxContent, Default)
+  Mp4AudioEsdContent (StaticBaseDescriptor (ES_DescrP ES_Descriptor_Direct_Audio))
+  deriving IsBoxContent
+
+instance Default Mp4AudioEsdContent where
+    def = Mp4AudioEsdContent
 
 type Mp4AudioEsd = FullBox Mp4AudioEsdContent 0
 
