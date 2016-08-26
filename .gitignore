@@ -11,3 +11,4 @@ TAGS
 /.idea/
 /.dir-locals.el
 *.refactored.hs
+/*.html
