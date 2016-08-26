@@ -79,26 +79,26 @@ lumpUp :: Word64 -> L.Builder -> [Word8]
 lumpUp m = L.unpack . L.toLazyByteString . mconcat . replicate (fromIntegral m)
 
 static64 m = lumpUp m $
-    runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static64)
+    runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static64)
 
 static64WithParam m = lumpUp m $
-    runBitStringBuilderHoley (toHoley (Proxy :: Proxy Static64WithParams))
+    runBitStringBuilderHoley (bitStringBuilderHoley (Proxy :: Proxy Static64WithParams))
                         (Tagged m)
                         (Tagged m)
 
 #ifdef FULLBENCHMARKS
 
 static128 m =
-  lumpUp m $ runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static128)
+  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static128)
 
 static256 m =
-  lumpUp m $ runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static256)
+  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static256)
 
 static517 m =
-  lumpUp m $ runBitStringBuilderHoley $ toHoley (Proxy :: Proxy Static517)
+  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley (Proxy :: Proxy Static517)
 
 staticPlain512bitBaseline m =
-  lumpUp m $ runBitStringBuilderHoley $ toHoley
+  lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley
     (Proxy :: Proxy (
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64 :>:
       Field 64 :>: Field 64 :>: Field 64 :>: Field 64
@@ -182,12 +182,12 @@ bitStringWord64Direct m =
     $ mconcat
     $ replicate m
     $ appendBitString
-    $ bitString 0x01020304050607 64
+    $ bitString 64 0x01020304050607
 
 bitStringWord64Holey m =
   lumpUp 1
     $ runBitStringBuilderHoley
     $ mconcat
     $ replicate m
-    $ toHoley
-    $ bitString 0x01020304050607 64
+    $ bitStringBuilderHoley
+    $ bitString 64 0x01020304050607

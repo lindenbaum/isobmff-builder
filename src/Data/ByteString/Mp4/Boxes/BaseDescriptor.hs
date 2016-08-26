@@ -24,9 +24,9 @@ instance (KnownNat (GetClassTag t), IsBoxContent t) =>
 -- * Static base constructor
 
 type StaticBaseDescrHoley t =
-    (KnownDescriptor t, ToHoley BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t))
+    (KnownDescriptor t, BitStringBuilderHoley (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t))
 type StaticBaseDescriptorWithArgs t =
-    ToM BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t)
+    ToBitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t)
 
 staticBaseDescriptorWithArgs :: (StaticBaseDescrHoley t)
                          => t
@@ -34,17 +34,17 @@ staticBaseDescriptorWithArgs :: (StaticBaseDescrHoley t)
 staticBaseDescriptorWithArgs prec = runHoley $ staticBaseDescriptorHoley prec
 
 staticBaseDescriptor :: ( KnownDescriptor t
-                       , ToHoley BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t)
-                       , ToM BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t) ~ (StaticBaseDescriptor t))
+                       , BitStringBuilderHoley (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t)
+                       , ToBitStringBuilder (Proxy (StaticBaseDescriptorContent t)) (StaticBaseDescriptor t) ~ (StaticBaseDescriptor t))
                      => t
                      -> StaticBaseDescriptor t
 staticBaseDescriptor prec = runHoley $ staticBaseDescriptorHoley prec
 
 staticBaseDescriptorHoley :: forall t r .
                           ( KnownDescriptor t
-                          , ToHoley BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) r)
+                          , BitStringBuilderHoley (Proxy (StaticBaseDescriptorContent t)) r)
                           => t
-                          -> Holey (StaticBaseDescriptor t) r (ToM BitStringBuilder (Proxy (StaticBaseDescriptorContent t)) r)
+                          -> Holey (StaticBaseDescriptor t) r (ToBitStringBuilder (Proxy (StaticBaseDescriptorContent t)) r)
 staticBaseDescriptorHoley _ =
   hoistM StaticBaseDescriptor (bitBoxHoley (Proxy :: Proxy (StaticBaseDescriptorContent t)))
 

@@ -67,8 +67,8 @@ bitStringSpaceLeft (BitString _ !len) =
 
 -- | Create a 'BitString' containing @len@ bits from LSB to MSB, properly
 -- masked, such that only @len@ least significant bits are kept..
-bitString :: Word64 -> Int -> BitString
-bitString !b !len = BitString (let !s = bitStringMaxLength - len in ((b `unsafeShiftL` s) `unsafeShiftR` s)) len
+bitString :: Int -> Word64 -> BitString
+bitString !len !b = BitString (let !s = bitStringMaxLength - len in ((b `unsafeShiftL` s) `unsafeShiftR` s)) len
 
 -- | Create an empty 'BitString'.
 emptyBitString :: BitString
@@ -88,7 +88,7 @@ emptyBitString = BitString 0 0
 -- The input values are expected to be in the order of the fields, i.e.:
 --
 -- @
--- runHoley $ toHoley (Proxy :: Proxy TwoFields) 1 2
+-- runHoley $ bitStringBuilderHoley (Proxy :: Proxy TwoFields) 1 2
 -- @
 --
 -- Will result in:
@@ -126,7 +126,7 @@ emptyBitStringBuilderChunk = BitStringBuilderChunk 0 0
 -- | Create a 'BitStringBuilderChunk' with a length given by a 'Proxy' to a type level
 -- 'Nat'.
 bitStringProxyLength :: (KnownChunkSize n) => Proxy n -> Word64 -> BitString
-bitStringProxyLength !plen !v = bitString v fieldLen
+bitStringProxyLength !plen !v = bitString fieldLen v
     where
       !fieldLen = fromIntegral (natVal plen)
 

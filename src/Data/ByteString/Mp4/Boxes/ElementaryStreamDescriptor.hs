@@ -2,11 +2,9 @@
 
 module Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor where
 
-import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.Type.BitRecords
 import Data.ByteString.Mp4.Boxes.BaseDescriptor
-import Data.ByteString.Mp4.Boxes.Expandable
 
 -- * Decoder Specific Info
 -- * Audio Object type -- TODO move into modules

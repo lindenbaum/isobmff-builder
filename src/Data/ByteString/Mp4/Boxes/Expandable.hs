@@ -1,4 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
+
 module Data.ByteString.Mp4.Boxes.Expandable where
 
 import           Prelude hiding ( (.) )
@@ -13,11 +15,11 @@ import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 
 staticExpandable
   :: forall record
-   . (ToM BitStringBuilder
+   . (ToBitStringBuilder
           (Proxy (StaticExpandableContent record))
           (StaticExpandable record)
       ~ StaticExpandable record
-   , ToHoley BitStringBuilder
+   , BitStringBuilderHoley
           (Proxy (StaticExpandableContent record))
           (StaticExpandable record)
    , KnownExpandable record
@@ -27,18 +29,18 @@ staticExpandable = runHoley . staticExpandableHoley
 
 staticExpandableWithArgs
   :: forall record
-   . ( ToHoley BitStringBuilder
+   . ( BitStringBuilderHoley
           (Proxy (StaticExpandableContent record))
           (StaticExpandable record)
    , KnownExpandable record )
-   => Proxy record -> ToM BitStringBuilder (Proxy (StaticExpandableContent record)) (StaticExpandable record)
+   => Proxy record -> ToBitStringBuilder (Proxy (StaticExpandableContent record)) (StaticExpandable record)
 staticExpandableWithArgs = runHoley . staticExpandableHoley
 
 staticExpandableHoley
   :: forall record r
    . ( KnownExpandable record
-     , ToHoley BitStringBuilder (Proxy (StaticExpandableContent record)) r)
-   => Proxy record -> Holey (StaticExpandable record) r (ToM BitStringBuilder (Proxy (StaticExpandableContent record)) r)
+     , BitStringBuilderHoley (Proxy (StaticExpandableContent record)) r)
+   => Proxy record -> Holey (StaticExpandable record) r (ToBitStringBuilder (Proxy (StaticExpandableContent record)) r)
 staticExpandableHoley _ =
   hoistM StaticExpandable (bitBoxHoley (Proxy :: Proxy (StaticExpandableContent record)))
 

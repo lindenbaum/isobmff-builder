@@ -306,18 +306,18 @@ newtype BitBox record where
   BitBox :: Builder -> BitBox record
   deriving (Monoid)
 
-bitBoxWithArgs :: forall record . ToHoley BitStringBuilder (Proxy record) (BitBox record)
-       => Proxy record -> ToM BitStringBuilder (Proxy record) (BitBox record)
+bitBoxWithArgs :: forall record . BitStringBuilderHoley (Proxy record) (BitBox record)
+       => Proxy record -> ToBitStringBuilder (Proxy record) (BitBox record)
 bitBoxWithArgs = runHoley . bitBoxHoley
 
-bitBox :: forall record . (ToHoley BitStringBuilder (Proxy record) (BitBox record),
-                           ToM BitStringBuilder (Proxy record) (BitBox record) ~ (BitBox record))
+bitBox :: forall record . (BitStringBuilderHoley (Proxy record) (BitBox record),
+                           ToBitStringBuilder (Proxy record) (BitBox record) ~ (BitBox record))
        => Proxy record -> BitBox record
 bitBox = bitBoxWithArgs
 
-bitBoxHoley :: forall record r . ToHoley BitStringBuilder (Proxy record) r
-       => Proxy record -> Holey (BitBox record) r (ToM BitStringBuilder (Proxy record) r)
-bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (toHoley px)
+bitBoxHoley :: forall record r . BitStringBuilderHoley (Proxy record) r
+       => Proxy record -> Holey (BitBox record) r (ToBitStringBuilder (Proxy record) r)
+bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (bitStringBuilderHoley px)
 
 
 instance

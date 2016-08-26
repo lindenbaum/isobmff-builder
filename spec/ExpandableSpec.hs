@@ -2,14 +2,12 @@
 module ExpandableSpec (spec) where
 
 
-import           Data.Bits
 import           Data.ByteString.Builder
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.Type.BitRecords
 import qualified Data.ByteString.Lazy                                 as B
 import           Data.ByteString.Mp4.Boxes.Expandable
-import           Data.Word
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -38,13 +36,12 @@ spec = do
           expected = [ 129, 0 ]
       in actual `shouldBe` expected
     it "writes the size (2 ^ 21) as [ 0b10000001, 0b10000000, 0b10000000, 0b00000000 ] " $
-      let actual = B.unpack $ toLazyByteString (boxBuilder (Expandable (ETC 128)))
+      let actual = B.unpack $ toLazyByteString (boxBuilder (Expandable (ETC (2^(21 :: Int)))))
           expected = [ 129, 128, 128, 0 ]
       in actual `shouldBe` expected
-    it "A size of (2 ^ 21) is represented by [ 0b10000001, 0b10000000, 0b10000000, 0b00000000 ] " $
-      let actual :: Word64
-          actual =  ((((1 `shiftL` 7) + 0)  `shiftL` 7) + 0) `shiftL` 7
-          expected = 2 ^ (21 :: Word64)
+    it "writes the size (2 ^ 21 - 1) as [ 0b11111111, 0b11111111, 0b01111111 ] " $
+      let actual = B.unpack $ toLazyByteString (boxBuilder (Expandable (ETC (2^(21 :: Int) - 1))))
+          expected = [ 255, 255, 127 ]
       in actual `shouldBe` expected
     it "writes size according to the spec" $
       property $ \etc@(ETC s) ->
@@ -53,21 +50,14 @@ spec = do
               s +
                    if s < 2 ^ ( 7 :: Int) then  1
               else if s < 2 ^ (14 :: Int) then  2
-              else if s < 2 ^ (21 :: Int) then  3
-              else if s < 2 ^ (28 :: Int) then  4
-              else if s < 2 ^ (35 :: Int) then  5
-              else if s < 2 ^ (42 :: Int) then  6
-              else if s < 2 ^ (49 :: Int) then  7
-              else if s < 2 ^ (56 :: Int) then  8
-              else if s < 2 ^ (63 :: Int) then  9
-                                          else 10
+              else if s < 2 ^ (21 :: Int) then  3 else 4
             actualBoxSize = boxSize (Expandable etc)
             in
               actualBoxSize `shouldBe` expectedBoxSize
 
 
 instance Arbitrary ExpandableTestContent where
-  arbitrary = ETC <$> arbitrary
+  arbitrary = ETC <$> choose (0, 2^(28::Integer) - 1)
 
 newtype ExpandableTestContent =
     ETC Word64
