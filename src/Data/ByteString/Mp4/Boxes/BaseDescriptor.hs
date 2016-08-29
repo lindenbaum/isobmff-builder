@@ -51,11 +51,11 @@ staticBaseDescriptorHoley _ =
 -- | base descriptors that are known at compile time
 
 type KnownDescriptor t = ( KnownNat (GetClassTag t)
-                         , KnownNat (GetRecordSize (GetClassBody t))
-                         , KnownNat (GetRecordSize (StaticBaseDescriptorContent t)))
+                         , KnownNat (BitRecordSize (GetClassBody t))
+                         , KnownNat (BitRecordSize (StaticBaseDescriptorContent t)))
 
 type StaticBaseDescriptorContent t =
-    Word8 := GetClassTag t :>: StaticExpandableContent (GetClassBody t)
+    FieldU8 := GetClassTag t :>: StaticExpandableContent (GetClassBody t)
 
 newtype StaticBaseDescriptor t where
         StaticBaseDescriptor ::
@@ -68,7 +68,7 @@ deriving instance (KnownDescriptor t) => IsBoxContent (StaticBaseDescriptor t)
 
 -- | Family of class tags indexed by a content type
 type family GetClassTag t :: Nat
-type family GetClassBody t :: Type
+type family GetClassBody t :: BitRecord
 
 data ObjectDescr -- TODO
 type instance GetClassTag ObjectDescr = 1

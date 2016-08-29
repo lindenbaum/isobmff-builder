@@ -97,7 +97,7 @@ library
                      , text >= 1.2.2.1 && < 2
                      , type-spec >= 0.2
                      , mtl >= 2.2 && < 3
-                     , pretty-types >= 0.1.1 && < 0.2
+                     , pretty-types >= 0.2.1 && < 0.3
                      , template-haskell >= 2.11 && < 3
   default-language:    Haskell2010
   ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind
@@ -128,6 +128,7 @@ library
                      , StandaloneDeriving
                      , TemplateHaskell
                      , TupleSections
+                     , TypeApplications
                      , TypeFamilies
                      , TypeInType
                      , TypeOperators
@@ -158,7 +159,7 @@ test-suite spec
                      , mtl >= 2.2 && < 3
                      , QuickCheck
                      , tagged >= 0.8 && < 1
-                     , pretty-types >= 0.1.1 && < 0.2
+                     , pretty-types >= 0.2.1 && < 0.3
   default-language:    Haskell2010
   default-extensions:  BangPatterns
                      , ConstraintKinds
@@ -183,6 +184,7 @@ test-suite spec
                      , StandaloneDeriving
                      , TemplateHaskell
                      , TupleSections
+                     , TypeApplications
                      , TypeFamilies
                      , TypeInType
                      , TypeOperators
@@ -226,6 +228,7 @@ benchmark bit-records
                      , StandaloneDeriving
                      , TemplateHaskell
                      , TupleSections
+                     , TypeApplications
                      , TypeFamilies
                      , TypeInType
                      , TypeOperators

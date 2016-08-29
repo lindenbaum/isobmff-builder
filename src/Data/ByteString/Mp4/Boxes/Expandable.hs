@@ -52,29 +52,29 @@ deriving instance (KnownExpandable r) => IsBoxContent (StaticExpandable r)
 
 type KnownExpandable record =
   (KnownNat
-    (GetRecordSize
+    (BitRecordSize
       (StaticExpandableContent record)))
 
 type StaticExpandableContent record =
-  ExpandableSize (ShiftR 64 (GetRecordSize record) 3) :>: record
+  ExpandableSize (ShiftR 64 (BitRecordSize (ToBitRecord record)) 3) :>: (ToBitRecord record)
 
-type family ExpandableSize (s :: Nat) where
-  ExpandableSize 0 = Field 0
+type family ExpandableSize (s :: Nat) :: BitRecord where
+  ExpandableSize 0 = 'EmptyBitRecord
   ExpandableSize s =
     If (s <=? 127)
       (                                       ExpandableSizeLastChunk s)
       (ExpandableSizeNext (ShiftR 64 s 7) :>: ExpandableSizeLastChunk s)
 
-type ExpandableSizeLastChunk (s :: Nat) = Flag := 0 :>: (Field 7 := s)
+type ExpandableSizeLastChunk (s :: Nat) = Field 1 := 0 :>: (Field 7 := s)
 
-type family ExpandableSizeNext (s :: Nat) where
-  ExpandableSizeNext 0 = Field 0
+type family ExpandableSizeNext (s :: Nat) :: BitRecord where
+  ExpandableSizeNext 0 = 'EmptyBitRecord
   ExpandableSizeNext s =
     If (s <=? 127)
       (                                        ExpandableSizeNextChunk s)
       (ExpandableSizeNext (ShiftR 64 s 7) :>:  ExpandableSizeNextChunk s)
 
-type ExpandableSizeNextChunk (s :: Nat) = Flag := 1 :>: (Field 7 := s)
+type ExpandableSizeNextChunk (s :: Nat) = Field 1 := 1 :>: (Field 7 := s)
 
 
 -- * Runtime-value Expandable

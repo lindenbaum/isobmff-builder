@@ -27,7 +27,7 @@ spec = do
         in actualStr `shouldBe` "1000000100000010"
 
     it "has a boxSize of 3 when using a 16-bit body value" $
-      boxSize (staticExpandable (Proxy :: Proxy (Field  16 := 1234 ))) `shouldBe` BoxSize 3
+      boxSize (staticExpandable (Proxy :: Proxy (Field 16 := 1234 ))) `shouldBe` BoxSize 3
     it "has a boxBuilder that writes the body in big endian byte order for a 32-bit body value" $
       B.unpack (toLazyByteString (boxBuilder (staticExpandable (Proxy :: Proxy (Field  32 := 0x12345678 )))))
       `shouldBe` [4, 0x12, 0x34, 0x56, 0x78]

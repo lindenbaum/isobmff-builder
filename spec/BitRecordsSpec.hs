@@ -26,11 +26,11 @@ basicsSpec = do
               1 `ShouldBe` GetFieldSize (FlagJust 'Nothing)
           -*  1 `ShouldBe` GetFieldSize (FlagJust ('Just "Blah"))
           -*  1 `ShouldBe` GetFieldSize (FlagNothing ('Just "Blah"))
-          -*  0 `ShouldBe` GetRecordSize 'Nothing
-          -*  32 `ShouldBe` GetRecordSize ('Just Word32)
-          -*  0 `ShouldBe` GetRecordSize '[]
-          -*  10 `ShouldBe` GetRecordSize '[Field 10]
-          -*  25 `ShouldBe` GetRecordSize '[Field 10, Field 15]
+          -*  0 `ShouldBe` BitRecordSize 'Nothing
+          -*  32 `ShouldBe` BitRecordSize ('Just Word32)
+          -*  0 `ShouldBe` BitRecordSize '[]
+          -*  10 `ShouldBe` BitRecordSize '[Field 10]
+          -*  25 `ShouldBe` BitRecordSize '[Field 10, Field 15]
           -*  1 `ShouldBe` GetFieldSize Bool
           -*  1 `ShouldBe` GetFieldSize 'True
           -*  1 `ShouldBe` GetFieldSize 'False
@@ -101,9 +101,9 @@ arraySpec =
 
               "The record size works"
               ~~~~~~~~~~~~~~~~~~~~~~~~
-                  1 `ShouldBe` GetRecordSize (RecArray Flag 1)
-              -* 91 `ShouldBe` GetRecordSize (("foo" :=> Bool :>: Word8) ^^ 10 :>: Flag)
-              -* 91 `ShouldBe` GetRecordSize (RecArray ("foo" :=> Bool :>: Word8) 10 :>: Flag)
+                  1 `ShouldBe` BitRecordSize (RecArray Flag 1)
+              -* 91 `ShouldBe` BitRecordSize (("foo" :=> Bool :>: Word8) ^^ 10 :>: Flag)
+              -* 91 `ShouldBe` BitRecordSize (RecArray ("foo" :=> Bool :>: Word8) 10 :>: Flag)
             checkArrayRec = Valid
         runIO $ print checkArrayRec
       describe "showRecord" $
@@ -143,29 +143,29 @@ sizedSpec =
 
             "Sized of a list"
             ~~~~~~~~~~~~~~~~~~
-                0 `ShouldBe` GetRecordSize (Sized 'NoSizeField '[])
-            -*  3 `ShouldBe` GetRecordSize (Sized 'NoSizeField '[Field 3])
-            -*  6 `ShouldBe` GetRecordSize (Sized 'NoSizeField '[Field 3, Field 3])
-            -*  8 `ShouldBe` GetRecordSize (Sized 'SizeField8 '[])
-            -* 11 `ShouldBe` GetRecordSize (Sized 'SizeField8 '[Field 3])
-            -* 14 `ShouldBe` GetRecordSize (Sized 'SizeField8 '[Field 3, Field 3])
-            -* 16 `ShouldBe` GetRecordSize (Sized 'SizeField16 '[])
-            -* 19 `ShouldBe` GetRecordSize (Sized 'SizeField16 '[Field 3])
-            -* 22 `ShouldBe` GetRecordSize (Sized 'SizeField16 '[Field 3, Field 3])
-            -* 32 `ShouldBe` GetRecordSize (Sized 'SizeField32 '[])
-            -* 35 `ShouldBe` GetRecordSize (Sized 'SizeField32 '[Field 3])
-            -* 38 `ShouldBe` GetRecordSize (Sized 'SizeField32 '[Field 3, Field 3])
+                0 `ShouldBe` BitRecordSize (Sized 'NoSizeField '[])
+            -*  3 `ShouldBe` BitRecordSize (Sized 'NoSizeField '[Field 3])
+            -*  6 `ShouldBe` BitRecordSize (Sized 'NoSizeField '[Field 3, Field 3])
+            -*  8 `ShouldBe` BitRecordSize (Sized 'SizeField8 '[])
+            -* 11 `ShouldBe` BitRecordSize (Sized 'SizeField8 '[Field 3])
+            -* 14 `ShouldBe` BitRecordSize (Sized 'SizeField8 '[Field 3, Field 3])
+            -* 16 `ShouldBe` BitRecordSize (Sized 'SizeField16 '[])
+            -* 19 `ShouldBe` BitRecordSize (Sized 'SizeField16 '[Field 3])
+            -* 22 `ShouldBe` BitRecordSize (Sized 'SizeField16 '[Field 3, Field 3])
+            -* 32 `ShouldBe` BitRecordSize (Sized 'SizeField32 '[])
+            -* 35 `ShouldBe` BitRecordSize (Sized 'SizeField32 '[Field 3])
+            -* 38 `ShouldBe` BitRecordSize (Sized 'SizeField32 '[Field 3, Field 3])
 
             -/-
 
             "Sized of a RecArray"
             ~~~~~~~~~~~~~~~~~~~~~
-                0 `ShouldBe` GetRecordSize (Sized 'NoSizeField (RecArray Word16 0))
-            -* 16 `ShouldBe` GetRecordSize (Sized 'NoSizeField (RecArray Word16 1))
-            -* 32 `ShouldBe` GetRecordSize (Sized 'NoSizeField (RecArray Word16 2))
-            -* 32 `ShouldBe` GetRecordSize (Sized 'SizeField32 (RecArray Word16 0))
-            -* 48 `ShouldBe` GetRecordSize (Sized 'SizeField32 (RecArray Word16 1))
-            -* 64 `ShouldBe` GetRecordSize (Sized 'SizeField32 (RecArray Word16 2))
+                0 `ShouldBe` BitRecordSize (Sized 'NoSizeField (RecArray Word16 0))
+            -* 16 `ShouldBe` BitRecordSize (Sized 'NoSizeField (RecArray Word16 1))
+            -* 32 `ShouldBe` BitRecordSize (Sized 'NoSizeField (RecArray Word16 2))
+            -* 32 `ShouldBe` BitRecordSize (Sized 'SizeField32 (RecArray Word16 0))
+            -* 48 `ShouldBe` BitRecordSize (Sized 'SizeField32 (RecArray Word16 1))
+            -* 64 `ShouldBe` BitRecordSize (Sized 'SizeField32 (RecArray Word16 2))
 
           checkSized = Valid
       in runIO $ print checkSized
@@ -210,7 +210,7 @@ type TestRecAligned =
   "rab" :=> Field 8
 
 checkTestRecAligned
-  :: Expect '[ ShouldBe 96        (GetRecordSize TestRecAligned)
+  :: Expect '[ ShouldBe 96        (BitRecordSize TestRecAligned)
              , ShouldBe '(0, 7)   (GetFieldPositionUnsafe TestRecAligned "bar")
              , ShouldBe '(16, 23) (GetFieldPositionUnsafe TestRecAligned "baz")
              , ShouldBe '(56, 63) (GetFieldPositionUnsafe TestRecAligned "foo")
@@ -228,7 +228,7 @@ type TestRecUnAligned =
             Field 8  := 0xfe
 
 checkTestRecUnAligned
-  :: Expect '[ ShouldBe 71        (GetRecordSize TestRecUnAligned)
+  :: Expect '[ ShouldBe 71        (BitRecordSize TestRecUnAligned)
              , ShouldBe '(0, 7)   (GetFieldPositionUnsafe TestRecUnAligned "bar")
              , ShouldBe '(16, 22) (GetFieldPositionUnsafe TestRecUnAligned "baz")
              , ShouldBe '(55, 62) (GetFieldPositionUnsafe TestRecUnAligned "foo")
@@ -477,7 +477,7 @@ spec = do
   arraySpec
   describe "The Set of Type Functions" $
     it "is sound" $ do
-      print (Valid :: Expect (GetRecordSize (Flag :>: Field 7) `Is` 8))
+      print (Valid :: Expect (BitRecordSize (Flag :>: Field 7) `Is` 8))
       print testBitHasFields
       print testTakeLastN
       print testRem

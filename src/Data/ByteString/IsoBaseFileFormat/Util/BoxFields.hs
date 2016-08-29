@@ -321,7 +321,7 @@ bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuil
 
 
 instance
-      ( KnownNat (GetRecordSize content) )
+      ( KnownNat (BitRecordSize content) )
    => IsBoxContent (BitBox content) where
   boxSize cnt =
     -- convert from bits to bytes

@@ -6,6 +6,7 @@ import Data.ByteString.IsoBaseFileFormat.Boxes
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
+import Data.ByteString.Mp4.Boxes.BaseDescriptor
 
 -- | Create an 'StaticMp4AudioSampleEntry'
 staticMp4AudioSampleEntry
@@ -18,16 +19,16 @@ staticMp4AudioSampleEntry ase eds = const eds <$> ase
 type StaticMp4AudioSampleEntry = AudioSampleEntry (Box StaticMp4AudioEsd)
 
 -- | Create an mp4 audio elementary stream descriptor full box
-staticStaticMp4Audio
-  :: StaticESDescriptorAudio -> Box StaticMp4AudioEsd
-staticStaticMp4Audio = fullBox 0 . StaticMp4AudioEsdContent
+staticMp4Audio
+  :: Box StaticMp4AudioEsd
+staticMp4Audio = fullBox 0 $ StaticMp4AudioEsdContent $ staticESDescriptorAudio 1 1
 
 -- | Consists of 'ElementaryStreamDescriptor's
-newtype StaticMp4AudioEsdContent = StaticMp4AudioEsdContent StaticESDescriptorAudio
+newtype StaticMp4AudioEsdContent = StaticMp4AudioEsdContent (StaticBaseDescriptor ESDescriptorAudio)
   deriving IsBoxContent
 
 instance Default StaticMp4AudioEsdContent where
-    def = StaticMp4AudioEsdContent $ staticESDescriptorAudio 1 (Tagged False) (Tagged False) 1
+    def = StaticMp4AudioEsdContent $ staticESDescriptorAudio 1 1
 
 type StaticMp4AudioEsd = FullBox StaticMp4AudioEsdContent 0
 

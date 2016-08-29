@@ -32,11 +32,11 @@ type instance
      charCount
 
 type instance
-     GetFieldSize ('SizedString str charCount byteCount bitCount) =
-     bitCount
+     ToBitRecordField ('SizedString str charCount byteCount bitCount) =
+     'BitRecordField 'Nothing () bitCount ('Just ('SizedString str charCount byteCount bitCount))
 
 type instance
-     PrettyRecord ('SizedString str charCount byteCount bitCount) =
+     ToPretty ('SizedString str charCount byteCount bitCount) =
        PrettySurrounded (PutStr "<<") (PutStr ">>")
         (PutStr "utf-8[" <++> PutNat charCount <++> PutStr "]:" <+> PutStr str)
 

@@ -7,8 +7,8 @@ import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 
 
 
-type ESDescriptorAudioContent dependsOnEsId =
-                     "esId" :=> Word16
+type ESDescriptor dependsOnEsId url ocrEsId =
+                     "esId" :=> FieldU16
   :>: (FlagJust dependsOnEsId)
   :>: (FlagJust url)
   :>: (FlagJust ocrEsId)
@@ -20,16 +20,19 @@ type ESDescriptorAudioContent dependsOnEsId =
 
 -- * Interface from ISO 14496-3 (Audio)
 
-staticESDescriptorAudio :: StaticBaseDescriptorWithArgs (ES_DescrP ESDescriptorAudioContent)
+staticESDescriptorAudio :: StaticBaseDescriptorWithArgs ESDescriptorAudio
 staticESDescriptorAudio =
-    staticBaseDescriptorWithArgs (ES_DescrP :: ES_DescrP ESDescriptorAudioContent)
+  staticBaseDescriptorWithArgs (ES_DescrP :: ESDescriptorAudio)
 
-type StaticESDescriptorAudio = StaticBaseDescriptor (ES_DescrP ESDescriptorAudioContent)
+type ESDescriptorAudio = ES_DescrP (ESDescriptor NoBitRecord NoBitRecord NoBitRecord)
 
-type AudioSpecificConfig audiConfig = ()
+data AudioObjectType :: Nat -> Type
 
-type AudioObjectType n = If (n <=? 30) (AudioObjectTypeSmall n) (AudioObjectTypeExt n)
+type instance ToBitRecord (AudioObjectType n) =
+  AudioObjectTypeXField1 n :>: AudioObjectTypeXField2 n
 
-type AudioObjectTypeSmall n = "audioObjectType" :=> Field 5 := n
+type family AudioObjectTypeXField1 (n :: Nat) :: BitRecordField Nat where
+  AudioObjectTypeXField1 n = If (30 <=? n) (Field 5 := n) (Field 5 := 31)
 
-type AudioObjectTypeExt n = AudioObjectTypeSmall 31 :>: "audioObjectTypeExt" :=> Field 6 := (n - 32)
+type family AudioObjectTypeXField2 (n :: Nat) :: BitRecord where
+  AudioObjectTypeXField2 n = If (30 <=? n) 'EmptyBitRecord (ToBitRecord (Field 6 := (n - 32)))

@@ -64,12 +64,12 @@ aboutStatic64 ::
   "Test Types Sizes"
   ########################
 
-        It's "64 bit long: Static64" (ShouldBe 64 (GetRecordSize Static64))
-     -* It's "64 bit long: Static64WithParams" (ShouldBe 64 (GetRecordSize Static64WithParams))
+        It's "64 bit long: Static64" (ShouldBe 64 (BitRecordSize Static64))
+     -* It's "64 bit long: Static64WithParams" (ShouldBe 64 (BitRecordSize Static64WithParams))
 #ifdef FULLBENCHMARKS
-     -* It's "128 bit long" (ShouldBeTrue ((GetRecordSize Static128) == 128))
-     -* It's "256 bit long" (ShouldBeTrue ((GetRecordSize Static256) == 256))
-     -* It's "517 bit long" (ShouldBeTrue ((GetRecordSize Static517) == 517))
+     -* It's "128 bit long" (ShouldBeTrue ((BitRecordSize Static128) == 128))
+     -* It's "256 bit long" (ShouldBeTrue ((BitRecordSize Static256) == 256))
+     -* It's "517 bit long" (ShouldBeTrue ((BitRecordSize Static517) == 517))
 #endif
 
 aboutStatic64 =
