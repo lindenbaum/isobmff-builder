@@ -17,14 +17,14 @@ spec = do
   describe "StaticExpandable" $ do
     describe "ExpandableSizeLastChunk" $
       it "renders both 2 and 130 as 00000010 " $ do
-        let actual130 = showRecord (Proxy :: Proxy (ExpandableSizeLastChunk 130))
-            actual2 = showRecord (Proxy :: Proxy (ExpandableSizeLastChunk 2))
+        let actual130 = bitStringPrinter (Proxy :: Proxy (ExpandableSizeLastChunk 130))
+            actual2 = bitStringPrinter (Proxy :: Proxy (ExpandableSizeLastChunk 2))
         actual130 `shouldBe` actual2
-        actual2 `shouldBe` "00000010"
+        actual2 `shouldBe` "<< 02 >>"
     describe "ExpandableSize" $
       it "creates a stdandard conform size representation for the size 130" $
-        let actualStr = showRecord (Proxy :: Proxy (ExpandableSize 130))
-        in actualStr `shouldBe` "1000000100000010"
+        let actualStr = bitStringPrinter (Proxy :: Proxy (ExpandableSize 130))
+        in actualStr `shouldBe` "<< 81 02 >>"
 
     it "has a boxSize of 3 when using a 16-bit body value" $
       boxSize (staticExpandable (Proxy :: Proxy (Field 16 := 1234 ))) `shouldBe` BoxSize 3

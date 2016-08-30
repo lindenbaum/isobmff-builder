@@ -6,6 +6,7 @@ module Data.Type.BitRecords.SizedString
   where
 
 import Data.Type.BitRecords.Core
+import Data.Type.BitRecords.Sized
 import Data.Type.BitRecords.Builder.Holey
 import Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import qualified Language.Haskell.TH as TH
@@ -33,7 +34,14 @@ type instance
 
 type instance
      ToBitRecordField ('SizedString str charCount byteCount bitCount) =
-     'BitRecordField 'Nothing () bitCount ('Just ('SizedString str charCount byteCount bitCount))
+     'MkField SizedString bitCount := 'SizedString str charCount byteCount bitCount
+
+type instance
+     ToBitRecord (str :: SizedString) =
+      'ReplacePretty (ToPretty str) ('BitRecordMember (ToBitRecordField str))
+
+type instance
+     ToPretty SizedString = PutStr "SizedString"
 
 type instance
      ToPretty ('SizedString str charCount byteCount bitCount) =
@@ -53,10 +61,9 @@ utf8 = TH.QuasiQuoter undefined undefined mkSizedStr undefined
                  byteCountT = TH.LitT (TH.NumTyLit byteCount)
                  bitCountT = TH.LitT (TH.NumTyLit (8 * byteCount))
              return $
-               TH.PromotedT 'SizedString `TH.AppT` strT `TH.AppT`
-               charCountT `TH.AppT` byteCountT `TH.AppT` bitCountT
+               TH.PromotedT 'SizedString `TH.AppT` strT `TH.AppT` charCountT `TH.AppT` byteCountT `TH.AppT` bitCountT
 
-instance forall str charCount byteCount bitCount r . KnownSymbol str
-  => BitStringBuilderHoley (Proxy ('SizedString str charCount byteCount bitCount)) r where
+instance forall str charCount byteCount bitCount f a . KnownSymbol str =>
+  BitStringBuilderHoley (Proxy ('AssignF ('SizedString str charCount byteCount bitCount) f)) a where
   bitStringBuilderHoley _ =
     immediate (appendStrictByteString (E.encodeUtf8 (T.pack (symbolVal (Proxy :: Proxy str)))))

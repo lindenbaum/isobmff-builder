@@ -65,34 +65,34 @@ basicsSpec = do
         bitStringPrinter (Proxy :: Proxy (FlagNothing 'Nothing)) `shouldBe` "<< 80 >>"
   describe "showRecord" $ do
     describe "Maybe" $ do
-      it "prints 'Just x' as 'x'" $
-        showRecord (Proxy :: Proxy (ToBitRecord ('Just 'True))) `shouldBe` "T"
+      it "prints 'Just x'" $
+        showRecord (Proxy :: Proxy (ToBitRecord ('Just 'True))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'True"
       it "prints nothing for 'Nothing'" $
         showRecord (Proxy :: Proxy (ToBitRecord ('Nothing))) `shouldBe` ""
     describe "List" $ do
-      it "prints '[x]' as 'x'" $
-        showRecord (Proxy :: Proxy (ToBitRecord ('[ 'True ]))) `shouldBe` "T"
-      it "prints '[x1, x2, x3]' as 'x1x2x3'" $
-        showRecord (Proxy :: Proxy (ToBitRecord ('[ Bool, Bool, Bool ]))) `shouldBe` "BBB"
+      it "prints '[x]'" $
+        showRecord (Proxy :: Proxy (ToBitRecord ('[ 'True ]))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'True"
+      it "prints '[x1, x2, x3]'" $
+        showRecord (Proxy :: Proxy (ToBitRecord ('[ Bool, Bool, Bool ]))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\nField:\n  Demote Rep: Bool\n  Bits: 1\nField:\n  Demote Rep: Bool\n  Bits: 1"
       it "prints nothing for '[]'" $
         showRecord (Proxy :: Proxy (ToBitRecord ('[]))) `shouldBe` ""
     describe "Bool" $ do
-      it "prints a 'T' if the parameter is 'True" $
-        showRecord (Proxy :: Proxy (ToBitRecord ('True))) `shouldBe` "T"
-      it "prints a 'F' if the parameter is 'False" $
-        showRecord (Proxy :: Proxy (ToBitRecord ('False))) `shouldBe` "F"
-      it "prints a 'B' if the parameter is Bool" $
-        showRecord (Proxy :: Proxy (ToBitRecord Bool)) `shouldBe` "B"
+      it "prints 'True" $
+        showRecord (Proxy :: Proxy (ToBitRecord ('True))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'True"
+      it "prints 'False" $
+        showRecord (Proxy :: Proxy (ToBitRecord ('False))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'False"
+      it "prints a Bool" $
+        showRecord (Proxy :: Proxy (ToBitRecord Bool)) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1"
     describe "FlagJust" $ do
-      it "prints a 'T' if the parameter is 'Just ..'" $
-        showRecord (Proxy :: Proxy (ToBitRecord (FlagJust ('Just "123")))) `shouldBe` "T"
-      it "prints a 'F' if the parameter is 'Nothing'" $
-        showRecord (Proxy :: Proxy (ToBitRecord (FlagJust 'Nothing))) `shouldBe` "F"
+      it "prints a 'FlagJust 'Just ..'" $
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagJust ('Just "123")))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'True"
+      it "prints a 'FlagJust 'Nothing'" $
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagJust 'Nothing))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'False"
     describe "FlagNothing" $ do
-      it "prints a 'F' if the parameter is 'Just ..'" $
-        showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing ('Just "123")))) `shouldBe` "F"
-      it "prints a 'T' if the parameter is 'Nothing'" $
-        showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing 'Nothing))) `shouldBe` "T"
+      it "prints 'FlagNothing 'Just ..'" $
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing ('Just "123")))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'False"
+      it "prints a 'FlagNothing 'Nothing'" $
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing 'Nothing))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'True"
 
 arraySpec =
     describe "RecArray" $ do
@@ -110,8 +110,8 @@ arraySpec =
         runIO $ print checkArrayRec
       describe "showRecord" $
         it "appends its body n times" $
-        let expected = "<<utf-8[5]: hello>><<utf-8[5]: hello>><<utf-8[5]: hello>><<utf-8[5]: hello>><<utf-8[5]: hello>>"
-            actual = showRecord (Proxy :: Proxy ( [utf8|hello|] ^^ 5))
+        let expected = "<<utf-8[5]: hello>>\n<<utf-8[5]: hello>>\n<<utf-8[5]: hello>>\n<<utf-8[5]: hello>>\n<<utf-8[5]: hello>>"
+            actual = showRecord (Proxy @ (ToBitRecord ([utf8|hello|] ^^ 5)))
             in actual `shouldBe` expected
       describe "bitStringBuilder" $
         it "writes its contents n times to the builder" $
@@ -127,19 +127,10 @@ sizedSpec =
              "Sized"
             #########
 
-            "BitRecordFieldSize (of) a SizeField"
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                0 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'NoSizeField)
-            -*  8 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'SizeField8)
-            -* 16 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'SizeField16)
-            -* 32 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'SizeField32)
-
-            -- -/-
-
-            -- "SizedString"
-            -- ~~~~~~~~~~~~~~~
-            --     88 `ShouldBe` BitRecordFieldSize [utf8|Hello World|]
-            -- -* 104 `ShouldBe` BitRecordFieldSize [utf8|Heλλo World|]
+            "SizedString"
+            ~~~~~~~~~~~~~~~
+                88 `ShouldBe` BitRecordSize (ToBitRecord [utf8|Hello World|])
+            -* 104 `ShouldBe` BitRecordSize (ToBitRecord [utf8|Heλλo World|])
 
             -- -/-
 
@@ -174,31 +165,36 @@ sizedSpec =
     describe "showRecord" $ do
       describe "SizedString" $
         it "renders a string containing wide utf-8 characters to a header containing the number of chars and the actual string" $
-        showRecord (Proxy :: Proxy [utf8|Heλλo World!|]) `shouldBe` "<<utf-8[12]: Heλλo World!>>"
-      describe "Sized (SizeField16 SizedString)" $
+        showRecord (Proxy :: Proxy (ToBitRecord [utf8|Heλλo World!|])) `shouldBe` "<<utf-8[12]: Heλλo World!>>"
+      describe "Sized SizeField16 SizedString" $
         it "renders the number bytes not chars as the size field value" $
-        showRecord (Proxy :: Proxy (Sized 'SizeField16 [utf8|Heλλo World!|])) `shouldBe` "000c: <<utf-8[12]: Heλλo World!>>"
+        showRecord (Proxy :: Proxy (Sized16 [utf8|Heλλo World!|])) `shouldBe` "000c: <<utf-8[12]: Heλλo World!>>"
     describe "bitStringBuilder" $ do
       describe "no length prefix" $
         it "renders no size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy [utf8|ABC|])
+        bitStringPrinter (Proxy :: Proxy (ToBitRecord [utf8|ABC|]))
         `shouldBe`
         "<< 41 42 43 >>"
       describe "8-bit length prefix" $
         it "renders a single byte size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (Sized 'SizeField8 [utf8|ABC|]))
+        bitStringPrinter (Proxy :: Proxy (Sized8 [utf8|ABC|]))
         `shouldBe`
         "<< 03 41 42 43 >>"
       describe "16-bit length prefix" $
         it "renders a big endian 16 bit size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (Sized 'SizeField16 [utf8|ABC|]))
+        bitStringPrinter (Proxy :: Proxy (Sized16 [utf8|ABC|]))
         `shouldBe`
         "<< 00 03 41 42 43 >>"
       describe "32-bit length prefix" $
         it "renders a big endian 32 bit size prefix and the string as UTF-8 bytes" $
-        bitStringPrinter (Proxy :: Proxy (Sized 'SizeField32 [utf8|ABC|]))
+        bitStringPrinter (Proxy :: Proxy (Sized32 [utf8|ABC|]))
         `shouldBe`
         "<< 00 00 00 03 41 42 43 >>"
+      describe "64-bit length prefix" $
+        it "renders a big endian 64 bit size prefix and the string as UTF-8 bytes" $
+        bitStringPrinter (Proxy :: Proxy (Sized64 [utf8|ABC|]))
+        `shouldBe`
+        "<< 00 00 00 00 00 00 00 03 41 42 43 >>"
 
 type TestRecAligned =
   "bar" :=> Field 8       :>:
@@ -212,13 +208,7 @@ type TestRecAligned =
   "rab" :=> Field 8
 
 checkTestRecAligned
-  :: Expect '[ ShouldBe 96        (BitRecordSize TestRecAligned)
-             , ShouldBe '(0, 7)   (GetFieldPositionUnsafe TestRecAligned "bar")
-             , ShouldBe '(16, 23) (GetFieldPositionUnsafe TestRecAligned "baz")
-             , ShouldBe '(56, 63) (GetFieldPositionUnsafe TestRecAligned "foo")
-             , ShouldBe '(72, 79) (GetFieldPositionUnsafe TestRecAligned "oof")
-             , ShouldBe '(88, 95) (GetFieldPositionUnsafe TestRecAligned "rab")
-             ]
+  :: Expect '[ ShouldBe 96        (BitRecordSize TestRecAligned)  ]
 checkTestRecAligned = Valid
 
 type TestRecUnAligned =
@@ -230,21 +220,8 @@ type TestRecUnAligned =
             Field 8  := 0xfe
 
 checkTestRecUnAligned
-  :: Expect '[ ShouldBe 71        (BitRecordSize TestRecUnAligned)
-             , ShouldBe '(0, 7)   (GetFieldPositionUnsafe TestRecUnAligned "bar")
-             , ShouldBe '(16, 22) (GetFieldPositionUnsafe TestRecUnAligned "baz")
-             , ShouldBe '(55, 62) (GetFieldPositionUnsafe TestRecUnAligned "foo")
-             ]
+  :: Expect '[ ShouldBe 71        (BitRecordSize TestRecUnAligned) ]
 checkTestRecUnAligned = Valid
-
-type TestHasField =
-       "foo" :=> Flag
-   :>:           Field 4
-   :>: "bar" :=> Field 2
-testBitHasFields
-  :: Expect '(ShouldBeTrue (HasField TestHasField "foo"),
-              ShouldBeTrue (HasField TestHasField "bar"))
-testBitHasFields = Valid
 
 testTakeLastN ::
   "Taking the last n elements of a list" #######################################
@@ -255,7 +232,6 @@ testTakeLastN ::
     -* TakeLastN 5 '[1,2,3] `ShouldBe` '[1,2,3]
 
 testTakeLastN = Valid
-
 
 testRem
   :: Expect '[ Rem 0 3 `ShouldBe` 0
@@ -440,38 +416,6 @@ testAlign
             ]
 testAlign = Valid
 
-type TestField0 =  ToBitRecord ("test" :=> Field 19)
-testFieldPosition0
-   :: Expect (GetFieldPositionUnsafe TestField0 "test" `ShouldBe` '(0,18))
-testFieldPosition0 = Valid
-
-type TestField1 =
-      Field 1
-  :>: "foo" :=> Flag
-  :>: Field 8
-  :>: "bar" :=> Field 5
-  :>: "baz" :=> Field 9
-
-testFieldPosition1Foo
-   :: Expect (GetFieldPositionUnsafe TestField1 "foo" `ShouldBe` '(1,1))
-testFieldPosition1Foo = Valid
-
-testFieldPosition1Bar
-   :: Expect (GetFieldPositionUnsafe TestField1 "bar" `ShouldBe` '(10,14))
-testFieldPosition1Bar = Valid
-
-testFieldPosition1Baz
-   :: Expect (Try (GetFieldPosition TestField1 "baz") `ShouldBe` '(15,23))
-testFieldPosition1Baz = Valid
-
-testFieldPositionToList
-   :: Expect
-       (FieldPostitionToList
-         '(15,23)
-       `ShouldBe`
-       '[15,16,17,18,19,20,21,22,23])
-testFieldPositionToList = Valid
-
 spec :: Spec
 spec = do
   sizedSpec
@@ -480,49 +424,18 @@ spec = do
   describe "The Set of Type Functions" $
     it "is sound" $ do
       print (Valid :: Expect (BitRecordSize (Flag :>: Field 7) `Is` 8))
-      print testBitHasFields
       print testTakeLastN
       print testRem
       print testRemPow2
       print testDiv
       print testNatBits
       print testAlign
-      print testFieldPosition0
-      print testFieldPosition1Foo
-      print testFieldPosition1Bar
-      print testFieldPosition1Baz
-      print testFieldPositionToList
       print checkTestRecAligned
       print checkTestRecUnAligned
   describe "showRecord" $ do
     it "prints (Field 4 :>: (Field 4 := 0x96)) to \"<..>0110\"" $
       let actual = showRecord (Proxy :: Proxy (Field 4 :>: (Field 4 := 0x96)))
-          in actual `shouldBe` "????0110"
-  describe "Field-Getter" $ do
-    it "returns False for flag 'foo'" $
-      getFlag
-        (Proxy :: Proxy "foo")
-        (Proxy :: Proxy ("no" :=> Flag :>: "foo" :=> Flag ))
-        (0xd :: Word8)
-       `shouldBe` False
-    it "returns True for flag 'foo'" $
-      getFlag
-         (Proxy :: Proxy "foo")
-         (Proxy :: Proxy ("no" :=> Flag :>: "foo" :=> Flag ))
-         (0xf :: Word8)
-       `shouldBe` True
-    it "returns 0x1 for field 'foo'" $
-      getField
-        (Proxy :: Proxy "foo")
-        (Proxy :: Proxy (Field 16 :>: "foo" :=> Flag))
-        (0x00010000 :: Word32)
-       `shouldBe` (1 :: Word32)
-    it "returns 0xcafe for field 'foo'" $
-      getField
-        (Proxy :: Proxy "foo")
-        (Proxy :: Proxy (Field 13 :>: "foo" :=> Field 16))
-        (0xcafe0000 `shiftR` 3 :: Word32)
-       `shouldBe` (0xcafe :: Word32)
+          in actual `shouldBe` "Field:\n  Demote Rep: Word64\n  Bits: 4\nField:\n  Demote Rep: Word64\n  Bits: 4\n  Static Value: 150"
   describe "StaticLazybytestringbuilder" $ do
     it "writes (and flushes) bits" $
         let rec = Proxy

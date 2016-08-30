@@ -50,7 +50,7 @@ type Static517 = Static256 :>: Static256 :>: Field 5 := 0
 
 #else
 
-type Static64 = Field 64
+type Static64 = ToBitRecord (Field 64 := 0)
 
 
 type Static64WithParams =

@@ -4,6 +4,7 @@ module Data.Type.BitRecords.Builder.Holey where
 import           Control.Category
 import           Data.Monoid
 import           Prelude          hiding (id, (.))
+import           Data.Tagged
 
 newtype Holey m r a = HM {runHM :: (m -> r) -> a }
 
@@ -33,6 +34,16 @@ bind :: Holey m b c
       -> (m -> Holey n a b)
       -> Holey n a c
 bind mbc fm = HM $ \ kna -> runHM mbc (($ kna) . runHM . fm)
+
+applyHoley :: Holey m r (a -> b) -> a -> Holey m r b
+applyHoley (HM !f) x = HM $ \k -> f k x
+
+taggedHoley :: forall tag m r a x . Holey m r (a -> x) -> Holey m r (Tagged tag a -> x)
+taggedHoley = mapHoley (\f -> f . untag)
+
+-- TODO prove Functor law, make functor
+mapHoley :: (a -> b) -> Holey m r a -> Holey m r b
+mapHoley f (HM !h) = HM $ \k -> f (h k)
 
 runHoley :: Holey m m a -> a
 runHoley = ($ id) . runHM
