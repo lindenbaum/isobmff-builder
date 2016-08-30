@@ -19,8 +19,8 @@ testAudioObjectType ::
 
       "Small Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        5 `ShouldBe` BitRecordSize (AudioObjectType 30)  -/-
+        5 `ShouldBe` BitRecordSize (ToBitRecord (AudioObjectType 30))  -/-
 
       "Big Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~
-        11 `ShouldBe` BitRecordSize (AudioObjectType 32)
+        11 `ShouldBe` BitRecordSize (ToBitRecord (AudioObjectType 31))

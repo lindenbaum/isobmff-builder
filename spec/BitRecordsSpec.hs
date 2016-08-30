@@ -2,18 +2,18 @@
 module BitRecordsSpec (spec) where
 
 import Data.Bits
-import Data.Type.BitRecords
-import Data.Proxy
-import Data.Word
-import Data.Type.Equality ()
 import Data.ByteString.Builder
+import Data.Proxy
+import Data.Tagged
+import Data.Type.BitRecords
+import Data.Type.Equality ()
+import Data.Word
 import GHC.TypeLits
+import Prelude hiding ((.), id)
 import Test.Hspec
+import Test.QuickCheck (property)
 import Test.TypeSpecCrazy
 import Text.Printf
-import Prelude hiding ((.), id)
-import Data.Tagged
-import Test.QuickCheck (property)
 
 basicsSpec = do
   describe "Maybe, Lists, Either, Bool, 'True, 'False, FlagJust, FlagNothing" $ do
@@ -23,74 +23,76 @@ basicsSpec = do
 
           "The record size works"
           ~~~~~~~~~~~~~~~~~~~~~~~~
-              1 `ShouldBe` GetFieldSize (FlagJust 'Nothing)
-          -*  1 `ShouldBe` GetFieldSize (FlagJust ('Just "Blah"))
-          -*  1 `ShouldBe` GetFieldSize (FlagNothing ('Just "Blah"))
-          -*  0 `ShouldBe` BitRecordSize 'Nothing
-          -*  32 `ShouldBe` BitRecordSize ('Just Word32)
-          -*  0 `ShouldBe` BitRecordSize '[]
-          -*  10 `ShouldBe` BitRecordSize '[Field 10]
-          -*  25 `ShouldBe` BitRecordSize '[Field 10, Field 15]
-          -*  1 `ShouldBe` GetFieldSize Bool
-          -*  1 `ShouldBe` GetFieldSize 'True
-          -*  1 `ShouldBe` GetFieldSize 'False
+              1 `ShouldBe` BitRecordFieldSize (FlagJust 'Nothing)
+          -*  1 `ShouldBe` BitRecordFieldSize (FlagJust ('Just "Blah"))
+          -*  1 `ShouldBe` BitRecordFieldSize (FlagNothing ('Just "Blah"))
+          -- -*  0 `ShouldBe` BitRecordSize 'Nothing
+          -- -*  32 `ShouldBe` BitRecordSize ('Just Word32)
+          -- -*  0 `ShouldBe` BitRecordSize '[]
+          -- -*  10 `ShouldBe` BitRecordSize '[Field 10]
+          -- -*  25 `ShouldBe` BitRecordSize '[Field 10, Field 15]
+          -- -*  1 `ShouldBe` BitRecordFieldSize (ToBitRecordField Bool)
+          -- -*  1 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'True)
+          -- -*  1 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'False)
         checkFlagJust = Valid
     runIO $ print checkFlagJust
   describe "bitStringBuilder" $ do
     describe "Just x" $ it "writes x" $
-      bitStringPrinter (Proxy :: Proxy ('Just (Flag := 1))) `shouldBe` "<< 80 >>"
+      bitStringPrinter (Proxy :: Proxy (ToBitRecord ('Just (Flag := 'True)))) `shouldBe` "<< 80 >>"
     describe "Nothing" $ it "writes nothing" $
-      bitStringPrinter (Proxy :: Proxy 'Nothing) `shouldBe` "<<  >>"
+      bitStringPrinter (Proxy :: Proxy (ToBitRecord ('Nothing))) `shouldBe` "<<  >>"
     describe "'[]" $ it "writes nothing" $
-      bitStringPrinter (Proxy :: Proxy '[]) `shouldBe` "<<  >>"
+      bitStringPrinter (Proxy :: Proxy (ToBitRecord ('[]))) `shouldBe` "<<  >>"
     describe "'[x1, x2]" $ it "writes x1 then x2" $
-      bitStringPrinter (Proxy :: Proxy '[Word8 := 1, Word8 := 2]) `shouldBe` "<< 01 02 >>"
+      bitStringPrinter (Proxy :: Proxy (ToBitRecord ('[FieldU8 := 1, FieldU8 := 2]))) `shouldBe` "<< 01 02 >>"
     describe "'True" $ it "writes a single bit with a 1" $
-      bitStringPrinter (Proxy :: Proxy 'True) `shouldBe` "<< 80 >>"
+      bitStringPrinter (Proxy :: Proxy (ToBitRecord 'True)) `shouldBe` "<< 80 >>"
     describe "'False" $ it "writes a single bit with a 0" $
-      bitStringPrinter (Proxy :: Proxy 'False) `shouldBe` "<< 00 >>"
+      bitStringPrinter (Proxy :: Proxy (ToBitRecord 'False)) `shouldBe` "<< 00 >>"
     describe "Bool" $ it "writes a single bit from a tagged 'Bool' parameter" $
       property $ \ v ->
         let actual = if v then "<< 80 >>" else "<< 00 >>" in
-        actual `shouldBe` bitStringPrinter (Proxy :: Proxy ("x" :=> Bool)) (Tagged v)
-    describe "FlagJust" $ it "writes a single bit '1' for a 'Just ...' parameter" $
-      bitStringPrinter (Proxy :: Proxy (FlagJust ('Just "test"))) `shouldBe` "<< 80 >>"
-    describe "FlagJust" $ it "writes a single bit '0' for a 'Nothing' parameter" $
-      bitStringPrinter (Proxy :: Proxy (FlagJust 'Nothing)) `shouldBe` "<< 00 >>"
-    describe "FlagNothing" $ it "writes a single bit '0' for a 'Just ...' parameter" $
-      bitStringPrinter (Proxy :: Proxy (FlagNothing ('Just "test"))) `shouldBe` "<< 00 >>"
-    describe "FlagNothing" $ it "writes a single bit '1' for a 'Nothing' parameter" $
-      bitStringPrinter (Proxy :: Proxy (FlagNothing 'Nothing)) `shouldBe` "<< 80 >>"
+        actual `shouldBe` bitStringPrinter (Proxy :: Proxy (ToBitRecord ("x" :=> Flag))) (Tagged v)
+    describe "FlagJust" $ do
+      it "writes a single bit '1' for a 'Just ...' parameter" $
+        bitStringPrinter (Proxy :: Proxy (FlagJust ('Just "test"))) `shouldBe` "<< 80 >>"
+      it "writes a single bit '0' for a 'Nothing' parameter" $
+        bitStringPrinter (Proxy :: Proxy (FlagJust 'Nothing)) `shouldBe` "<< 00 >>"
+    describe "FlagNothing" $ do
+      it "writes a single bit '0' for a 'Just ...' parameter" $
+        bitStringPrinter (Proxy :: Proxy (FlagNothing ('Just "test"))) `shouldBe` "<< 00 >>"
+      it "writes a single bit '1' for a 'Nothing' parameter" $
+        bitStringPrinter (Proxy :: Proxy (FlagNothing 'Nothing)) `shouldBe` "<< 80 >>"
   describe "showRecord" $ do
     describe "Maybe" $ do
       it "prints 'Just x' as 'x'" $
-        showRecord (Proxy :: Proxy ('Just 'True)) `shouldBe` "T"
+        showRecord (Proxy :: Proxy (ToBitRecord ('Just 'True))) `shouldBe` "T"
       it "prints nothing for 'Nothing'" $
-        showRecord (Proxy :: Proxy ('Nothing)) `shouldBe` ""
+        showRecord (Proxy :: Proxy (ToBitRecord ('Nothing))) `shouldBe` ""
     describe "List" $ do
       it "prints '[x]' as 'x'" $
-        showRecord (Proxy :: Proxy '[ 'True ]) `shouldBe` "T"
+        showRecord (Proxy :: Proxy (ToBitRecord ('[ 'True ]))) `shouldBe` "T"
       it "prints '[x1, x2, x3]' as 'x1x2x3'" $
-        showRecord (Proxy :: Proxy '[ Bool, Bool, Bool ]) `shouldBe` "BBB"
+        showRecord (Proxy :: Proxy (ToBitRecord ('[ Bool, Bool, Bool ]))) `shouldBe` "BBB"
       it "prints nothing for '[]'" $
-        showRecord (Proxy :: Proxy '[]) `shouldBe` ""
+        showRecord (Proxy :: Proxy (ToBitRecord ('[]))) `shouldBe` ""
     describe "Bool" $ do
       it "prints a 'T' if the parameter is 'True" $
-        showRecord (Proxy :: Proxy 'True) `shouldBe` "T"
+        showRecord (Proxy :: Proxy (ToBitRecord ('True))) `shouldBe` "T"
       it "prints a 'F' if the parameter is 'False" $
-        showRecord (Proxy :: Proxy 'False) `shouldBe` "F"
+        showRecord (Proxy :: Proxy (ToBitRecord ('False))) `shouldBe` "F"
       it "prints a 'B' if the parameter is Bool" $
-        showRecord (Proxy :: Proxy Bool) `shouldBe` "B"
+        showRecord (Proxy :: Proxy (ToBitRecord Bool)) `shouldBe` "B"
     describe "FlagJust" $ do
       it "prints a 'T' if the parameter is 'Just ..'" $
-        showRecord (Proxy :: Proxy (FlagJust ('Just "123"))) `shouldBe` "T"
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagJust ('Just "123")))) `shouldBe` "T"
       it "prints a 'F' if the parameter is 'Nothing'" $
-        showRecord (Proxy :: Proxy (FlagJust 'Nothing)) `shouldBe` "F"
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagJust 'Nothing))) `shouldBe` "F"
     describe "FlagNothing" $ do
       it "prints a 'F' if the parameter is 'Just ..'" $
-        showRecord (Proxy :: Proxy (FlagNothing ('Just "123"))) `shouldBe` "F"
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing ('Just "123")))) `shouldBe` "F"
       it "prints a 'T' if the parameter is 'Nothing'" $
-        showRecord (Proxy :: Proxy (FlagNothing 'Nothing)) `shouldBe` "T"
+        showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing 'Nothing))) `shouldBe` "T"
 
 arraySpec =
     describe "RecArray" $ do
@@ -101,9 +103,9 @@ arraySpec =
 
               "The record size works"
               ~~~~~~~~~~~~~~~~~~~~~~~~
-                  1 `ShouldBe` BitRecordSize (RecArray Flag 1)
-              -* 91 `ShouldBe` BitRecordSize (("foo" :=> Bool :>: Word8) ^^ 10 :>: Flag)
-              -* 91 `ShouldBe` BitRecordSize (RecArray ("foo" :=> Bool :>: Word8) 10 :>: Flag)
+                  1 `ShouldBe` BitRecordSize (ToBitRecord (RecArray Flag 1))
+              -* 91 `ShouldBe` BitRecordSize (ToBitRecord (("foo" :=> Flag :>: FieldU8) ^^ 10 :>: Flag))
+              -* 91 `ShouldBe` BitRecordSize (ToBitRecord (RecArray ("foo" :=> Flag :>: FieldU8) 10 :>: Flag))
             checkArrayRec = Valid
         runIO $ print checkArrayRec
       describe "showRecord" $
@@ -113,7 +115,7 @@ arraySpec =
             in actual `shouldBe` expected
       describe "bitStringBuilder" $
         it "writes its contents n times to the builder" $
-          let actual = bitStringPrinter (Proxy :: Proxy ((Field 24 := 0x010203) ^^ 4))
+          let actual = bitStringPrinter (Proxy :: Proxy (ToBitRecord ((Field 24 := 0x010203) ^^ 4)))
               expected = "<< 01 02 03 01 02 03 01 02 03 01 02 03 >>"
               in actual `shouldBe` expected
 
@@ -125,47 +127,47 @@ sizedSpec =
              "Sized"
             #########
 
-            "FieldSize of a SizeField"
+            "BitRecordFieldSize (of) a SizeField"
             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                0 `ShouldBe` GetFieldSize 'NoSizeField
-            -*  8 `ShouldBe` GetFieldSize 'SizeField8
-            -* 16 `ShouldBe` GetFieldSize 'SizeField16
-            -* 32 `ShouldBe` GetFieldSize 'SizeField32
+                0 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'NoSizeField)
+            -*  8 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'SizeField8)
+            -* 16 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'SizeField16)
+            -* 32 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'SizeField32)
 
-            -/-
+            -- -/-
 
-            "SizedString"
-            ~~~~~~~~~~~~~~~
-                88 `ShouldBe` GetFieldSize [utf8|Hello World|]
-            -* 104 `ShouldBe` GetFieldSize [utf8|Heλλo World|]
+            -- "SizedString"
+            -- ~~~~~~~~~~~~~~~
+            --     88 `ShouldBe` BitRecordFieldSize [utf8|Hello World|]
+            -- -* 104 `ShouldBe` BitRecordFieldSize [utf8|Heλλo World|]
 
-            -/-
+            -- -/-
 
-            "Sized of a list"
-            ~~~~~~~~~~~~~~~~~~
-                0 `ShouldBe` BitRecordSize (Sized 'NoSizeField '[])
-            -*  3 `ShouldBe` BitRecordSize (Sized 'NoSizeField '[Field 3])
-            -*  6 `ShouldBe` BitRecordSize (Sized 'NoSizeField '[Field 3, Field 3])
-            -*  8 `ShouldBe` BitRecordSize (Sized 'SizeField8 '[])
-            -* 11 `ShouldBe` BitRecordSize (Sized 'SizeField8 '[Field 3])
-            -* 14 `ShouldBe` BitRecordSize (Sized 'SizeField8 '[Field 3, Field 3])
-            -* 16 `ShouldBe` BitRecordSize (Sized 'SizeField16 '[])
-            -* 19 `ShouldBe` BitRecordSize (Sized 'SizeField16 '[Field 3])
-            -* 22 `ShouldBe` BitRecordSize (Sized 'SizeField16 '[Field 3, Field 3])
-            -* 32 `ShouldBe` BitRecordSize (Sized 'SizeField32 '[])
-            -* 35 `ShouldBe` BitRecordSize (Sized 'SizeField32 '[Field 3])
-            -* 38 `ShouldBe` BitRecordSize (Sized 'SizeField32 '[Field 3, Field 3])
+            -- "Sized of a list"
+            -- ~~~~~~~~~~~~~~~~~~
+            --     0 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'NoSizeField '[]))
+            -- -*  3 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'NoSizeField '[Field 3]))
+            -- -*  6 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'NoSizeField '[Field 3, Field 3]))
+            -- -*  8 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField8 '[]))
+            -- -* 11 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField8 '[Field 3]))
+            -- -* 14 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField8 '[Field 3, Field 3]))
+            -- -* 16 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField16 '[]))
+            -- -* 19 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField16 '[Field 3]))
+            -- -* 22 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField16 '[Field 3, Field 3]))
+            -- -* 32 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField32 '[]))
+            -- -* 35 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField32 '[Field 3]))
+            -- -* 38 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField32 '[Field 3, Field 3]))
 
-            -/-
+            -- -/-
 
-            "Sized of a RecArray"
-            ~~~~~~~~~~~~~~~~~~~~~
-                0 `ShouldBe` BitRecordSize (Sized 'NoSizeField (RecArray Word16 0))
-            -* 16 `ShouldBe` BitRecordSize (Sized 'NoSizeField (RecArray Word16 1))
-            -* 32 `ShouldBe` BitRecordSize (Sized 'NoSizeField (RecArray Word16 2))
-            -* 32 `ShouldBe` BitRecordSize (Sized 'SizeField32 (RecArray Word16 0))
-            -* 48 `ShouldBe` BitRecordSize (Sized 'SizeField32 (RecArray Word16 1))
-            -* 64 `ShouldBe` BitRecordSize (Sized 'SizeField32 (RecArray Word16 2))
+            -- "Sized of a RecArray"
+            -- ~~~~~~~~~~~~~~~~~~~~~
+            --     0 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'NoSizeField (RecArray Word16 0)))
+            -- -* 16 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'NoSizeField (RecArray Word16 1)))
+            -- -* 32 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'NoSizeField (RecArray Word16 2)))
+            -- -* 32 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField32 (RecArray Word16 0)))
+            -- -* 48 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField32 (RecArray Word16 1)))
+            -- -* 64 `ShouldBe` BitRecordSize (ToBitRecord (Sized 'SizeField32 (RecArray Word16 2)))
 
           checkSized = Valid
       in runIO $ print checkSized
@@ -430,15 +432,15 @@ testNatBits
 testNatBits = Valid
 
 testAlign
-  :: Expect '[ Align 'True 7 Flag       `ShouldBe`  (Flag :>: Field 6 := 0)
-             , Align 'True 1 Flag       `ShouldBe`  Flag
-             , Align 'True 8 (Field 7)  `ShouldBe`  (Field 7 :>: Field 1 := 0)
-             , Align 'True 8 (Field 8)  `ShouldBe`  Field 8
-             , Align 'True 8 (Field 9)  `ShouldBe`  (Field 9 :>: Field 7 := 0)
+  :: Expect '[  Align 'True 7 (ToBitRecord Flag)       `ShouldBe`  (Flag :>: Field 6 := 0)
+             , Align 'True 1 (ToBitRecord Flag)       `ShouldBe`  (ToBitRecord Flag)
+             , Align 'True 8 (ToBitRecord (Field 7))  `ShouldBe`  (Field 7 :>: Field 1 := 0)
+             , Align 'True 8 (ToBitRecord (Field 8))  `ShouldBe`  (ToBitRecord (Field 8))
+             , Align 'True 8 (ToBitRecord (Field 9))  `ShouldBe`  (Field 9 :>: Field 7 := 0)
             ]
 testAlign = Valid
 
-type TestField0 =  "test" :=> Field 19
+type TestField0 =  ToBitRecord ("test" :=> Field 19)
 testFieldPosition0
    :: Expect (GetFieldPositionUnsafe TestField0 "test" `ShouldBe` '(0,18))
 testFieldPosition0 = Valid
@@ -548,7 +550,7 @@ spec = do
               in actual `shouldBe` expected
       it "renders (Flag := 0 :>: (Field 7 := 130)) to << 02 >>" $
         let rec = Proxy
-            rec :: Proxy (Flag := 0 :>: (Field 7 := 130))
+            rec :: Proxy (Flag := 'False :>: (Field 7 := 130))
             actual = printBuilder b
               where b = runBitStringBuilderHoley (bitStringBuilderHoley rec)
         in actual `shouldBe` "<< 02 >>"

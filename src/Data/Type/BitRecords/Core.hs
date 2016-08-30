@@ -18,9 +18,9 @@ import Test.TypeSpecCrazy
 
 -- | 'BitRecordField's assembly
 data BitRecord where
-  BitRecordMember           :: BitRecordField t -> BitRecord
-  AppendedBitRecords        :: BitRecord        -> BitRecord -> BitRecord
-  ExtraPrettyPrintingOutput :: PrettyType       -> BitRecord
+  BitRecordMember           :: BitRecordField -> BitRecord
+  AppendedBitRecords        :: BitRecord      -> BitRecord -> BitRecord
+  ExtraPrettyPrintingOutput :: PrettyType     -> BitRecord
   EmptyBitRecord            :: BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 
@@ -34,7 +34,7 @@ type NoBitRecord = ('Nothing :: Maybe BitRecord)
 -- *** Basic Accessor
 
 -- | Extract the size in as a number of bits from a 'BitRecord'
-type family BitRecordSize (x :: k) :: Nat where
+type family BitRecordSize (x :: BitRecord) :: Nat where
   BitRecordSize ('BitRecordMember f)           = BitRecordFieldSize f
   BitRecordSize ('AppendedBitRecords l r)      = BitRecordSize l + BitRecordSize r
   BitRecordSize ('ExtraPrettyPrintingOutput a) = 0
@@ -49,7 +49,7 @@ type family BitRecordMemberCount (b :: BitRecord) :: Nat where
 
 -- | Return the size of the record.
 getRecordSizeFromProxy
-  :: forall px rec . KnownNat (BitRecordSize rec) => px rec -> Integer
+  :: forall px (rec :: BitRecord) . KnownNat (BitRecordSize rec) => px rec -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
 -- ** Field ADT
@@ -59,25 +59,19 @@ getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 -- A bit field always has a size, i.e. the number of bits it uses, as well as a
 -- term level value type and a type level value type. It also has an optional
 -- label, and an optional value assigned to it.
-data BitRecordField t where
+data BitRecordField where
   BitRecordField ::
-    Maybe Symbol -> Type -> Nat -> Maybe t -> BitRecordField t
+    Maybe Symbol -> Type -> Nat -> Maybe t -> BitRecordField
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
-type instance ToBitRecord (a :: BitRecordField t) = 'BitRecordMember a
+type instance ToBitRecord (a :: BitRecordField) = 'BitRecordMember a
 
 -- | Type class of types that can be represented as a 'BitRecordField'
-type family ToBitRecordField (t :: k) :: BitRecordField o
-type instance ToBitRecordField (x :: BitRecordField o) = x
-
--- *** Basic Accessor
-
--- | Extract the type to use for actual values.
-type family FieldRep (x :: BitRecordField t) where
-  FieldRep ('BitRecordField label v size dt) = v
+type family ToBitRecordField (t :: k) :: BitRecordField
+type instance ToBitRecordField (x :: BitRecordField) = x
 
 -- | Extract the size in as a number of bits from a 'BitRecordField'
-type family BitRecordFieldSize (x :: BitRecordField t) :: Nat where
+type family BitRecordFieldSize (x :: BitRecordField) where
   BitRecordFieldSize ('BitRecordField label v size dt) = size
 
 -- ** Record composition
@@ -85,10 +79,10 @@ type family BitRecordFieldSize (x :: BitRecordField t) :: Nat where
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
 type family (:>:) (l :: j) (r :: k) :: BitRecord where
- (:>:) 'EmptyBitRecord r = ToBitRecord r
- (:>:) l 'EmptyBitRecord = ToBitRecord l
+ (:>:) 'EmptyBitRecord r               = ToBitRecord r
+ (:>:) l 'EmptyBitRecord               = ToBitRecord l
  (:>:) (l :: BitRecord) (r :: BitRecord) = 'AppendedBitRecords l r
- (:>:) l r = ToBitRecord l :>: ToBitRecord r
+ (:>:) l r                             = ToBitRecord l :>: ToBitRecord r
 infixl 3 :>:
 
 -- *** Record Arrays and Repitition
@@ -141,7 +135,7 @@ type instance SizeFieldValue (b :: BitRecord) = BitRecordMemberCount b
 -- The left argument is converted to a 'BitRecordField' via 'ToBitRecordField'
 -- in necessary. The right argument must match the parameter of the 'Maybe' of
 -- the corresponding field in 'BitRecordField'.
-type family (:=>) (l :: Symbol) (b :: BitRecordField k) :: BitRecordField k where
+type family (:=>) (l :: Symbol) (b :: BitRecordField) :: BitRecordField where
   (:=>) label ('BitRecordField oldLabel demoteRep size value) =
     'BitRecordField ('Just label) demoteRep size value
 infixr 5 :=>
@@ -153,28 +147,25 @@ infixr 5 :=>
 -- The left argument is converted to a 'BitRecordField' via 'ToBitRecordField'
 -- in necessary. The right argument must match the parameter of the 'Maybe' of
 -- the corresponding field in 'BitRecordField'.
-type family (:=) (b :: BitRecordField k) (v :: k) :: BitRecordField k where
-  (:=) ('BitRecordField label demoteRep size 'Nothing) (v :: assignRep) =
+type family (:=) (b :: BitRecordField) (v :: k) :: BitRecordField where
+  (:=) ('BitRecordField label demoteRep size 'Nothing) v =
     'BitRecordField label demoteRep size ('Just v)
 infixr 6 :=
 
 -- *** Primitive Types
 
 -- | A single bit (boolean) field
-type Flag =
-  'BitRecordField 'Nothing Bool 1 ('Nothing :: Maybe Bool)
+type Flag = 'BitRecordField 'Nothing Bool 1 ('Nothing :: Maybe Bool)
 
-type instance ToBitRecordField (x :: Bool) =
-  If x
-  ('BitRecordField 'Nothing () 1 ('Just 'True))
-  ('BitRecordField 'Nothing () 1 ('Just 'False))
+type instance ToBitRecordField (x :: Bool) = 'BitRecordField 'Nothing Bool 1 ('Just x)
 
-type instance ToBitRecordField (x :: Maybe k) = ToBitRecordFieldMaybe x
+type instance ToBitRecordField Bool = Flag
 
-type family ToBitRecordFieldMaybe (x :: Maybe k) :: BitRecordField j where
-  ToBitRecordFieldMaybe ('Just a) = ToBitRecordField a
-  ToBitRecordFieldMaybe 'Nothing =
-    'BitRecordField 'Nothing () 0 ('Just 'False)
+-- | A single bit (Boolean) record
+type instance ToBitRecord Bool = ToBitRecord Flag
+
+-- | A single bit (Boolean) record
+type instance ToBitRecord (x :: Bool) = 'BitRecordMember (ToBitRecordField x)
 
 -- | Define a field of bits with a size
 type Field n = 'BitRecordField 'Nothing Word64 n ('Nothing :: Maybe Nat)
@@ -223,12 +214,12 @@ type instance ToBitRecordField 'SizeField32 =
 -- *** Composed Fields
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Just'.
-type family FlagJust a :: BitRecordField Bool where
+type family FlagJust a :: BitRecordField where
   FlagJust ('Just x) = ToBitRecordField 'True
   FlagJust 'Nothing  = ToBitRecordField 'False
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Nothing'.
-type family FlagNothing a :: BitRecordField Bool where
+type family FlagNothing a :: BitRecordField where
   FlagNothing ('Just x) = ToBitRecordField 'False
   FlagNothing 'Nothing  = ToBitRecordField 'True
 
@@ -269,7 +260,10 @@ type family
 
 type family
   GetFieldPositionUnsafe (r :: BitRecord) (l :: Symbol) :: FieldPosition where
-  GetFieldPositionUnsafe ('BitRecordMember ('BitRecordField ('Just l) d s md)) l = '(0, s)
+  GetFieldPositionUnsafe ('BitRecordMember ('BitRecordField ('Just l) d 0 md)) l =
+    TypeError ('Text "Cannot get position of zero width field: " -- TODO by this type error this function is partial, fix it by making it  return Maybe FieldPosition
+               ':<>: 'ShowType ('BitRecordMember ('BitRecordField ('Just l) d 0 md)))
+  GetFieldPositionUnsafe ('BitRecordMember ('BitRecordField ('Just l) d s md)) l = '(0, s - 1)
   GetFieldPositionUnsafe ('AppendedBitRecords f f') l =
      If (HasField f l)
       (GetFieldPositionUnsafe f l)
@@ -392,7 +386,7 @@ type family PrettyRecord (rec :: BitRecord) :: PrettyType where
    PrettyRecord ('AppendedBitRecords l r) = PrettyRecord l <++> PrettyRecord r
    PrettyRecord ('ExtraPrettyPrintingOutput p) = p
 
-type family PrettyField (f :: BitRecordField k) :: PrettyType where
+type family PrettyField (f :: BitRecordField) :: PrettyType where
   PrettyField ('BitRecordField label demRep size value) =
      (ToPretty label <||> PutStr "_") <++> PutStr ":"
      <$$-->

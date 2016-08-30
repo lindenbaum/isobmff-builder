@@ -29,10 +29,10 @@ type ESDescriptorAudio = ES_DescrP (ESDescriptor NoBitRecord NoBitRecord NoBitRe
 data AudioObjectType :: Nat -> Type
 
 type instance ToBitRecord (AudioObjectType n) =
-  AudioObjectTypeXField1 n :>: AudioObjectTypeXField2 n
+  AudioObjectTypeField1 n :>: AudioObjectTypeField2 n
 
-type family AudioObjectTypeXField1 (n :: Nat) :: BitRecordField Nat where
-  AudioObjectTypeXField1 n = If (30 <=? n) (Field 5 := n) (Field 5 := 31)
+type family AudioObjectTypeField1 (n :: Nat) :: BitRecordField where
+  AudioObjectTypeField1 n = If (n <=? 30) (Field 5 := n) (Field 5 := 31)
 
-type family AudioObjectTypeXField2 (n :: Nat) :: BitRecord where
-  AudioObjectTypeXField2 n = If (30 <=? n) 'EmptyBitRecord (ToBitRecord (Field 6 := (n - 32)))
+type family AudioObjectTypeField2 (n :: Nat) :: BitRecord where
+  AudioObjectTypeField2 n = If (n <=? 30) 'EmptyBitRecord (ToBitRecord (Field 6 := (n - 31)))

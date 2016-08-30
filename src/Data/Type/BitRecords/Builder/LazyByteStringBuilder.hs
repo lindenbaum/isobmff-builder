@@ -139,7 +139,26 @@ type family UnsignedDemoteRep i where
   UnsignedDemoteRep Int32 = Word32
   UnsignedDemoteRep Int64 = Word64
 
--- *** Fields carrying runtime values
+ -- *** Constant Fields
+
+instance
+  forall s v a . (BitStringBuilderHoley (Proxy '(s, v)) a)
+  => BitStringBuilderHoley (Proxy ('BitRecordField 'Nothing () s ('Just v))) a where
+  type ToBitStringBuilder (Proxy ('BitRecordField 'Nothing () s ('Just v))) a =
+    ToBitStringBuilder (Proxy '(s, v)) a
+  bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @ '(s, v))
+
+data BitRecordConst :: Nat -> k -> Type
+
+-- **** Bool
+
+instance forall l a .
+  BitStringBuilderHoley (Proxy ('BitRecordField l Bool 1 ('Just 'False))) a where
+  bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 0))
+
+instance forall l a .
+  BitStringBuilderHoley (Proxy ('BitRecordField l Bool 1 ('Just 'True))) a where
+  bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 1))
 
 instance (Enum (MaybeLabelledParameter l Bool), MaybeKnownLabel l)
   => BitStringBuilderHoley (Proxy ('BitRecordField l Bool 1 ('Nothing :: Maybe Bool))) a where
@@ -152,6 +171,8 @@ instance (Enum (MaybeLabelledParameter l Bool), MaybeKnownLabel l)
          . fromIntegral
          . fromEnum)
 
+-- **** Naturals
+
 instance forall l r s a . (Integral (MaybeLabelledParameter l r), MaybeKnownLabel l, KnownChunkSize s)
   => BitStringBuilderHoley (Proxy ('BitRecordField l r s ('Nothing :: Maybe Nat))) a where
   type ToBitStringBuilder (Proxy ('BitRecordField l r s ('Nothing :: Maybe Nat))) a
@@ -161,6 +182,18 @@ instance forall l r s a . (Integral (MaybeLabelledParameter l r), MaybeKnownLabe
       (appendBitString
          . bitStringProxyLength (Proxy @s)
          . fromIntegral)
+
+instance forall r s v a . (KnownChunkSize s, KnownNat v)
+  => BitStringBuilderHoley (Proxy ('BitRecordField 'Nothing r s ('Just (v :: Nat)))) a where
+  bitStringBuilderHoley _ =
+    immediate
+    $ appendBitString
+    $ bitStringProxyLength (Proxy @s)
+    $ fromIntegral
+    $ natVal
+    $ Proxy @v
+
+-- **** Signed Integral
 
 instance forall l r s a . ( Integral (UnsignedDemoteRep r)
                      , Integral (MaybeLabelledParameter l r)
@@ -179,27 +212,9 @@ instance forall l r s a . ( Integral (UnsignedDemoteRep r)
          . (fromIntegral @r @(UnsignedDemoteRep r))
          . coerce)
 
--- *** Static Fields
-
 instance
-  BitStringBuilderHoley (Proxy ('BitRecordField l () 1 ('Just 'False))) a where
-  bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 0))
-
-instance
-  BitStringBuilderHoley (Proxy ('BitRecordField l () 1 ('Just 'True))) a where
-  bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 1))
-
-instance forall r s v a . (KnownChunkSize s, KnownNat v)
-  => BitStringBuilderHoley (Proxy ('BitRecordField 'Nothing r s ('Just (v :: Nat)))) a where
-  bitStringBuilderHoley _ =
-    immediate
-    $ appendBitString
-    $ bitStringProxyLength (Proxy @s)
-    $ fromIntegral
-    $ natVal
-    $ Proxy @v
-
-instance forall r l n s a . (KnownNat n, KnownChunkSize s, Integral (UnsignedDemoteRep r))
+  {-# OVERLAPPING #-}
+  forall r l n s a . (KnownNat n, KnownChunkSize s, Integral (UnsignedDemoteRep r))
   => BitStringBuilderHoley (Proxy ('BitRecordField l r s ('Just ('NegativeNat n)))) a where
   bitStringBuilderHoley _ =
     immediate
@@ -223,9 +238,13 @@ instance forall r l n s a . (KnownNat n, KnownChunkSize s)
 
 -- ** 'BitRecord' instances
 
+-- *** 'BitRecordMember'
+
 instance forall f a . BitStringBuilderHoley (Proxy f) a => BitStringBuilderHoley (Proxy ('BitRecordMember f)) a where
   type ToBitStringBuilder (Proxy ('BitRecordMember f)) a = ToBitStringBuilder (Proxy f) a
   bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @f)
+
+-- *** 'AppendedBitRecords'
 
 instance forall l r a .
   (BitStringBuilderHoley (Proxy l) (ToBitStringBuilder (Proxy r) a)
@@ -235,7 +254,17 @@ instance forall l r a .
     ToBitStringBuilder (Proxy l) (ToBitStringBuilder (Proxy r) a)
   bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @l) . bitStringBuilderHoley (Proxy @r)
 
+-- *** 'EmptyBitRecord' and 'ExtraPrettyPrintingOutput'
+
+instance BitStringBuilderHoley (Proxy ('ExtraPrettyPrintingOutput s)) a where
+  bitStringBuilderHoley _ = id
+
+instance BitStringBuilderHoley (Proxy 'EmptyBitRecord) a where
+  bitStringBuilderHoley _ = id
+
 -- ** Tracing/Debug Printing
+
+-- | Print a 'Builder' to a space seperated series of hexa-decimal bytes.
 printBuilder :: Builder -> String
 printBuilder b =
   ("<< " ++) $
