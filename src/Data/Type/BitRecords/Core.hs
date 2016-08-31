@@ -29,8 +29,10 @@ data BitRecord where
 type family ToBitRecord (t :: k) :: BitRecord
 type instance ToBitRecord (x :: BitRecord) = x
 
--- | A 'BitRecord' that represents a placeholder for a future 'BitRecord'
-type NoBitRecord = ('Nothing :: Maybe BitRecord)
+-- | A conditional 'BitRecord'
+type family WhenR (b :: Bool) (x :: k) :: BitRecord where
+  WhenR 'False r = 'EmptyBitRecord
+  WhenR 'True r  = ToBitRecord r
 
 -- *** Basic Accessor
 
