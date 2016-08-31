@@ -19,7 +19,8 @@ import qualified Data.ByteString as B
 
 -- * Box Type Classes
 -- | Base class for all (abstract/phantom/normal-) types that represent boxes
-class (KnownSymbol (BoxTypeSymbol t), IsBoxContent (BoxContent t)) => IsBox (t :: Type) where
+class (KnownSymbol (BoxTypeSymbol t), IsBoxContent (BoxContent t))
+   => IsBox (t :: Type) where
   type BoxContent t
   type BoxContent t = t
   toBoxType :: proxy t -> BoxType

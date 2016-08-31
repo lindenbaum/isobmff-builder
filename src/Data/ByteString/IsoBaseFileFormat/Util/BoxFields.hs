@@ -299,8 +299,7 @@ instance KnownSymbol str => FromTypeLit (U32Text label) (str :: Symbol) where
 instance Default (U32Text label) where
   def = U32Text 0x20202020
 
-
--- * BoxContent from Bits
+-- * BoxContent from 'BitRecord's
 
 newtype BitBox record where
   BitBox :: Builder -> BitBox record
@@ -319,7 +318,6 @@ bitBoxHoley :: forall record r . BitStringBuilderHoley (Proxy record) r
        => Proxy record -> Holey (BitBox record) r (ToBitStringBuilder (Proxy record) r)
 bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (bitStringBuilderHoley px)
 
-
 instance
       ( KnownNat (BitRecordSize content) )
    => IsBoxContent (BitBox content) where
@@ -327,3 +325,9 @@ instance
     -- convert from bits to bytes
     fromIntegral (getRecordSizeFromProxy cnt `unsafeShiftR` 3)
   boxBuilder (BitBox cnt) = cnt
+
+instance
+  (KnownNat     (BitRecordSize record)
+  ,IsBoxContent (BitBox        record)
+  ,KnownSymbol  (BoxTypeSymbol record))
+  =>

@@ -40,11 +40,10 @@ data MatchSampleEntry :: HandlerType -> Type
 type instance
   IsRuleConform (Box (SampleEntry handlerSpecificEntry))
                 (MatchSampleEntry handlerType) =
-    HandlerTypeCode (GetHandlerType handlerSpecificEntry)
-      == HandlerTypeCode handlerType
+  HandlerTypeCode (GetHandlerType handlerSpecificEntry) == HandlerTypeCode handlerType
 
 -- | The 'BoxTypeSymbol' of sample entry is exactly the @format@ type index of
-            -- the 'SampleEntry' family.
+-- the 'SampleEntry' family.
 type instance
   BoxTypeSymbol (SampleEntry handlerSpecific) = BoxTypeSymbol handlerSpecific
 
