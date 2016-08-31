@@ -26,14 +26,14 @@ basicsSpec = do
               1 `ShouldBe` BitRecordFieldSize (FlagJust 'Nothing)
           -*  1 `ShouldBe` BitRecordFieldSize (FlagJust ('Just "Blah"))
           -*  1 `ShouldBe` BitRecordFieldSize (FlagNothing ('Just "Blah"))
-          -- -*  0 `ShouldBe` BitRecordSize 'Nothing
-          -- -*  32 `ShouldBe` BitRecordSize ('Just Word32)
-          -- -*  0 `ShouldBe` BitRecordSize '[]
-          -- -*  10 `ShouldBe` BitRecordSize '[Field 10]
-          -- -*  25 `ShouldBe` BitRecordSize '[Field 10, Field 15]
-          -- -*  1 `ShouldBe` BitRecordFieldSize (ToBitRecordField Bool)
-          -- -*  1 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'True)
-          -- -*  1 `ShouldBe` BitRecordFieldSize (ToBitRecordField 'False)
+          -*  0 `ShouldBe` BitRecordSize (ToBitRecord 'Nothing)
+          -*  32 `ShouldBe` BitRecordSize (ToBitRecord ('Just FieldU32))
+          -*  0 `ShouldBe` BitRecordSize (ToBitRecord '[])
+          -- -*  10 `ShouldBe` BitRecordSize (ToBitRecord '[Field 10])
+          -- -*  25 `ShouldBe` BitRecordSize (ToBitRecord '[Field 10, Field 15])
+          -- -*  1 `ShouldBe` BitRecordSize (ToBitRecord Bool)
+          -- -*  1 `ShouldBe` BitRecordSize (ToBitRecord 'True)
+          -- -*  1 `ShouldBe` BitRecordSize (ToBitRecord 'False)
         checkFlagJust = Valid
     runIO $ print checkFlagJust
   describe "bitStringBuilder" $ do
@@ -94,6 +94,7 @@ basicsSpec = do
       it "prints a 'FlagNothing 'Nothing'" $
         showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing 'Nothing))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'True"
 
+arraySpec :: SpecWith ()
 arraySpec =
     describe "RecArray" $ do
       describe "level record accessors" $ do
