@@ -86,6 +86,7 @@ library
                      , Data.Type.BitRecords.Builder.Holey
                      , Data.Type.BitRecords.Builder.LazyByteStringBuilder
                      , Data.Type.BitRecords.Core
+                     , Data.Type.BitRecords.Enum
                      , Data.Type.BitRecords.SizedString
                      , Data.Type.BitRecords.Sized
   build-depends:       base >= 4.9 && < 5

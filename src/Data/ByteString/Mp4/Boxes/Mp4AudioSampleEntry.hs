@@ -7,10 +7,8 @@ import           Data.ByteString.IsoBaseFileFormat.Boxes
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
-
 import           Data.Type.BitRecords
 import           Data.Type.Pretty
-
 
 -- | A /body/ for 'AudioSampleEntry'. This 'IsBoxContent' with an
 -- 'ElementaryStreamDescriptor' for ISO-14496-3 audio, with audio decoder
@@ -42,6 +40,7 @@ type instance BoxTypeSymbol AudioEsd = "mp4a"
 
 -- * Interface from ISO 14496-3 (Audio)
 
+--type AudioSpecificCofig
 
 -- ** Audio Object Type
 
@@ -82,41 +81,41 @@ data AudioObjecTypeId =
   | AoLayer3                       -- ^ ISO 14496-4 subpart 9
   | AoDst                          -- ^ ISO 14496-4 subpart 10
 
-type instance TableIndex AudioObjecTypeId 'AacMain                        = 1
-type instance TableIndex AudioObjecTypeId 'AacLc                          = 2
-type instance TableIndex AudioObjecTypeId 'AacSsr                         = 3
-type instance TableIndex AudioObjecTypeId 'AacLtp                         = 4
-type instance TableIndex AudioObjecTypeId 'Sbr                            = 5
-type instance TableIndex AudioObjecTypeId 'AacScalable                    = 6
-type instance TableIndex AudioObjecTypeId 'TwinVq                         = 7
-type instance TableIndex AudioObjecTypeId 'Celp                           = 8
-type instance TableIndex AudioObjecTypeId 'Hvxc                           = 9
-type instance TableIndex AudioObjecTypeId 'AoReserved1                    = 10
-type instance TableIndex AudioObjecTypeId 'AoReserved2                    = 11
-type instance TableIndex AudioObjecTypeId 'Ttsi                           = 12
-type instance TableIndex AudioObjecTypeId 'MainSunthetic                  = 13
-type instance TableIndex AudioObjecTypeId 'WavetableSynthesis             = 14
-type instance TableIndex AudioObjecTypeId 'GeneralMidi                    = 15
-type instance TableIndex AudioObjecTypeId 'AlgorithmicSynthesisAndAudioFx = 16
-type instance TableIndex AudioObjecTypeId 'ErAacLc                        = 17
-type instance TableIndex AudioObjecTypeId 'AoReserved3                    = 18
-type instance TableIndex AudioObjecTypeId 'ErAacLtp                       = 19
-type instance TableIndex AudioObjecTypeId 'ErAacScalable                  = 20
-type instance TableIndex AudioObjecTypeId 'ErTwinVq                       = 21
-type instance TableIndex AudioObjecTypeId 'ErBsac                         = 22
-type instance TableIndex AudioObjecTypeId 'ErAacLd                        = 23
-type instance TableIndex AudioObjecTypeId 'ErCelp                         = 24
-type instance TableIndex AudioObjecTypeId 'ErHvxc                         = 25
-type instance TableIndex AudioObjecTypeId 'ErHiln                         = 26
-type instance TableIndex AudioObjecTypeId 'ErParametric                   = 27
-type instance TableIndex AudioObjecTypeId 'Ssc                            = 28
-type instance TableIndex AudioObjecTypeId 'AoReserved4                    = 29
-type instance TableIndex AudioObjecTypeId 'AoReserved5                    = 30
-type instance TableIndex AudioObjecTypeId 'AoCustom                       = 31
-type instance TableIndex AudioObjecTypeId 'AoLayer1                       = 32
-type instance TableIndex AudioObjecTypeId 'AoLayer2                       = 33
-type instance TableIndex AudioObjecTypeId 'AoLayer3                       = 34
-type instance TableIndex AudioObjecTypeId 'AoDst                          = 35
+type instance FromEnum AudioObjecTypeId 'AacMain                        = 1
+type instance FromEnum AudioObjecTypeId 'AacLc                          = 2
+type instance FromEnum AudioObjecTypeId 'AacSsr                         = 3
+type instance FromEnum AudioObjecTypeId 'AacLtp                         = 4
+type instance FromEnum AudioObjecTypeId 'Sbr                            = 5
+type instance FromEnum AudioObjecTypeId 'AacScalable                    = 6
+type instance FromEnum AudioObjecTypeId 'TwinVq                         = 7
+type instance FromEnum AudioObjecTypeId 'Celp                           = 8
+type instance FromEnum AudioObjecTypeId 'Hvxc                           = 9
+type instance FromEnum AudioObjecTypeId 'AoReserved1                    = 10
+type instance FromEnum AudioObjecTypeId 'AoReserved2                    = 11
+type instance FromEnum AudioObjecTypeId 'Ttsi                           = 12
+type instance FromEnum AudioObjecTypeId 'MainSunthetic                  = 13
+type instance FromEnum AudioObjecTypeId 'WavetableSynthesis             = 14
+type instance FromEnum AudioObjecTypeId 'GeneralMidi                    = 15
+type instance FromEnum AudioObjecTypeId 'AlgorithmicSynthesisAndAudioFx = 16
+type instance FromEnum AudioObjecTypeId 'ErAacLc                        = 17
+type instance FromEnum AudioObjecTypeId 'AoReserved3                    = 18
+type instance FromEnum AudioObjecTypeId 'ErAacLtp                       = 19
+type instance FromEnum AudioObjecTypeId 'ErAacScalable                  = 20
+type instance FromEnum AudioObjecTypeId 'ErTwinVq                       = 21
+type instance FromEnum AudioObjecTypeId 'ErBsac                         = 22
+type instance FromEnum AudioObjecTypeId 'ErAacLd                        = 23
+type instance FromEnum AudioObjecTypeId 'ErCelp                         = 24
+type instance FromEnum AudioObjecTypeId 'ErHvxc                         = 25
+type instance FromEnum AudioObjecTypeId 'ErHiln                         = 26
+type instance FromEnum AudioObjecTypeId 'ErParametric                   = 27
+type instance FromEnum AudioObjecTypeId 'Ssc                            = 28
+type instance FromEnum AudioObjecTypeId 'AoReserved4                    = 29
+type instance FromEnum AudioObjecTypeId 'AoReserved5                    = 30
+type instance FromEnum AudioObjecTypeId 'AoCustom                       = 31
+type instance FromEnum AudioObjecTypeId 'AoLayer1                       = 32
+type instance FromEnum AudioObjecTypeId 'AoLayer2                       = 33
+type instance FromEnum AudioObjecTypeId 'AoLayer3                       = 34
+type instance FromEnum AudioObjecTypeId 'AoDst                          = 35
 
 type AudioObjecTypeRec n =
   'ReplacePretty
@@ -149,28 +148,55 @@ data SamplingFreqTable =
     | SFReserved2
     | SFCustom
 
-type instance TableIndex SamplingFreqTable 'SF96000     = 0
-type instance TableIndex SamplingFreqTable 'SF88200     = 1
-type instance TableIndex SamplingFreqTable 'SF64000     = 2
-type instance TableIndex SamplingFreqTable 'SF48000     = 3
-type instance TableIndex SamplingFreqTable 'SF44100     = 4
-type instance TableIndex SamplingFreqTable 'SF32000     = 5
-type instance TableIndex SamplingFreqTable 'SF24000     = 6
-type instance TableIndex SamplingFreqTable 'SF22050     = 7
-type instance TableIndex SamplingFreqTable 'SF16000     = 8
-type instance TableIndex SamplingFreqTable 'SF12000     = 9
-type instance TableIndex SamplingFreqTable 'SF11025     = 0xa
-type instance TableIndex SamplingFreqTable 'SF8000      = 0xb
-type instance TableIndex SamplingFreqTable 'SF7350      = 0xc
-type instance TableIndex SamplingFreqTable 'SFReserved1 = 0xd
-type instance TableIndex SamplingFreqTable 'SFReserved2 = 0xe
-type instance TableIndex SamplingFreqTable 'SFCustom    = 0xf
+type instance FromEnum SamplingFreqTable 'SF96000     = 0
+type instance FromEnum SamplingFreqTable 'SF88200     = 1
+type instance FromEnum SamplingFreqTable 'SF64000     = 2
+type instance FromEnum SamplingFreqTable 'SF48000     = 3
+type instance FromEnum SamplingFreqTable 'SF44100     = 4
+type instance FromEnum SamplingFreqTable 'SF32000     = 5
+type instance FromEnum SamplingFreqTable 'SF24000     = 6
+type instance FromEnum SamplingFreqTable 'SF22050     = 7
+type instance FromEnum SamplingFreqTable 'SF16000     = 8
+type instance FromEnum SamplingFreqTable 'SF12000     = 9
+type instance FromEnum SamplingFreqTable 'SF11025     = 0xa
+type instance FromEnum SamplingFreqTable 'SF8000      = 0xb
+type instance FromEnum SamplingFreqTable 'SF7350      = 0xc
+type instance FromEnum SamplingFreqTable 'SFReserved1 = 0xd
+type instance FromEnum SamplingFreqTable 'SFReserved2 = 0xe
+type instance FromEnum SamplingFreqTable 'SFCustom    = 0xf
+type instance EnumFieldSize SamplingFreqTable = 4
 
 type instance ToBitRecordField (x :: SamplingFreqTable) =
-  Field 4 := (TableIndex SamplingFreqTable x)
+  EnumField SamplingFreqTable := x
 
 type instance ToBitRecord (x :: SamplingFreqTable) = ToFreqTableRecord x
 
 type family ToFreqTableRecord (x :: SamplingFreqTable) :: BitRecord where
   ToFreqTableRecord 'SFCustom = ToBitRecordField 'SFCustom :>: "samplingFrequency" :=> Field 24
   ToFreqTableRecord x = ToBitRecord (ToBitRecordField x)
+
+-- *** Channel Config (Mono, Stereo, 7-1 Surround, ...)
+
+data ChannelConfiguration =
+    GasChannelConfig
+  | SingleChannel
+  | ChannelPair
+  | SinglePair
+  | SinglePairSingle
+  | SinglePairPair
+  | SinglePairPairLfe
+  | SinglePairPairPairLfe
+
+type instance FromEnum ChannelConfiguration 'GasChannelConfig = 1
+type instance FromEnum ChannelConfiguration 'SingleChannel = 2
+type instance FromEnum ChannelConfiguration 'ChannelPair = 3
+type instance FromEnum ChannelConfiguration 'SinglePair = 4
+type instance FromEnum ChannelConfiguration 'SinglePairSingle = 5
+type instance FromEnum ChannelConfiguration 'SinglePairPair = 6
+type instance FromEnum ChannelConfiguration 'SinglePairPairLfe = 7
+type instance FromEnum ChannelConfiguration 'SinglePairPairPairLfe = 8
+
+type instance EnumFieldSize ChannelConfiguration = 4
+
+type instance ToBitRecord (x :: ChannelConfiguration) =
+  ToBitRecord (EnumField ChannelConfiguration)
