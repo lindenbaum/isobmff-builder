@@ -13,7 +13,7 @@ type family
   BaseDescriptor (tag :: ClassTag n) (body :: BitRecord) :: BitRecord where
   BaseDescriptor tag body =
     'ReplacePretty
-        ("ISO-14496 BaseDescriptor" <:> PutHex8 (GetClassTag tag)
+        ("BaseDescriptor" <:> PutHex8 (GetClassTag tag)
          <$$--> PrettyRecord (StaticExpandableContent body))
         (FieldU8 := GetClassTag tag :>: StaticExpandableContent body)
 
