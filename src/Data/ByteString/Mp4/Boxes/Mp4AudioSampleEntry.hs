@@ -82,8 +82,6 @@ data AudioObjecTypeId =
   | AoLayer3                       -- ^ ISO 14496-4 subpart 9
   | AoDst                          -- ^ ISO 14496-4 subpart 10
 
-type family TableIndex table (entry :: table) :: Nat
-
 type instance TableIndex AudioObjecTypeId 'AacMain                        = 1
 type instance TableIndex AudioObjecTypeId 'AacLc                          = 2
 type instance TableIndex AudioObjecTypeId 'AacSsr                         = 3
@@ -176,5 +174,3 @@ type instance ToBitRecord (x :: SamplingFreqTable) = ToFreqTableRecord x
 type family ToFreqTableRecord (x :: SamplingFreqTable) :: BitRecord where
   ToFreqTableRecord 'SFCustom = ToBitRecordField 'SFCustom :>: "samplingFrequency" :=> Field 24
   ToFreqTableRecord x = ToBitRecord (ToBitRecordField x)
-
-type instance ToPretty (Tagged s b) = ToPretty b <+> PrettyParens (ToPretty s)

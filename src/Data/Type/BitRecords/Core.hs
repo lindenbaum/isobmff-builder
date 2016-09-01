@@ -1,13 +1,11 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.Type.BitRecords.Core where
 
-import Data.Tagged
-
 import Data.Int
 import Data.Kind (Type, Constraint)
 import Data.Proxy
 import Data.Type.BitRecords.Arithmetic
-
+import Data.Tagged
 import Data.Type.Pretty
 import Data.Word
 import GHC.TypeLits
@@ -263,3 +261,8 @@ type family
   RunConstraintE t :: Constraint where
   RunConstraintE ('Left t) = t
   RunConstraintE ('Right t) = t
+
+-- * Support for /tables/ where entries are mapped to 'Nat's
+
+-- | Return the numeric /index/ of an entry in a table. This emulates 'fromEnum' a bit.
+type family FromEnum enum (entry :: enum) :: Nat
