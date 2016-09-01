@@ -146,7 +146,7 @@ test-suite spec
                      , BoxSpec
                      , DataReferenceSpec
                      , ExpandableSpec
-                     , ElementaryStreamDescriptorSpec
+                     , Mp4AudioSampleEntry
                      , MediaFileSpec
                      , Mp4AudioFileSpec
                      , TypeLayoutSpec

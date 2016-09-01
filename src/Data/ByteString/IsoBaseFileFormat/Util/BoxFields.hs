@@ -318,16 +318,16 @@ bitBoxHoley :: forall record r . BitStringBuilderHoley (Proxy record) r
        => Proxy record -> Holey (BitBox record) r (ToBitStringBuilder (Proxy record) r)
 bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (bitStringBuilderHoley px)
 
-instance
-      ( KnownNat (BitRecordSize content) )
+instance (KnownNat (BitRecordSize (ToBitRecord content)))
    => IsBoxContent (BitBox content) where
-  boxSize cnt =
+  boxSize _ =
     -- convert from bits to bytes
-    fromIntegral (getRecordSizeFromProxy cnt `unsafeShiftR` 3)
+    fromIntegral (getRecordSizeFromProxy (Proxy @(ToBitRecord content)) `unsafeShiftR` 3)
   boxBuilder (BitBox cnt) = cnt
 
 instance
-  (KnownNat     (BitRecordSize record)
-  ,IsBoxContent (BitBox        record)
-  ,KnownSymbol  (BoxTypeSymbol record))
-  =>
+  (IsBoxContent (BitBox        content)
+  ,KnownSymbol  (BoxTypeSymbol content))
+  => IsBox (BitBox content)
+
+type instance BoxTypeSymbol (BitBox content) = BoxTypeSymbol content

@@ -78,7 +78,7 @@ type ExpandableSizeNextChunk (s :: Nat) = Field 1 := 1 :>: (Field 7 := s)
 
 
 -- * Runtime-value Expandable
-
+-- TODO remove "runtime" Expandable?
 newtype Expandable t where
     Expandable :: t -> Expandable t
 

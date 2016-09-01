@@ -5,7 +5,6 @@ import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.Type.BitRecords
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
-import           Data.Type.Pretty
 
 
 type ESDescriptor dependsOnEsId url ocrEsId =

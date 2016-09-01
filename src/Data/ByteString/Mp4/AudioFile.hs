@@ -33,7 +33,7 @@ mkSingleTrackInit doc = mediaBuilder dash $
                    ( soundMediaHeader (smhd doc)
                    :. (dataInformation $: localMediaDataReference)
                    :| sampleTable
-                       ((  sampleDescription $: sampleEntry 0 (staticMp4AudioSampleEntry def def))
+                       ((  sampleDescription $: sampleEntry 0 (audioSampleEntry def def))
                         :. timeToSample []
                         :. sampleToChunk []
                         :. chunkOffset32 []

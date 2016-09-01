@@ -1,49 +1,43 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- | @mp4a@ Audio sample entry according to ISO 14496-14
 module Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry where
 
-import Data.ByteString.IsoBaseFileFormat.Box
-import Data.ByteString.IsoBaseFileFormat.Boxes
-import Data.ByteString.IsoBaseFileFormat.Util.FullBox
-import Data.ByteString.IsoBaseFileFormat.ReExports
-import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
-import Data.ByteString.Mp4.Boxes.BaseDescriptor
+import           Data.ByteString.IsoBaseFileFormat.Box
+import           Data.ByteString.IsoBaseFileFormat.Boxes
+import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import           Data.ByteString.IsoBaseFileFormat.ReExports
+import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
+
+import           Data.Type.BitRecords
+import           Data.Type.Pretty
 
 
 -- | A /body/ for 'AudioSampleEntry'. This 'IsBoxContent' with an
 -- 'ElementaryStreamDescriptor' for ISO-14496-3 audio, with audio decoder
 -- specific info.
-newtype Mp4AudioSampleEntry
 
-
-
-
-
--- | Create an 'StaticMp4AudioSampleEntry'
+-- | Create an 'AudioSampleEntry' with an 'AudioEsd'
 audioSampleEntry
   :: AudioSampleEntry ()
-  -> Box AudioEsd
+  -> AudioEsd
   -> AudioSampleEntry (Box AudioEsd)
-audioSampleEntry ase eds = const eds <$> ase
+audioSampleEntry ase eds = const (Box eds) <$> ase
 
 -- | Create an mp4 audio elementary stream descriptor full box
 audioEsd
-  :: Box AudioEsd
-audioEsd = fullBox 0 $ AudioEsdContent
+  :: Tagged "esId" Word16 -> Tagged "streamPriority" Word64 -> AudioEsd
+audioEsd = runHoley $ hoistR AudioEsd $ bitBoxHoley $ Proxy @ESDescriptorSimple
 
 -- | Consists of 'ElementaryStreamDescriptor's
-newtype AudioEsdContent =
-  AudioEsdContent (BaseDescriptor ESDescriptorAudio)
+newtype AudioEsd =
+  AudioEsd (BitBox ESDescriptorSimple)
   deriving IsBoxContent
 
-instance Default StaticMp4AudioEsdContent where
-    def = StaticMp4AudioEsdContent $ staticESDescriptorAudio 1 1
+instance Default AudioEsd where
+    def = audioEsd def def
 
-type AudioEsd = FullBox StaticMp4AudioEsdContent 0
-
-instance IsBox StaticMp4AudioEsdContent
-type instance BoxTypeSymbol StaticMp4AudioEsdContent = "mp4a"
-
-instance IsBox (AudioSampleEntry (Box StaticMp4AudioEsd))
+instance IsBox AudioEsd
+type instance BoxTypeSymbol AudioEsd = "mp4a"
 
 
 -- * Interface from ISO 14496-3 (Audio)

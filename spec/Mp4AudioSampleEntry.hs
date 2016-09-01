@@ -1,25 +1,26 @@
-module ElementaryStreamDescriptorSpec ( spec ) where
+module Mp4AudioSampleEntry ( spec ) where
 
 import           Data.ByteString.Builder
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import qualified Data.ByteString.Lazy                                 as B
-import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
+import           Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
 import           Data.Type.BitRecords
 import           Test.Hspec
 
 spec :: Spec
-spec = describe "The Set of Type Functions" $
-    it "is sound" $ do
+spec = describe "AudioObjectType" $
+    it "type-checks" $ do
         print testAudioObjectType
 
 testAudioObjectType = Valid
 testAudioObjectType ::
+
       "Audio Object Types"
       #####################
 
       "Small Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        5 `ShouldBe` BitRecordSize (ToBitRecord (AudioObjectType 30))  -/-
+         5 `ShouldBe` BitRecordSize (ToBitRecord (AudioObjectType 30))  -/-
 
       "Big Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~
