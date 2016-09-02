@@ -26,6 +26,7 @@ type family DecoderConfigDescriptorBody decInfos (ps :: [ProfileLevelIndicationI
   DecoderConfigDescriptorBody (RecArray decInfo decInfoCount) ps =
         EnumField ObjectTypeIndication := (GetObjectTypeIndication decInfo)
     :>: EnumField StreamType           := (GetStreamType decInfo)
+    :>: "upstream"     :=> Flag
     :>: Field 1        :=  1
     :>: "bufferSizeDB" :=> Field 24
     :>: "maxBitrate"   :=> FieldU32
