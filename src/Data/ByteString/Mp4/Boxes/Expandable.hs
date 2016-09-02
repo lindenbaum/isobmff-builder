@@ -9,6 +9,7 @@ import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.Type.BitRecords
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
+import           Data.Type.Pretty
 
 
 -- * Static Expandable
@@ -56,7 +57,12 @@ type KnownExpandable record =
       (StaticExpandableContent record)))
 
 type StaticExpandableContent record =
-  ExpandableSize (ShiftR 64 (BitRecordSize (ToBitRecord record)) 3) :>: (ToBitRecord record)
+  'ReplacePretty
+   ("expandable-content-size: "
+    <:> PutHex32 (ShiftR 64 (BitRecordSize (ToBitRecord record)) 3)
+    <$$--> ToPretty (ToBitRecord record))
+  (ExpandableSize (ShiftR 64 (BitRecordSize (ToBitRecord record)) 3) :>: (ToBitRecord record))
+  -- TODO use 32 as SiftR size instead of 64
 
 type family ExpandableSize (s :: Nat) :: BitRecord where
   ExpandableSize 0 = 'EmptyBitRecord

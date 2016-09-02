@@ -75,6 +75,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
                      , Data.ByteString.IsoBaseFileFormat.Util.Versioned
                      , Data.ByteString.Mp4.Boxes.BaseDescriptor
+                     , Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor
                      , Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
                      , Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
                      , Data.ByteString.Mp4.Boxes.Expandable
