@@ -83,6 +83,7 @@ library
                      , Data.ByteString.Mp4.AudioFile
                      , Data.Type.BitRecords
                      , Data.Type.BitRecords.Arithmetic
+                     , Data.Type.BitRecords.Assert
                      , Data.Type.BitRecords.Builder.BitBuffer
                      , Data.Type.BitRecords.Builder.Holey
                      , Data.Type.BitRecords.Builder.LazyByteStringBuilder

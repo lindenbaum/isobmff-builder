@@ -5,26 +5,25 @@ import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.Type.BitRecords
 import           Data.Type.Pretty
 import           GHC.TypeLits
-import           Data.Kind (type Type)
-import           Data.Proxy
 
 -- * Information about what decoder is required for the an elementary stream.
 -- The stream type indicates the general category of the stream and.
-type family DecoderConfigDescriptor decInfos  :: BitRecord where -- TODO (profileLevelIndicationIndexDecriptors :: [ProfileLevelIndicationIndexDescriptor])
-  DecoderConfigDescriptor (RecArray decInfo decInfoCount) =
+type family DecoderConfigDescriptor decInfos (ps :: [ProfileLevelIndicationIndexDescriptor]) :: BitRecord where
+  -- TODO make the way decInfo is passes more elegent, use Maybe or Either
+  DecoderConfigDescriptor (RecArray decInfo decInfoCount) ps =
     BaseDescriptor
      'DecoderConfigDescr
      ('ReplacePretty
        ("decoder-config-descriptor" <:$$-->
            "objectTypeIndication" <:> PutHex8 (FromEnum ObjectTypeIndication (GetObjectTypeIndication decInfo)) <$$>
            "streamType"           <:> PutHex8 (FromEnum StreamType           (GetStreamType decInfo))           <$$>
-           PrettyRecord (DecoderConfigDescriptorBody (RecArray decInfoCount decInfo)))
+           PrettyRecord (DecoderConfigDescriptorBody (RecArray decInfoCount decInfo) ps))
        (DecoderConfigDescriptorBody
-         (RecArray decInfo (Assert (NatIn 0 1) decInfoCount))
-         ))
+         (RecArray decInfo (decInfoCount ?:: NatIn 0 1))
+         (ps ?:: LengthIn 0 255)))
 
-type family DecoderConfigDescriptorBody decInfos :: BitRecord where
-  DecoderConfigDescriptorBody (RecArray decInfo decInfoCount) =
+type family DecoderConfigDescriptorBody decInfos (ps :: [ProfileLevelIndicationIndexDescriptor]) :: BitRecord where
+  DecoderConfigDescriptorBody (RecArray decInfo decInfoCount) ps =
         EnumField ObjectTypeIndication := (GetObjectTypeIndication decInfo)
     :>: EnumField StreamType           := (GetStreamType decInfo)
     :>: Field 1        :=  1
@@ -32,6 +31,7 @@ type family DecoderConfigDescriptorBody decInfos :: BitRecord where
     :>: "maxBitrate"   :=> FieldU32
     :>: "avgBitrate"   :=> FieldU32
     :>: (RecArray decInfoCount decInfo)
+    :>: ps
 
 type family
   GetObjectTypeIndication (t :: k) :: ObjectTypeIndication
@@ -125,35 +125,16 @@ type instance FromEnum StreamType 'IpmpToolStream_Iso14496_13         = 0xb
 
 type instance EnumFieldSize StreamType = 6
 
--- TODO move to utility module
+data ProfileLevelIndicationIndexDescriptor =
+   ProfileIndex (Maybe Nat)
 
-data TyFun :: Type -> Type -> Type
-
-type Assertion a = TyFun a (Maybe ErrorMessage) -> Type
-
-type family Check (f :: Assertion a) (x :: a) :: Maybe ErrorMessage
-
-type family Assert (cond :: Assertion a) (x :: a) :: a where
-  Assert cond x = ProcessCheckResult (Check cond x) x
-
-type family ProcessCheckResult (r :: Maybe ErrorMessage) (x :: a) :: a where
-  ProcessCheckResult 'Nothing x = x
-  ProcessCheckResult ('Just blah) x =
-    TypeError ('Text "Assertion on value " ':<>: 'ShowType x ':<>: 'Text " failed:" ':$$: blah)
-
-
-data NatIn :: Nat -> Nat -> Assertion Nat
-type instance Check (NatIn from to) n =
-  CheckNatInRange (n <=? to) (from <=? n) from to n
 type family
-  CheckNatInRange
-     (lt :: Bool) (gt :: Bool) (from :: Nat) (to :: Nat) (n :: Nat) :: Maybe ErrorMessage where
-  CheckNatInRange 'True 'True from to x = 'Nothing
-  CheckNatInRange c1 c2 from to x =
-    'Just ('Text "Natural out of range: " ':<>: 'ShowType x
-           ':<>: 'Text " not in "
-           ':<>: 'ShowType from ':<>: 'Text " .. " ':<>: 'ShowType to)
+  ToBitRecordProfileIndex (x :: ProfileLevelIndicationIndexDescriptor) :: BitRecordField where
+  ToBitRecordProfileIndex ('ProfileIndex ('Just n)) = FieldU8 := n
+  ToBitRecordProfileIndex ('ProfileIndex 'Nothing) = "profileLevelIndicationIndex" :=> FieldU8
 
--- TODO
-xxxx :: Proxy from -> Proxy to -> Proxy n -> Proxy (Assert (NatIn from to) n)
-xxxx _ _ _ = Proxy
+type instance
+  ToBitRecord (x :: ProfileLevelIndicationIndexDescriptor) =
+  BaseDescriptor
+    'ProfileLevelIndicationIndexDescr
+    (ToBitRecord (ToBitRecordProfileIndex x))
