@@ -2,15 +2,19 @@
 -- | @mp4a@ Audio sample entry according to ISO 14496-14
 module Data.ByteString.Mp4.Boxes.AudioSpecificConfig where
 
-
-
-
 import           Data.ByteString.IsoBaseFileFormat.ReExports
-
 import           Data.Type.BitRecords
 import           Data.Type.Pretty
+import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 
 -- * Interface from ISO 14496-3 (Audio)
+
+data AudioSpecificConfigImpl
+  :: audioSubCfg
+  -> EnumRecordFor SamplingFreqTable
+  -> EnumRecordFor SamplingFreqTable
+  -> EnumRecordFor ChannelConfigTable
+  -> IsA DecoderSpecificInfo
 
 type family
     AudioSpecificConfig
@@ -22,16 +26,21 @@ type family
   where
     AudioSpecificConfig
       audioSubConfig samplingFreq extensionSamplingFreq channelConfig =
+       DecoderSpecificInfo (
           AudioObjectTypeRec (GetAudioObjectTypeId audioSubConfig)
-      :>: samplingFreq
-      :>: channelConfig
-      :>: AudioSpecificConfig1 audioSubConfig extensionSamplingFreq
+          :>: samplingFreq
+          :>: channelConfig
+          :>: AudioSpecificConfig1 audioSubConfig extensionSamplingFreq)
 
 type family
-  AudioSpecificConfig1 (audioSubConfig :: k) (esf :: EnumRecordFor SamplingFreqTable) :: BitRecord where
+  AudioSpecificConfig1
+    (audioSubConfig :: k)
+    (esf :: EnumRecordFor SamplingFreqTable)
+    :: BitRecord where
   AudioSpecificConfig1 audioSubConfig esf =
     If (FromEnum AudioObjectTypeId (GetAudioObjectTypeId audioSubConfig) == FromEnum AudioObjectTypeId 'Sbr)
-    (ToBitRecord esf) (ToBitRecord 'False)
+    (ToBitRecord esf)
+    (ToBitRecord 'False)
 
 type instance GetAudioObjectTypeId 666 = 'Sbr
 

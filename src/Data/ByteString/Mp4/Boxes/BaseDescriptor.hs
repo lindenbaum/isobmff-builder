@@ -8,14 +8,17 @@ import           Data.Type.Pretty
 
 -- * Static base constructor
 
--- | base descriptors that are known at compile time
-type family
-  BaseDescriptor (tag :: ClassTag n) (body :: BitRecord) :: BitRecord where
-  BaseDescriptor tag body =
-    'ReplacePretty
-        ("class-tag" <:> PutHex8 (GetClassTag tag)
-         <$$--> PrettyRecord (StaticExpandableContent body))
-        (FieldU8 := GetClassTag tag :>: StaticExpandableContent body)
+-- | Abstract class of /descriptors/ as recognized by ISO/IEC 14496-1 (Systems).
+-- A specifc descriptor is identified by the 'ClassTag'.
+data BaseDescriptor :: tag -> Type
+
+-- | When applied to 'MkBitRecord', this type creates a base descriptor by
+-- writing the tag byte, and the 'StaticExpandableContent' of the body.
+data BaseDescriptorRecord :: tag -> IsA (BaseDescriptor tag) -> IsA (BitRecordOf (BaseDescriptor tag))
+
+type instance MkBitRecord (BaseDescriptorRecord tag body) =
+  (FieldU8 := GetClassTag tag :>: StaticExpandableContent body)
+    -># ("base-descriptor" <:> PutHex8 (GetClassTag tag))
 
 type family GetClassTag (c :: ClassTag n) :: Nat where
   GetClassTag (c :: ClassTag n) = n

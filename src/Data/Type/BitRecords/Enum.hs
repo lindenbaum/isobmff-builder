@@ -28,7 +28,7 @@ data FixedEnum enum size :: ToEnumInfo enum size
 data ExtEnum enum size (extInd :: enum) extField :: ToEnumInfo enum size
 
 data EnumOf :: Type -> Type
-type EnumRecordFor enum = RecordFor (EnumOf enum)
+type EnumRecordFor enum = IsA (BitRecordOf (EnumOf enum))
 
 data SetEnumTo :: ToEnumInfo enum n -> enum -> EnumRecordFor enum
 type instance MkBitRecord (SetEnumTo (ei :: ToEnumInfo enum size) value) =
