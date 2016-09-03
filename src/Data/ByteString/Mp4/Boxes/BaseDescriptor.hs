@@ -20,7 +20,7 @@ type family
 type family GetClassTag (c :: ClassTag n) :: Nat where
   GetClassTag (c :: ClassTag n) = n
 
--- | Base Descriptor Class Tags
+-- | Base Descriptor Class Tags TODO rename to xxxTag
 data ClassTag (tag :: Nat) where
   ObjectDescr                      :: ClassTag 0x01
   InitialObjectDescr               :: ClassTag 0x02

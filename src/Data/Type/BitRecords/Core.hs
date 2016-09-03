@@ -53,6 +53,43 @@ getRecordSizeFromProxy
   :: forall px (rec :: BitRecord) . KnownNat (BitRecordSize rec) => px rec -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
+-- ** Type-Safe Record Creation
+
+-- | The kind of'BitRecord' **constructors** for some type.
+--
+-- It's just a container to carry a type/kind around, such that  type functions
+-- can restrict the set of applicable parameters. I think of it as @/newkind/@
+-- somehow, but maybe it is better understood as /phantom kind/. The
+-- 'BitRecordConstructor' is just an indicator of the type of types (hence it is
+-- actually a kind of types), it never carries  any actual type value.
+data BitRecordConstructor :: Type -> Type
+
+-- | An alias for the kind that types, that eventually /return/ a
+-- 'BitRecordConstructor'.
+type RecordFor f = BitRecordConstructor f -> Type
+
+-- | Make a 'BitRecord' from a type 'k'.
+type family MkBitRecord (p :: RecordFor k) :: BitRecord
+type instance ToBitRecord (p :: RecordFor k) = MkBitRecord p
+
+-- | A record constructor for 'f', that sets 'f' to a fixed value.
+--
+-- The way how a field is assigned to a value is controlled through
+-- the 'MkBitRecord' instances, that can vary depending on 'f'.
+data SetTo :: f -> v -> RecordFor f
+
+type instance MkBitRecord (SetTo (field :: BitRecordField) v) =
+  ToBitRecord (field := v)
+
+-- | A record constructor for 'f', that sets 'f' to a fixed value.
+--
+-- The way how a field is assigned to a value is controlled through
+-- the 'MkBitRecord' instances, that can vary depending on 'f'.
+data Defer :: Symbol -> f -> RecordFor f
+
+type instance MkBitRecord (Defer label (field :: BitRecordField)) =
+  ToBitRecord (label :=> field)
+
 -- ** Record composition
 
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
@@ -131,10 +168,6 @@ type family BitFieldDemoteRep (x :: BitRecordField) where
 -- **** Setting a Label
 
 -- | A field with a label assigned to it.
---
--- The left argument is converted to a 'BitRecordField' via 'ToBitRecordField'
--- in necessary. The right argument must match the parameter of the 'Maybe' of
--- the corresponding field in 'BitRecordField'.
 type family (:=>) (l :: Symbol) (b :: BitRecordField) :: BitRecordField where
   (:=>) label ('MkField dr size) = 'MkField (Tagged label dr) size
   (:=>) label ('AssignF v f) = 'AssignF v (label :=> f)
@@ -143,10 +176,6 @@ infixr 5 :=>
 -- **** Assignment
 
 -- | A field with a (type-level-) value assigned to.
---
--- The left argument is converted to a 'BitRecordField' via 'ToBitRecordField'
--- in necessary. The right argument must match the parameter of the 'Maybe' of
--- the corresponding field in 'BitRecordField'.
 type family (:=) (b :: BitRecordField) (v :: k) :: BitRecordField where
   (:=) ('MkField demoteRep size) v = 'AssignF v ('MkField demoteRep size)
   (:=) o v = TypeError ('Text "Cannot assign (type-level-) value "

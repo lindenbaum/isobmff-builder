@@ -74,6 +74,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Util.Time
                      , Data.ByteString.IsoBaseFileFormat.Util.TypeLayout
                      , Data.ByteString.IsoBaseFileFormat.Util.Versioned
+                     , Data.ByteString.Mp4.Boxes.AudioSpecificConfig
                      , Data.ByteString.Mp4.Boxes.BaseDescriptor
                      , Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor
                      , Data.ByteString.Mp4.Boxes.DecoderSpecificInfo

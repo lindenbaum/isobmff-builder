@@ -7,52 +7,48 @@ import Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import Data.Proxy
 import Data.Word
 import GHC.TypeLits
+import Data.Kind (type Type)
 
 -- * BitRecordFields containing /enum/-like types
+
+-- | Create a 'BitRecordField' for finite /enum-ish/ types.
+data EnumInfo :: Type -> Nat -> Type
 
 -- | Return the numeric /index/ of an entry in a table. This emulates 'fromEnum' a bit.
 type family FromEnum enum (entry :: enum) :: Nat
 
--- | Create a 'BitRecordField' for finite /enum-ish/ types.
---
--- @
--- data Color = Red | Green | Blue
---
--- type instance FromEnum Color 'Blue   = 3
--- type instance FromEnum Color 'Green  = 80
--- type instance FromEnum Color 'Red    = 12
---
--- type instance EnumFieldSize Color = 2
---
--- type ColorField = EnumField Color
---
--- type ErrorScreen = [utf8|Page fault ;)|] :>: ColorField := 'Blue
---
--- @
---
--- Now we can use @ErrorScreen@ as 'BitRecord':
---
--- >>> bitStringPrinter (Proxy @ErrorScreen)
--- "<< 50 61 67 65 20 66 61 75 6c 74 20 3b 29 c0 >>"
---
--- The 2-bit color field is set to @3@ and is the end: @0c@
---
--- To pass a runtime value just omit the assignment, e.g. @ := 'Blue@ in the
--- other example, and the 'Holey' magic will return a function of 'EnumValue':
---
--- >>> :t bitStringPrinter (Proxy @(ToBitRecord (EnumField Color)))
--- bitStringPrinter (Proxy @(ToBitRecord (EnumField Color)))
---   :: EnumValue Color -> [Char]
---
--- To create an 'EnumValue' one has to use a proxy:
---
--- >>> bitStringPrinter (Proxy @(ToBitRecord (EnumField Color))) (EnumValue (Proxy @'Blue))
--- "<< c0 >>"
---
-type family EnumField enum :: BitRecordField where
-  EnumField enum = 'MkField (EnumValue enum) (EnumFieldSize enum)
+type ToEnumInfo enum size = EnumInfo enum size -> Type
 
-type family EnumFieldSize enum :: Nat
+-- | An enum that has no extension fields.
+data FixedEnum enum size :: ToEnumInfo enum size
+
+-- | An enum that can be extended with an additional 'BitRecordField', following
+-- the  regular enum field; the extension is optional, i.e. only if the
+-- /regular/  field contains a special value (e.g. 0xff).
+data ExtEnum enum size (extInd :: enum) extField :: ToEnumInfo enum size
+
+data EnumOf :: Type -> Type
+type EnumRecordFor enum = RecordFor (EnumOf enum)
+
+data SetEnumTo :: ToEnumInfo enum n -> enum -> EnumRecordFor enum
+type instance MkBitRecord (SetEnumTo (ei :: ToEnumInfo enum size) value) =
+  ToBitRecord (Field size := FromEnum enum value)
+
+data SetEnumToExt :: ToEnumInfo enum size -> extValue -> EnumRecordFor enum
+type instance MkBitRecord (SetEnumToExt (ExtEnum enum size extInd extField) extValue) =
+  Field size := FromEnum enum extInd :>: extField := extValue
+type instance MkBitRecord (SetEnumToExt (FixedEnum enum size) extValue) =
+  TypeError ('Text "Cannot extend fixed-enum: " ':<>: 'ShowType enum)
+
+data DeferEnum :: Symbol -> ToEnumInfo enum n -> EnumRecordFor enum
+type instance MkBitRecord (DeferEnum label (ie :: ToEnumInfo enum size)) =
+  ToBitRecord (label :=> 'MkField (EnumValue enum) size)
+
+data DeferEnumExt :: Symbol -> ToEnumInfo enum n -> EnumRecordFor enum
+type instance MkBitRecord (DeferEnumExt label (ExtEnum enum size extInd extField)) =
+   Field size := FromEnum enum extInd :>: label :=> extField
+type instance MkBitRecord (DeferEnumExt label (FixedEnum enum size)) =
+  TypeError ('Text "Cannot extend fixed-enum: " ':<>: 'ShowType enum)
 
 data EnumValue e where
   EnumValue :: KnownNat (FromEnum e v) => Proxy (v :: e) -> EnumValue e
@@ -63,24 +59,14 @@ fromEnumValue (EnumValue p) = enumValue p
     enumValue :: forall proxy (v :: enum) . KnownNat (FromEnum enum v) => proxy v -> Word64
     enumValue _ = fromIntegral (natVal (Proxy @(FromEnum enum v)))
 
+
 instance
-  forall s r e .
-  BitStringBuilderHoley (Proxy ('MkField Word64 s)) r =>
-  BitStringBuilderHoley (Proxy ('MkField (EnumValue e) s)) r
+  forall size r e .
+  BitStringBuilderHoley (Proxy ('MkField Word64 size)) r =>
+  BitStringBuilderHoley (Proxy ('MkField (EnumValue e) size)) r
   where
-    type ToBitStringBuilder (Proxy ('MkField (EnumValue e) s)) r =
+    type ToBitStringBuilder (Proxy ('MkField (EnumValue e) size)) r =
       EnumValue e -> r
     bitStringBuilderHoley _ =
       mapHoley ( . fromEnumValue)
-               (bitStringBuilderHoley (Proxy @('MkField Word64 s)))
-
-instance
-  forall e (v :: e) s r .
-  (KnownNat (FromEnum e v)
-  ,BitStringBuilderHoley (Proxy ('MkField (EnumValue e) s)) r) =>
-  BitStringBuilderHoley (Proxy ('AssignF v ('MkField (EnumValue e) s))) r
-  where
-    bitStringBuilderHoley _ =
-      applyHoley
-         (bitStringBuilderHoley (Proxy @('MkField (EnumValue e) s)))
-         (EnumValue (Proxy @v))
+               (bitStringBuilderHoley (Proxy @('MkField Word64 size)))

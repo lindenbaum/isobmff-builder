@@ -132,7 +132,7 @@ type family UnsignedDemoteRep i where
   UnsignedDemoteRep Int32 = Word32
   UnsignedDemoteRep Int64 = Word64
 
- -- *** Labbeled Fields
+-- *** Labbeled Fields
 
 instance
   forall s r l d a .

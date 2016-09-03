@@ -96,6 +96,8 @@ type instance FromEnum ObjectTypeIndication 'NoObjectTypeSpecified              
 
 type instance EnumFieldSize ObjectTypeIndication = 8
 
+-- * Stream Type
+
 type family
   GetStreamType (t :: k) :: StreamType
 
