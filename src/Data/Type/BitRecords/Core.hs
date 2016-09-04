@@ -55,7 +55,7 @@ getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
 -- ** Type-Safe Record Creation
 
--- | The kind of'BitRecord' **constructors** for some type.
+-- | The kind of 'BitRecord' constructors for some type.
 --
 -- It's just a container to carry a type/kind around, such that  type functions
 -- can restrict the set of applicable parameters. I think of it as @/newkind/@
@@ -65,60 +65,26 @@ getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 data BitRecordOf t where
   MkBitRecord :: BitRecord -> BitRecordOf f
 type instance ToBitRecord ('MkBitRecord br) = br
-type instance ToBitRecord (p :: IsA (BitRecordOf k)) = ToBitRecord (Generate p)
+type instance ToBitRecord (p :: IsA (BitRecordOf k)) = ToBitRecord (Eval p)
+
+-- | A record constructor for 'f', that sets a field 'f' to a value obtained
+-- later from a parameter, e.g. with a value obtained at runtime.
 --
 -- The way how a field is assigned to a value is controlled through
--- the 'MkBitRecord' instances, that can vary depending on 'f'.
+-- the 'Eval' instances, that can vary depending on 'f'.
 data SetTo :: f -> v -> IsA (BitRecordOf f)
 
-type instance Generate (SetTo (field :: BitRecordField) v) =
+type instance Eval (SetTo (field :: BitRecordField) v) =
   'MkBitRecord (ToBitRecord (field := v))
 
--- | A record constructor for 'f', that sets 'f' to a fixed value.
+-- | A record constructor for 'f', that sets a field 'f' to a fixed value.
 --
 -- The way how a field is assigned to a value is controlled through
--- the 'MkBitRecord' instances, that can vary depending on 'f'.
+-- the 'Eval' instances.
 data Defer :: Symbol -> f -> IsA (BitRecordOf f)
 
-type instance Generate (Defer label (field :: BitRecordField)) =
+type instance Eval (Defer label (field :: BitRecordField)) =
   'MkBitRecord (ToBitRecord (label :=> field))
-
--- *** Higher-Order Kind Glue
-
--- | A kind alias to turn a data type used as kind type to a kind signature
--- matching other data types (umh.. kinds?) whose data-type signature ends in
--- @foo -> Type@.
-type IsA foo = foo -> Type
-
--- | An alias to 'IsA'
-type IsAn foo = foo -> Type
-
--- | An alias to 'IsA'
-type Generates foo = foo -> Type
-
--- | A type family for generating the (promoted) types of a phantom data
---  type(kind) from other data types that have a kind that /ends/ in e.g.
---  @'Generates' Foo@.
---
--- Complete example:
---
--- @
--- data PrettyPrinter c where
---   RenderText :: Symbol -> PrettyPrinter Symbol
---   WithColor :: Color -> PrettyPrinter c -> PrettyPrinter c
---
--- data Color = Black | White
---
--- data ColoredText :: Color -> Symbol -> Generates (PrettyPrinter Symbol)
---
--- type instance Generate (ColoredText c txt) = WithColor c (RenderText txt)
--- @
---
-type family Generate (t :: Generates foo) :: foo
-
--- | Return the actual data type that 'Generate'-tions must return
--- from 'Generate'.
-type family DataTypeFor (foo :: l) :: k
 
 -- ** Record PrettyPrinting
 

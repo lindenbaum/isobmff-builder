@@ -10,15 +10,13 @@ import           Data.Type.Pretty
 
 -- | Abstract class of /descriptors/ as recognized by ISO/IEC 14496-1 (Systems).
 -- A specifc descriptor is identified by the 'ClassTag'.
-data BaseDescriptor :: tag -> Type
+data Descriptor tag where
+  MkDescriptor :: tag -> BitRecord -> Descriptor tag
 
--- | When applied to 'MkBitRecord', this type creates a base descriptor by
--- writing the tag byte, and the 'StaticExpandableContent' of the body.
-data BaseDescriptorRecord :: tag -> IsA (BaseDescriptor tag) -> IsA (BitRecordOf (BaseDescriptor tag))
-
-type instance MkBitRecord (BaseDescriptorRecord tag body) =
-  (FieldU8 := GetClassTag tag :>: StaticExpandableContent body)
-    -># ("base-descriptor" <:> PutHex8 (GetClassTag tag))
+type instance Eval ('MkDescriptor tag body ~~> BitRecordOf (Descriptor tag)) =
+  'MkBitRecord
+       ((FieldU8 := GetClassTag tag :>: StaticExpandableContent body)
+         -># ("base-descriptor" <:> PutHex8 (GetClassTag tag)))
 
 type family GetClassTag (c :: ClassTag n) :: Nat where
   GetClassTag (c :: ClassTag n) = n

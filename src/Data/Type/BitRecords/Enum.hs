@@ -27,27 +27,27 @@ data FixedEnum enum size :: ToEnumInfo enum size
 -- /regular/  field contains a special value (e.g. 0xff).
 data ExtEnum enum size (extInd :: enum) extField :: ToEnumInfo enum size
 
-data EnumOf :: Type -> Type
+data EnumOf enum
 type EnumRecordFor enum = IsA (BitRecordOf (EnumOf enum))
 
 data SetEnumTo :: ToEnumInfo enum n -> enum -> EnumRecordFor enum
-type instance MkBitRecord (SetEnumTo (ei :: ToEnumInfo enum size) value) =
-  ToBitRecord (Field size := FromEnum enum value)
+type instance Eval (SetEnumTo (ei :: ToEnumInfo enum size) value) =
+  'MkBitRecord (ToBitRecord (Field size := FromEnum enum value))
 
 data SetEnumToExt :: ToEnumInfo enum size -> extValue -> EnumRecordFor enum
-type instance MkBitRecord (SetEnumToExt (ExtEnum enum size extInd extField) extValue) =
-  Field size := FromEnum enum extInd :>: extField := extValue
-type instance MkBitRecord (SetEnumToExt (FixedEnum enum size) extValue) =
+type instance Eval (SetEnumToExt (ExtEnum enum size extInd extField) extValue) =
+  'MkBitRecord (Field size := FromEnum enum extInd :>: extField := extValue)
+type instance Eval (SetEnumToExt (FixedEnum enum size) extValue) =
   TypeError ('Text "Cannot extend fixed-enum: " ':<>: 'ShowType enum)
 
 data DeferEnum :: Symbol -> ToEnumInfo enum n -> EnumRecordFor enum
-type instance MkBitRecord (DeferEnum label (ie :: ToEnumInfo enum size)) =
-  ToBitRecord (label :=> 'MkField (EnumValue enum) size)
+type instance Eval (DeferEnum label (ie :: ToEnumInfo enum size)) =
+  'MkBitRecord (ToBitRecord (label :=> 'MkField (EnumValue enum) size))
 
 data DeferEnumExt :: Symbol -> ToEnumInfo enum n -> EnumRecordFor enum
-type instance MkBitRecord (DeferEnumExt label (ExtEnum enum size extInd extField)) =
-   Field size := FromEnum enum extInd :>: label :=> extField
-type instance MkBitRecord (DeferEnumExt label (FixedEnum enum size)) =
+type instance Eval (DeferEnumExt label (ExtEnum enum size extInd extField)) =
+   'MkBitRecord (Field size := FromEnum enum extInd :>: label :=> extField)
+type instance Eval (DeferEnumExt label (FixedEnum enum size)) =
   TypeError ('Text "Cannot extend fixed-enum: " ':<>: 'ShowType enum)
 
 data EnumValue e where
