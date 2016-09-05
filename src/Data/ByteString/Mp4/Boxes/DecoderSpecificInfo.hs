@@ -4,19 +4,15 @@ module Data.ByteString.Mp4.Boxes.DecoderSpecificInfo where
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.Type.BitRecords
 import           Data.Type.Pretty
-
+import           Data.Kind.Extra
 
 -- * Abstract class for opaque object- and stream type dependent decoder
 -- settings.
-data DecoderSpecificInfoImpl
+data DecoderSpecificInfo where
+  MkDecoderSpecificInfo :: BitRecord -> DecoderSpecificInfo
 
-type family MkDecoderSpecificInfoImpl (di :: DecoderSpecificInfoImpl) :: body
+type instance Eval ('MkDecoderSpecificInfo body ~~> Descriptor 'DecSpecificInfo) =
+  'MkDescriptor (PutStr "decoder-specific-info" #$ body)
 
-data DecoderSpecificInfo :: BitRecord -> BaseDescriptorImpl 'DecSpecificInfo
-type instance MkBaseDescriptor
-
-
-
-  MkBaseDescriptor 'DecSpecificInfo (body -># PutStr "decoder-specific-info")
-
-type family
+type instance ToBitRecord  (x :: IsA DecoderSpecificInfo) =
+  ToBitRecord (x --> Descriptor 'DecSpecificInfo)

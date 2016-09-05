@@ -3,20 +3,21 @@ module Data.ByteString.Mp4.Boxes.BaseDescriptor where
 
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.Expandable
-import           Data.Type.BitRecords
-import           Data.Type.Pretty
 
 -- * Static base constructor
 
 -- | Abstract class of /descriptors/ as recognized by ISO/IEC 14496-1 (Systems).
 -- A specifc descriptor is identified by the 'ClassTag'.
-data Descriptor tag where
-  MkDescriptor :: tag -> BitRecord -> Descriptor tag
+data Descriptor :: ClassTag n -> Type where
+  MkDescriptor :: BitRecord -> Descriptor tag
 
-type instance Eval ('MkDescriptor tag body ~~> BitRecordOf (Descriptor tag)) =
+type instance ToBitRecord (d :: IsA (Descriptor t)) =
+  d --> BitRecordOf t -->| BitRecord
+
+type instance Eval (('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) ~~> BitRecordOf tag) =
   'MkBitRecord
-       ((FieldU8 := GetClassTag tag :>: StaticExpandableContent body)
-         -># ("base-descriptor" <:> PutHex8 (GetClassTag tag)))
+  ("base-descriptor" <:> PutHex8 tagInd #$
+   FieldU8 := tagInd :>: StaticExpandableContent body)
 
 type family GetClassTag (c :: ClassTag n) :: Nat where
   GetClassTag (c :: ClassTag n) = n

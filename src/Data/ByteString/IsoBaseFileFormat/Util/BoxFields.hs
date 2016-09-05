@@ -7,7 +7,7 @@ module Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.Singletons
-import Data.Type.BitRecords
+
 import Data.Singletons.Prelude.List
 import qualified Data.Vector.Sized as Vec
 import qualified Data.Text as T
@@ -318,6 +318,7 @@ bitBoxHoley :: forall record r . BitStringBuilderHoley (Proxy record) r
        => Proxy record -> Holey (BitBox record) r (ToBitStringBuilder (Proxy record) r)
 bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (bitStringBuilderHoley px)
 
+-- TODO why 'ToBitRecord' ????
 instance (KnownNat (BitRecordSize (ToBitRecord content)))
    => IsBoxContent (BitBox content) where
   boxSize _ =

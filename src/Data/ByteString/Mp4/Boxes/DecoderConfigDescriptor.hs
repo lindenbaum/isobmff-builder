@@ -4,38 +4,50 @@ module Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor where
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.Type.BitRecords
 import           Data.Type.Pretty
-import           GHC.TypeLits
+import           Data.Kind
+import           Data.Kind.Extra
 
--- * Information about what decoder is required for the an elementary stream.
+-- | Information about what decoder is required for the an elementary stream.
 -- The stream type indicates the general category of the stream and.
-type family DecoderConfigDescriptor decInfos (ps :: [ProfileLevelIndicationIndexDescriptor]) :: BitRecord where
-  -- TODO make the way decInfo is passes more elegent, use Maybe or Either
-  DecoderConfigDescriptor (RecArray decInfo decInfoCount) ps =
-    BaseDescriptor
-     'DecoderConfigDescr
-     ('ReplacePretty
-       ("decoder-config-descriptor" <:$$-->
-           "objectTypeIndication" <:> PutHex8 (FromEnum ObjectTypeIndication (GetObjectTypeIndication decInfo)) <$$>
-           "streamType"           <:> PutHex8 (FromEnum StreamType           (GetStreamType decInfo))           <$$>
-           PrettyRecord (DecoderConfigDescriptorBody (RecArray decInfoCount decInfo) ps))
-       (DecoderConfigDescriptorBody
-         (RecArray decInfo (decInfoCount ?:: NatIn 0 1))
-         (ps ?:: LengthIn 0 255)))
+data DecoderConfigDescriptor
+       (ot :: ObjectTypeIndication)
+       (st :: StreamType)
+          :: [DecoderInfo ot st]
+          -> [ProfileLevelIndicationIndexDescriptor]
+          -> IsA (Descriptor 'DecoderConfigDescr)
 
-type family DecoderConfigDescriptorBody decInfos (ps :: [ProfileLevelIndicationIndexDescriptor]) :: BitRecord where
-  DecoderConfigDescriptorBody (RecArray decInfo decInfoCount) ps =
-        EnumField ObjectTypeIndication := (GetObjectTypeIndication decInfo)
-    :>: EnumField StreamType           := (GetStreamType decInfo)
-    :>: "upstream"     :=> Flag
-    :>: Field 1        :=  1
-    :>: "bufferSizeDB" :=> Field 24
-    :>: "maxBitrate"   :=> FieldU32
-    :>: "avgBitrate"   :=> FieldU32
-    :>: (RecArray decInfoCount decInfo)
-    :>: ps
+type instance Eval (DecoderConfigDescriptor ot st di ps) =
+  'MkDescriptor (DecoderConfigDescriptorBody ot st di ps)
+
+-- | Base type of decoders
+data DecoderInfo :: ObjectTypeIndication -> StreamType -> Type where
+  MkDecoderInfo :: BitRecord -> DecoderInfo ot st
+
+type family
+    DecoderConfigDescriptorBody
+      ot st
+      (di :: [DecoderInfo ot st])
+      (ps :: [ProfileLevelIndicationIndexDescriptor])
+        :: BitRecord
+  where
+    DecoderConfigDescriptorBody ot st di ps =
+      ("decoder-config-descriptor" <:$$-->
+        "objectTypeIndication" <:> PutHex8 (FromEnum ObjectTypeIndication ot) <$$>
+        "streamType"           <:> PutHex8 (FromEnum StreamType           st))
+      #<- (StaticEnumRecord ObjectTypeIndicationEnum ot
+            :>: StaticEnumRecord StreamTypeEnum st
+            :>: "upstream":=> Flag
+            :>: Field 1        :=  1
+            :>: "bufferSizeDB" :=> Field 24
+            :>: "maxBitrate"   :=> FieldU32
+            :>: "avgBitrate"   :=> FieldU32
+            :>: (di ?:: LengthIn 0 1)
+            :>: (ps ?:: LengthIn 0 255))
 
 type family
   GetObjectTypeIndication (t :: k) :: ObjectTypeIndication
+
+type ObjectTypeIndicationEnum = FixedEnum ObjectTypeIndication 8
 
 data ObjectTypeIndication =
     SystemsIso14496_1_a
@@ -94,12 +106,12 @@ type instance FromEnum ObjectTypeIndication 'VisualIso10918_1                   
 type instance FromEnum ObjectTypeIndication 'VisualIso15444_1                            = 0x6E
 type instance FromEnum ObjectTypeIndication 'NoObjectTypeSpecified                       = 0xFF
 
-type instance EnumFieldSize ObjectTypeIndication = 8
-
 -- * Stream Type
 
 type family
   GetStreamType (t :: k) :: StreamType
+
+type StreamTypeEnum = FixedEnum StreamType 6
 
 data StreamType =
     ObjectDescriptorStream
@@ -126,18 +138,22 @@ type instance FromEnum StreamType 'MpegJStream                        = 9
 type instance FromEnum StreamType 'InteractionStream                  = 0xa
 type instance FromEnum StreamType 'IpmpToolStream_Iso14496_13         = 0xb
 
-type instance EnumFieldSize StreamType = 6
+-- ** 'ProfileLevelIndicationIndexDescriptor'
 
 data ProfileLevelIndicationIndexDescriptor =
-   ProfileIndex (Maybe Nat)
+  MkProfileLevelIndicationIndexDescriptor BitRecordField
 
-type family
-  ToBitRecordProfileIndex (x :: ProfileLevelIndicationIndexDescriptor) :: BitRecordField where
-  ToBitRecordProfileIndex ('ProfileIndex ('Just n)) = FieldU8 := n
-  ToBitRecordProfileIndex ('ProfileIndex 'Nothing) = "profileLevelIndicationIndex" :=> FieldU8
+type instance Eval (SetWith
+                    (p :: IsA ProfileLevelIndicationIndexDescriptor)
+                    (OverwriteWith n)) =
+  'MkProfileLevelIndicationIndexDescriptor (FieldU8 := (Assert (NatIn 0 255) n))
+
+type instance Eval (SetWith
+                    (p :: IsA ProfileLevelIndicationIndexDescriptor)
+                    (NamedRuntimeParameter label)) =
+  'MkProfileLevelIndicationIndexDescriptor (label :=> FieldU8)
 
 type instance
-  ToBitRecord (x :: ProfileLevelIndicationIndexDescriptor) =
-  BaseDescriptor
-    'ProfileLevelIndicationIndexDescr
-    (ToBitRecord (ToBitRecordProfileIndex x))
+  Eval ('MkProfileLevelIndicationIndexDescriptor field
+        ~~> Descriptor 'ProfileLevelIndicationIndexDescr) =
+  'MkDescriptor (PutStr "profile-level-indication-index-descriptor" #<- 'BitRecordMember field)

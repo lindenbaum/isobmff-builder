@@ -81,7 +81,9 @@ library
                      , Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
                      , Data.ByteString.Mp4.Boxes.Expandable
                      , Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
+                     , Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor
                      , Data.ByteString.Mp4.AudioFile
+                     , Data.Kind.Extra
                      , Data.Type.BitRecords
                      , Data.Type.BitRecords.Arithmetic
                      , Data.Type.BitRecords.Assert
@@ -151,6 +153,7 @@ test-suite spec
                      , BoxSpec
                      , DataReferenceSpec
                      , ExpandableSpec
+                     , KindsExtraSpec
                      , Mp4AudioSampleEntry
                      , MediaFileSpec
                      , Mp4AudioFileSpec

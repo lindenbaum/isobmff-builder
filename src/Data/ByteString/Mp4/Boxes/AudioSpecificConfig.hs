@@ -3,50 +3,32 @@
 module Data.ByteString.Mp4.Boxes.AudioSpecificConfig where
 
 import           Data.ByteString.IsoBaseFileFormat.ReExports
-import           Data.Type.BitRecords
-import           Data.Type.Pretty
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 
 -- * Interface from ISO 14496-3 (Audio)
 
-data AudioSpecificConfigImpl
-  :: audioSubCfg
-  -> EnumRecordFor SamplingFreqTable
-  -> EnumRecordFor SamplingFreqTable
-  -> EnumRecordFor ChannelConfigTable
+-- | A minimalistic audio config without SBR
+-- TODO add error protection specific config
+-- TODO add sbr support
+data NonSbrAudioConfig
+  :: (IsAn (AudioSubConfig audioObjId))
+  -> EnumOf SamplingFreqTable
+  -> EnumOf ChannelConfigTable
   -> IsA DecoderSpecificInfo
 
-type family
-    AudioSpecificConfig
-      (audioSubConfig :: k)
-      (samplingFreq          :: EnumRecordFor SamplingFreqTable)
-      (extensionSamplingFreq :: EnumRecordFor SamplingFreqTable)
-      (channelConfig         :: EnumRecordFor ChannelConfigTable)
-      :: BitRecord
-  where
-    AudioSpecificConfig
-      audioSubConfig samplingFreq extensionSamplingFreq channelConfig =
-       DecoderSpecificInfo (
-          AudioObjectTypeRec (GetAudioObjectTypeId audioSubConfig)
-          :>: samplingFreq
-          :>: channelConfig
-          :>: AudioSpecificConfig1 audioSubConfig extensionSamplingFreq)
+type instance Eval
+  (NonSbrAudioConfig (subCfg :: IsAn (AudioSubConfig aoId)) freq channels) =
+  'MkDecoderSpecificInfo
+  (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
+    #$ (AudioConfigBeginning aoId freq channels
+         :>: ToBitRecord (Eval subCfg)))
 
-type family
-  AudioSpecificConfig1
-    (audioSubConfig :: k)
-    (esf :: EnumRecordFor SamplingFreqTable)
-    :: BitRecord where
-  AudioSpecificConfig1 audioSubConfig esf =
-    If (FromEnum AudioObjectTypeId (GetAudioObjectTypeId audioSubConfig) == FromEnum AudioObjectTypeId 'Sbr)
-    (ToBitRecord esf)
-    (ToBitRecord 'False)
-
-type instance GetAudioObjectTypeId 666 = 'Sbr
+type AudioConfigBeginning audioObjId freq channels =
+      AudioObjectTypeRec audioObjId
+  :>: freq
+  :>: channels
 
 -- ** Audio Object Type
-
-type family GetAudioObjectTypeId (t :: k) :: AudioObjectTypeId
 
 data AudioObjectTypeId =
     AacMain                        -- ^ ISO 14496-4 subpart 4
@@ -122,11 +104,11 @@ type instance FromEnum AudioObjectTypeId 'AoLayer3                       = 34
 type instance FromEnum AudioObjectTypeId 'AoDst                          = 35
 
 type AudioObjectTypeRec n =
-  'ReplacePretty
-    (If ((FromEnum AudioObjectTypeId n) <=? 30) "AudioObjectType" "ExtAudioObjectType" <:>
-      PutHex8 (FromEnum AudioObjectTypeId n))
-    (AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
-      :>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n))
+    (If ((FromEnum AudioObjectTypeId n) <=? 30)
+            "AudioObjectType"
+            "ExtAudioObjectType") <:> PutHex8 (FromEnum AudioObjectTypeId n)
+    #$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
+    :>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
 type family AudioObjectTypeField1 (n :: Nat) :: BitRecordField where
   AudioObjectTypeField1 n =
@@ -194,3 +176,30 @@ type instance FromEnum ChannelConfigTable 'SinglePairSingle = 5
 type instance FromEnum ChannelConfigTable 'SinglePairPair = 6
 type instance FromEnum ChannelConfigTable 'SinglePairPairLfe = 7
 type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
+
+
+-- ** More Specific audio decoder config
+
+data AudioSubConfig :: AudioObjectTypeId -> Type where
+  MkAudioSubConfig :: BitRecord -> AudioSubConfig t
+
+type instance ToBitRecord ('MkAudioSubConfig br) = br
+
+data GASpecificConfig
+  (objectId       :: AudioObjectTypeId)
+  (frameLenFlag   :: Bool)
+  (coreCoderDelay :: Maybe Nat)
+  (extension      :: Maybe (IsA (BitRecordOf GASExtension)))
+                  :: IsA (AudioSubConfig objectId)
+
+type instance
+  Eval (GASpecificConfig aoid fl cd ext) =
+  'MkAudioSubConfig
+      (Flag := fl
+      :>: FlagJust cd
+      :>: MaybeField (Field 14) cd
+      :>: FlagJust ext
+      :>: OptionalRecordOf ext)
+
+-- | TODO implment that GAS extensions
+data GASExtension

@@ -38,7 +38,7 @@ type instance
 
 type instance
      ToBitRecord (str :: SizedString) =
-      'ReplacePretty (ToPretty str) ('BitRecordMember (ToBitRecordField str))
+      'BitRecordMember (ToBitRecordField str)
 
 type instance
      ToPretty SizedString = PutStr "SizedString"

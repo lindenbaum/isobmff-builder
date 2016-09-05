@@ -12,10 +12,8 @@ import GHC.TypeLits
 -- | A record with a /size/ member, and a nested record that can be counted using 'SizeFieldValue'.
 type family Sized (sf :: BitRecordField) (t :: k) :: BitRecord where
   Sized sf r =
-    'ReplacePretty
-    (PrintHexIfPossible (BitFieldDemoteRep sf) (SizeFieldValue r) <++> PutStr ":" <+>
-     PrettyRecord (ToBitRecord r))
-    (sf := SizeFieldValue r :>: ToBitRecord r)
+    ("Sized" <:> PrintHexIfPossible (BitFieldDemoteRep sf) (SizeFieldValue r))
+    #$ (sf := SizeFieldValue r :>: ToBitRecord r)
 
 -- | A convenient alias for a 'Sized' with an 'FieldU8' size field.
 type Sized8 t = Sized FieldU8 t

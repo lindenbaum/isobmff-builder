@@ -11,9 +11,6 @@ module Data.Kind.Extra
   , type (-->|)
   ) where
 
-import Data.Type.Pretty
-import GHC.TypeLits
-
 import Data.Proxy (KProxy(..))
 import Data.Kind (type Type)
 
@@ -41,9 +38,9 @@ type Generates foo = IsA foo
 --
 -- data Color = Black | White
 --
--- data ColoredText :: Color -> Symbol -> Generates (PrettyPrinter Symbol)
+-- data ColoredText :: Color -> Symbol -> IsA (PrettyPrinter Symbol)
 --
--- type instance Eval (ColoredText c txt) = WithColor c (RenderText txt)
+-- type instance Eval (ColoredText c txt) = 'WithColor c ('RenderText txt)
 -- @
 --
 type family Eval (t :: Generates foo) :: foo
@@ -65,28 +62,9 @@ infixl 2 -->
 type (-->|) foo bar = Eval (FromA (Eval foo) ('KProxy :: KProxy bar))
 infixl 1 -->|
 
--- ** Examples
+-- ** Standard Types
 
-data Animal where
-  MkAnimal :: PrettyType -> Animal
-
-type instance Eval ('MkAnimal info ~~> PrettyType) =
-  "Got an animal" <:$$--> info
-
-type instance Eval ('MkMammel i ~~> Animal) =
-  'MkAnimal ("Specifically a Mammal" <:$$--> i)
-
-data Mammal where
-  MkMammel :: PrettyType -> Mammal
-
-type instance Eval ('MkDog name ~~> Mammal) =
-  'MkMammel ("A dog named" <:> PutStr name)
-
-data Dog where
-  MkDog :: Symbol -> Dog
-
-data Lessy :: IsA Dog
-type instance Eval Lessy = 'MkDog "Lessy!"
-
-type DogToAnimal d =  d --> Mammal -->| Animal
-type DogToPretty d = d --> Mammal --> Animal -->| PrettyType
+-- | Either use the value from @Just@ or return a fallback value(types(kinds))
+data FromMaybe :: IsAn x -> Maybe x -> IsAn x
+type instance Eval (FromMaybe fallback ('Just t)) = t
+type instance Eval (FromMaybe fallback 'Nothing) = Eval fallback

@@ -13,6 +13,7 @@ import           Data.Foldable                                     as X (fold)
 import           Data.Int                                          as X
 import           Data.Kind                                         as X (Constraint,
                                                                          Type)
+import           Data.Kind.Extra                                   as X
 import           Data.Maybe                                        as X
 import           Data.Monoid                                       as X
 import           Data.Proxy                                        as X
@@ -20,7 +21,9 @@ import           Data.String                                       as X
 import           Data.Tagged                                       as X
 import qualified Data.Text                                         as T
 import           Data.Type.Bool                                    as X
+import           Data.Type.BitRecords                              as X
 import           Data.Type.Equality                                as X
+import           Data.Type.Pretty                                  as X
 import           Data.Word                                         as X
 import           GHC.TypeLits                                      as X
 import           Test.TypeSpecCrazy                                as X hiding
