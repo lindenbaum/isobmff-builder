@@ -32,19 +32,13 @@ audioSampleEntry ase eds = const (Box eds) <$> ase
 
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
 newtype AudioEsd =
-  AudioEsd (EsdBox (Mp4AudioEsDescriptor Mp4AacLcAudioDecoderConfigDescriptor))
+  AudioEsd (EsdBox Mp4AudioEsDescriptor)
   deriving (IsBoxContent)
 
 instance IsBox AudioEsd
 type instance BoxTypeSymbol AudioEsd = "mp4a"
 
-type Mp4AudioEsDescriptor di =
-  (ESDescriptorMp4File
-    (DecoderConfigDescriptor
-     'AudioIso14496_3
-     'AudioStream
-     '[Eval di]
-     '[]))
+type Mp4AudioEsDescriptor = (ESDescriptorMp4File Mp4AacLcAudioDecoderConfigDescriptor)
 
 type Mp4AacLcAudioDecoderConfigDescriptor =
   DecoderConfigDescriptor
@@ -58,7 +52,7 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
 
 -- ** EsdBox
 
-newtype EsdBox (d :: Descriptor 'ES_Descr) where
+newtype EsdBox (d :: IsA (Descriptor 'ES_Descr)) where
   EsdBox :: BitBox d -> EsdBox d
 
 deriving instance KnownNat (BitRecordSize (ToBitRecord d))
