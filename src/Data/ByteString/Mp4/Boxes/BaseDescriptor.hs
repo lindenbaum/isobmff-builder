@@ -14,6 +14,10 @@ data Descriptor :: ClassTag n -> Type where
 type instance ToBitRecord (d :: IsA (Descriptor t)) =
   d --> BitRecordOf t -->| BitRecord
 
+-- TODO ok... this fixed the current problem in DecoderSpecificInfo .. but remove this instances ... or the above ... or ... I dunno
+type instance ToBitRecord ('MkDescriptor body) =
+  body
+
 type instance Eval (('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) ~~> BitRecordOf tag) =
   'MkBitRecord
   ("base-descriptor" <:> PutHex8 tagInd #$

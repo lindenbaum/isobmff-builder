@@ -17,8 +17,8 @@ data DecoderSpecificInfo :: ObjectTypeIndication -> StreamType -> Type where
 type instance Eval ('MkDecoderSpecificInfo body ~~> Descriptor 'DecSpecificInfo) =
   'MkDescriptor (PutStr "decoder-specific-info" #$ body)
 
-type instance ToBitRecord  (x :: IsA (DecoderSpecificInfo ot st)) =
-  ToBitRecord (x --> Descriptor 'DecSpecificInfo)
+type instance ToBitRecord  (x :: DecoderSpecificInfo ot st) =
+  ToBitRecord (Eval (x ~~> Descriptor 'DecSpecificInfo))
 
 type ObjectTypeIndicationEnum = FixedEnum ObjectTypeIndication 8
 

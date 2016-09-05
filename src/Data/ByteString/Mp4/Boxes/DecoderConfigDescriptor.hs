@@ -39,7 +39,8 @@ type family
            :>: "maxBitrate"   :=> FieldU32
            :>: "avgBitrate"   :=> FieldU32
            :>: (di ?:: LengthIn 0 1)
-           :>: (ps ?:: LengthIn 0 255))
+           :>: (ps ?:: LengthIn 0 255)
+         )
 
 -- ** 'ProfileLevelIndicationIndexDescriptor'
 

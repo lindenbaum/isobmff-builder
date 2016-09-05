@@ -32,8 +32,8 @@ audioSampleEntry ase eds = const (Box eds) <$> ase
 
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
 newtype AudioEsd =
-  AudioEsd (EsdBox Mp4AudioEsDescriptor)
-  deriving (IsBoxContent)
+  AudioEsd (U8 "TODO")
+  deriving IsBoxContent
 
 instance IsBox AudioEsd
 type instance BoxTypeSymbol AudioEsd = "mp4a"
@@ -52,11 +52,11 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
 
 -- ** EsdBox
 
-newtype EsdBox (d :: IsA (Descriptor 'ES_Descr)) where
-  EsdBox :: BitBox d -> EsdBox d
+-- newtype EsdBox (d :: IsA (Descriptor 'ES_Descr)) where
+--   EsdBox :: BitBox d -> EsdBox d
 
-deriving instance KnownNat (BitRecordSize (ToBitRecord d))
-  => IsBoxContent (EsdBox d)
+-- deriving instance KnownNat (BitRecordSize (ToBitRecord d))
+--   => IsBoxContent (EsdBox d)
 
 
 -- -- TODO rename project

@@ -232,8 +232,8 @@ instance forall f a . BitStringBuilderHoley (Proxy f) a => BitStringBuilderHoley
 instance forall l r a .
   (BitStringBuilderHoley (Proxy l) (ToBitStringBuilder (Proxy r) a)
   , BitStringBuilderHoley (Proxy r) a)
-   => BitStringBuilderHoley (Proxy ('AppendedBitRecords l r)) a where
-  type ToBitStringBuilder (Proxy ('AppendedBitRecords l r)) a =
+   => BitStringBuilderHoley (Proxy (l ':>: r)) a where
+  type ToBitStringBuilder (Proxy (l ':>: r)) a =
     ToBitStringBuilder (Proxy l) (ToBitStringBuilder (Proxy r) a)
   bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @l) . bitStringBuilderHoley (Proxy @r)
 

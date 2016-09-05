@@ -18,7 +18,7 @@ import GHC.TypeLits
 -- | 'BitRecordField's assembly
 data BitRecord where
   BitRecordMember    :: BitRecordField -> BitRecord
-  AppendedBitRecords :: BitRecord      -> BitRecord -> BitRecord
+  (:>:)              :: BitRecord      -> BitRecord -> BitRecord
   BitRecordDoc       :: PrettyType     -> BitRecord
   BitRecordDocNested :: PrettyType     -> BitRecord -> BitRecord
   EmptyBitRecord     :: BitRecord
@@ -39,7 +39,7 @@ type family WhenR (b :: Bool) (x :: k) :: BitRecord where
 -- | Extract the size in as a number of bits from a 'BitRecord'
 type family BitRecordSize (x :: BitRecord) :: Nat where
   BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
-  BitRecordSize ('AppendedBitRecords l r) = BitRecordSize l + BitRecordSize r
+  BitRecordSize (l ':>: r)                = BitRecordSize l + BitRecordSize r
   BitRecordSize ('BitRecordDoc d)         = 0
   BitRecordSize ('BitRecordDocNested d r) = BitRecordSize r
   BitRecordSize 'EmptyBitRecord           = 0
@@ -47,7 +47,7 @@ type family BitRecordSize (x :: BitRecord) :: Nat where
 -- | The total number of members in a record.
 type family BitRecordMemberCount (b :: BitRecord) :: Nat where
   BitRecordMemberCount ('BitRecordMember f)      = 1
-  BitRecordMemberCount ('AppendedBitRecords l r) = BitRecordMemberCount l + BitRecordMemberCount r
+  BitRecordMemberCount (l ':>: r)                = BitRecordMemberCount l + BitRecordMemberCount r
   BitRecordMemberCount ('BitRecordDoc r)         = 0
   BitRecordMemberCount ('BitRecordDocNested d r) = BitRecordMemberCount r
   BitRecordMemberCount 'EmptyBitRecord           = 0
@@ -118,7 +118,7 @@ data AltSetter :: IsA Setter -> IsA Setter
 -- ** Record PrettyPrinting
 
 -- | Augment the pretty printed output of a 'BitRecord'
-type prettyTitle #: r = 'AppendedBitRecords ('BitRecordDoc prettyTitle)  r
+type prettyTitle #: r = ('BitRecordDoc prettyTitle) ':>: r
 infixr 2 #:
 -- | Augment the pretty printed output of a 'BitRecord'
 type prettyTitle #$ r = 'BitRecordDocNested prettyTitle r
@@ -131,7 +131,7 @@ infixr 1 #$
 type family (:>:) (l :: j) (r :: k) :: BitRecord where
  (:>:) 'EmptyBitRecord r               = ToBitRecord r
  (:>:) l 'EmptyBitRecord               = ToBitRecord l
- (:>:) (l :: BitRecord) (r :: BitRecord) = 'AppendedBitRecords l r
+ (:>:) (l :: BitRecord) (r :: BitRecord) = l ':>: r
  (:>:) l r                             = ToBitRecord l :>: ToBitRecord r
 infixl 3 :>:
 
@@ -151,7 +151,7 @@ type instance ToBitRecord (RecArray (r :: k) n) = RecArrayToBitRecord r n
 type family RecArrayToBitRecord (rec :: k) (n :: Nat) :: BitRecord where
   RecArrayToBitRecord r 0 = 'EmptyBitRecord
   RecArrayToBitRecord r 1 = ToBitRecord r
-  RecArrayToBitRecord r n = 'AppendedBitRecords (ToBitRecord r) (RecArrayToBitRecord r (n - 1))
+  RecArrayToBitRecord r n = (ToBitRecord r) ':>: (RecArrayToBitRecord r (n - 1))
 
 -- *** Lists of Records
 
@@ -160,7 +160,7 @@ type instance ToBitRecord (xs :: [k]) = ListToBitRecord xs
 
 type family ListToBitRecord (xs :: [k]) :: BitRecord where
   ListToBitRecord '[] = 'EmptyBitRecord
-  ListToBitRecord (x ': xs )  = 'AppendedBitRecords (ToBitRecord x) (ListToBitRecord xs)
+  ListToBitRecord (x ': xs )  =  (ToBitRecord x) ':>: (ListToBitRecord xs)
 
 -- *** Maybe Record
 
@@ -318,7 +318,7 @@ type instance ToPretty (rec :: BitRecord) = PrettyRecord rec
 type family PrettyRecord (rec :: BitRecord) :: PrettyType where
    PrettyRecord ('BitRecordMember m) = PrettyField m
    PrettyRecord ' EmptyBitRecord = 'PrettyNewline
-   PrettyRecord ('AppendedBitRecords l r) = PrettyRecord l <$$> PrettyRecord r
+   PrettyRecord (l ':>: r) = PrettyRecord l <$$> PrettyRecord r
    PrettyRecord ('BitRecordDoc p) = p
    PrettyRecord ('BitRecordDocNested p r) = p <$$--> PrettyRecord r
 
