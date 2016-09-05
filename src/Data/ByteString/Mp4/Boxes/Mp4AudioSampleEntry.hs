@@ -6,8 +6,10 @@ import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Boxes
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.ReExports
+import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
+import           Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor
 import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 
 -- | A /body/ for 'AudioSampleEntry'. This 'IsBoxContent' with an
@@ -18,7 +20,7 @@ import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 --
 -- TODO generalize this, allow all parameters,e.g. also for SBR though the
 audioSampleEntry
-  :: forall (di :: IsA DecoderSpecificInfo) .
+  :: forall (di :: IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)) .
     AudioSampleEntry ()
   -> AudioEsd di
   -> AudioSampleEntry (Box (AudioEsd di))
@@ -30,32 +32,44 @@ audioSampleEntry ase eds = const (Box eds) <$> ase
 -- audioEsd = runHoley $ hoistR AudioEsd $ bitBoxHoley $ Proxy @ESDescriptorSimple
 
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
-newtype AudioEsd (di :: IsA DecoderSpecificInfo) =
-  AudioEsd  (BitBox (ESDescriptorMp4File di))
+newtype AudioEsd (di :: IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)) =
+  AudioEsd (BitBox (Mp4AudioEsDescriptor di))
 
-deriving instance KnownNat (BitRecordSize (ToBitRecord (ESDescriptorMp4File di)))
+type Mp4AudioEsDescriptor di =
+  (ESDescriptorMp4File
+    (DecoderConfigDescriptor
+     'AudioIso14496_3
+     'AudioStream
+     '[Eval di]
+     '[]))
+
+deriving instance KnownNat (BitRecordSize (ToBitRecord (Mp4AudioEsDescriptor di)))
   => IsBoxContent (AudioEsd di)
 
-instance KnownNat (BitRecordSize (ToBitRecord (ESDescriptorMp4File di))) => IsBox (AudioEsd di)
-type instance BoxTypeSymbol (AudioEsd x) = "mp4a"
+-- instance KnownNat (BitRecordSize (ToBitRecord (Mp4AudioEsDescriptor di))) => IsBox (AudioEsd di)
+-- type instance BoxTypeSymbol (AudioEsd x) = "mp4a"
 
--- TODO rename project
+-- -- TODO rename project
 
--- TODO seperate this and other modules so theres the same seperation as in between
--- the parts of the standard.
-esDescriptorBitBox
-  :: forall (di :: IsA DecoderSpecificInfo) .
-    (BitStringBuilderHoley (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di)))
-  => Proxy di
-  -> ToBitStringBuilder (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di))
-esDescriptorBitBox _ =
-  bitBoxWithArgs (Proxy @(ESDescriptorMp4File di))
+-- -- TODO seperate this and other modules so theres the same seperation as in between
+-- -- the parts of the standard.
+-- esDescriptorBitBox
+--   :: forall (di :: IsA (Descriptor 'DecoderConfigDescr)) .
+--     (BitStringBuilderHoley (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di)))
+--   => Proxy di
+--   -> ToBitStringBuilder (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di))
+-- esDescriptorBitBox _ =
+--   bitBoxWithArgs (Proxy @(ESDescriptorMp4File di))
 
-type Mp4AacLcAudioSpecificConfig =
-  NonSbrAudioConfig
-  (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
-  (SetEnum SamplingFreq 'SF88200)
-  (SetEnum ChannelConfig 'GasChannelConfig)
+type Mp4AacLcAudioDecoderConfigDescriptor =
+  DecoderConfigDescriptor
+   'AudioIso14496_3
+   'AudioStream
+  '[Eval (NonSbrAudioConfig
+          (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
+          (SetEnum SamplingFreq 'SF88200)
+          (SetEnum ChannelConfig 'GasChannelConfig))]
+  '[]
 
 
 {-
@@ -64,7 +78,7 @@ type Mp4AacLcAudioSpecificConfig =
          ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))
          ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))))
 
-bitStringPrinter (Proxy @(ToBitRecord (ESDescriptor 'False 'False 'False Mp4AacLcAudioSpecificConfig Mp4SyncLayerDescriptor)))
+bitStringPrinter (Proxy @(ToBitRecord (ESDescriptor 'False 'False 'False Mp4AacLcAudioDecoderConfigDescriptor Mp4SyncLayerDescriptor)))
 
-bitStringPrinter (Proxy @(ToBitRecord (ESDescriptor 'False 'False 'False Mp4AacLcAudioSpecificConfig Mp4SyncLayerDescriptor))) 3 3
+bitStringPrinter (Proxy @(ToBitRecord (ESDescriptor 'False 'False 'False Mp4AacLcAudioDecoderConfigDescriptor Mp4SyncLayerDescriptor))) 3 3
 -}

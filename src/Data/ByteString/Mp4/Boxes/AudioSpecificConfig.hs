@@ -14,7 +14,7 @@ data NonSbrAudioConfig
   :: (IsAn (AudioSubConfig audioObjId))
   -> EnumOf SamplingFreqTable
   -> EnumOf ChannelConfigTable
-  -> IsA DecoderSpecificInfo
+  -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance Eval
   (NonSbrAudioConfig (subCfg :: IsAn (AudioSubConfig aoId)) freq channels) =

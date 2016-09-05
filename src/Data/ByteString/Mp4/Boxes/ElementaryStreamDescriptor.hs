@@ -4,10 +4,9 @@ module Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor where
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor
-import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 
 data ESDescriptor dependsOnEsId url ocrEsId
-  :: IsA DecoderSpecificInfo
+  :: IsA (Descriptor 'DecoderConfigDescr)
   -> IsA (Descriptor 'SLConfigDescr)
   -> IsA (Descriptor 'ES_Descr)
 
