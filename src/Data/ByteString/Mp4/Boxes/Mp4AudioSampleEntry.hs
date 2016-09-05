@@ -20,10 +20,9 @@ import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 --
 -- TODO generalize this, allow all parameters,e.g. also for SBR though the
 audioSampleEntry
-  :: forall (di :: IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)) .
-    AudioSampleEntry ()
-  -> AudioEsd di
-  -> AudioSampleEntry (Box (AudioEsd di))
+  :: AudioSampleEntry ()
+  -> AudioEsd
+  -> AudioSampleEntry (Box AudioEsd)
 audioSampleEntry ase eds = const (Box eds) <$> ase
 
 -- | Create an mp4 audio elementary stream descriptor full box
@@ -32,8 +31,12 @@ audioSampleEntry ase eds = const (Box eds) <$> ase
 -- audioEsd = runHoley $ hoistR AudioEsd $ bitBoxHoley $ Proxy @ESDescriptorSimple
 
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
-newtype AudioEsd (di :: IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)) =
-  AudioEsd (BitBox (Mp4AudioEsDescriptor di))
+newtype AudioEsd =
+  AudioEsd (EsdBox (Mp4AudioEsDescriptor Mp4AacLcAudioDecoderConfigDescriptor))
+  deriving (IsBoxContent)
+
+instance IsBox AudioEsd
+type instance BoxTypeSymbol AudioEsd = "mp4a"
 
 type Mp4AudioEsDescriptor di =
   (ESDescriptorMp4File
@@ -43,11 +46,24 @@ type Mp4AudioEsDescriptor di =
      '[Eval di]
      '[]))
 
-deriving instance KnownNat (BitRecordSize (ToBitRecord (Mp4AudioEsDescriptor di)))
-  => IsBoxContent (AudioEsd di)
+type Mp4AacLcAudioDecoderConfigDescriptor =
+  DecoderConfigDescriptor
+   'AudioIso14496_3
+   'AudioStream
+  '[Eval (NonSbrAudioConfig
+          (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
+          (SetEnum SamplingFreq 'SF88200)
+          (SetEnum ChannelConfig 'GasChannelConfig))]
+  '[]
 
--- instance KnownNat (BitRecordSize (ToBitRecord (Mp4AudioEsDescriptor di))) => IsBox (AudioEsd di)
--- type instance BoxTypeSymbol (AudioEsd x) = "mp4a"
+-- ** EsdBox
+
+newtype EsdBox (d :: Descriptor 'ES_Descr) where
+  EsdBox :: BitBox d -> EsdBox d
+
+deriving instance KnownNat (BitRecordSize (ToBitRecord d))
+  => IsBoxContent (EsdBox d)
+
 
 -- -- TODO rename project
 
@@ -60,16 +76,6 @@ deriving instance KnownNat (BitRecordSize (ToBitRecord (Mp4AudioEsDescriptor di)
 --   -> ToBitStringBuilder (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di))
 -- esDescriptorBitBox _ =
 --   bitBoxWithArgs (Proxy @(ESDescriptorMp4File di))
-
-type Mp4AacLcAudioDecoderConfigDescriptor =
-  DecoderConfigDescriptor
-   'AudioIso14496_3
-   'AudioStream
-  '[Eval (NonSbrAudioConfig
-          (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
-          (SetEnum SamplingFreq 'SF88200)
-          (SetEnum ChannelConfig 'GasChannelConfig))]
-  '[]
 
 
 {-
