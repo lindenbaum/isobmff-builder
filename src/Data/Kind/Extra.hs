@@ -4,14 +4,14 @@ module Data.Kind.Extra
   ( type IsA
   , type IsAn
   , type Eval
-  , type CoerceTo
+  , type (~~>)
   , type (-->)
+  , type Promote
+  , Promoted(..)
   , type (-->|)
   ) where
 
-
 import Data.Kind (type Type)
-import Data.Proxy
 
 -- | A kind alias to turn a data type used as kind type to a kind signature
 -- matching other data types (umh.. kinds?) whose data-type signature ends in
@@ -47,29 +47,28 @@ data Itself :: forall foo . foo -> IsA foo
 type instance Eval (Itself foo) = foo
 
 -- | Coerce a type, that @'IsA' foo@ to a type that @'IsA' bar@, using
--- 'CoerceTo'.
+-- '~~>'.
 --
 --  When 'Eval'uated, also 'Eval'uate the parameter, which @'IsA' foo@, and
--- 'CoerceTo' a @bar@.
+-- '~~>' a @bar@.
 --
 -- Instead of just allowing to pass the destination kind directly as a type,
 -- accept only 'Promoted'; this makes clear that the parameter is thrown away
 -- after ripping the type information of it. 'Promoted is exactly equal to e.g.
--- 'KProxy', but the name 'KProxy' just look confusing.
-data (:-->:) :: forall foo bar . IsA foo -> Promoted bar -> IsA bar
-type instance Eval (foo :-->: bar) = CoerceTo (Eval foo) bar
+-- 'KProxy', but the name 'KProxy' just looks confusing.
+data (:-->:) (f :: IsA foo) bar :: IsA bar
+type instance Eval (foo :-->: bar) = (~~>) (Eval foo) bar
 
 -- | Define how a @foo@ could be converted to something that @'IsA' bar@.
 -- This is used in the evaluation of ':-->:'.
-type family CoerceTo (x :: foo) (p :: Promoted bar) :: bar
-type instance CoerceTo (x :: foo) (p :: Promoted foo) = x
+type family (~~>) (x :: foo) bar :: bar
+type instance (~~>) (x :: foo) foo = x
 
--- | Alias for ':-->:' that lifts the burden of some nasty typing and creating a
--- 'Promoted' from the caller.
-type (-->) (x :: IsA foo) (p :: Type) = (((:-->:) x (Promote p :: Promoted p)) :: IsA p)
+-- | Alias for ':-->:' that lifts the burden of some nasty typing.
+type (-->) (x :: IsA foo) (p :: Type) = (((:-->:) x p) :: IsA p)
 infixl 3 -->
 
- -- | Alias for @'Eval' (foo ':-->:' Promote bar)@.
+ -- | Alias for @'Eval' (foo ':-->:' bar)@.
 type (x :: IsA foo) -->| (p :: Type) = (Eval (x --> p) :: p)
 infixl 1 -->|
 
@@ -86,28 +85,6 @@ data Promoted :: forall foo . foo -> Type where
 -- | An alias for 'MkPromoted' that accepts the type to promote as explicit type
 -- parameter.
 type Promote (foo :: Type) = ('MkPromoted :: Promoted foo)
-
--- ** Functions
-
-data TyFun :: Type -> Type -> Type
-type (~>) a b = TyFun a b -> Type
-infixr 0 ~>
-
-data Fun :: forall a k . (a -> k) -> Type
-
-type family FunSig (f :: k) :: [()] where
-  FunSig (t :: KProxy (a -> b)) = '() ': (FunSig ('KProxy :: KProxy b))
-  FunSig (t :: KProxy a) =  '[ ]
-  FunSig (t :: (a -> b)) = '() ': (FunSig ('KProxy :: KProxy b))
-  FunSig (t :: a) =  '[ ]
-
-type family Apply (f :: t) (x :: a) :: Type where
- Apply (Fun (f :: a -> b -> c)) (x :: a) = Fun (f x)
- Apply (Fun (f :: a -> Type)) (x :: a) = f x
-
-type (:$:) (f :: t) (x :: a) = Apply f x
-infixl 0 :$:
-
 
 -- ** Standard Types
 

@@ -23,27 +23,12 @@ data BitRecord where
   BitRecordDocNested :: PrettyType     -> BitRecord -> BitRecord
   EmptyBitRecord     :: BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
+infixl 3 :>:
 
 -- | A conditional 'BitRecord'
 type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
   WhenR 'False r = 'EmptyBitRecord
   WhenR 'True r  = r
-
--- | /Smart/ constructor for bit records.
---
--- A constructor that takes any type to a 'BitRecord' that has one of the
--- following kinds:
---
--- 1. 'IsA BitRecord'
--- 2. 'IsA BitRecordField'
--- 3. 'IsA (BitRecordOf t)'
--- 4. 'IsA k', where @x '-->' BitRecord@ is 'Eval'ed
---
-type family ToBitRecord (x :: IsA k) :: BitRecord where
-  ToBitRecord (x :: IsA BitRecord) = Eval x
-  ToBitRecord (x :: IsA BitRecordField) = 'BitRecordMember (Eval x)
-  ToBitRecord (x :: IsA (BitRecordOf t)) = Eval x
-  ToBitRecord (x :: IsA k) = x -->| BitRecord
 
 -- *** Basic Accessor
 
@@ -68,69 +53,37 @@ getRecordSizeFromProxy
   :: forall px (rec :: BitRecord) . KnownNat (BitRecordSize rec) => px rec -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
--- ** Type-Tagged Record Creation
-
--- | The kind of 'BitRecord' constructors for some type.
+-- | /Smart/ constructor for bit records.
 --
--- It's just a container to carry a type/kind around, such that  type functions
--- can restrict the set of applicable parameters. I think of it as @/newkind/@
--- somehow, but maybe it is better understood as /phantom kind/. The
--- 'BitRecordOf' is just an indicator of the type of types (hence it is
--- actually a kind of types), it never carries  any actual type value.
-data BitRecordOf t where
-  MkBitRecord :: BitRecord -> BitRecordOf f
+-- A constructor that takes any type to a 'BitRecord' that has one of the
+-- following kinds:
+--
+-- 1. 'IsA BitRecord'
+-- 2. 'IsA BitRecordField'
+-- 3. 'IsA k', where @x '-->' BitRecord@ is 'Eval'ed
+--
+type family ToBitRecord (x :: IsA k) :: BitRecord where
+  ToBitRecord (x :: IsA BitRecord) = Eval x
+  ToBitRecord (x :: IsA BitRecordField) = 'BitRecordMember (Eval x)
+  ToBitRecord (x :: IsA k) = x -->| BitRecord
 
-type instance Eval ('MkBitRecord br ~~> BitRecord) = br
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
-data OptionalRecordOf :: Maybe (IsA (BitRecordOf t)) -> IsA (BitRecordOf t)
+data OptionalRecordOf :: Maybe (IsA BitRecord) -> IsA BitRecord
 type instance Eval (OptionalRecordOf ('Just t)) = Eval t
-type instance Eval (OptionalRecordOf 'Nothing) = 'MkBitRecord 'EmptyBitRecord
-
--- | A setter for 'f', that assigns a value.
---
--- An alias for 'SetWith' using the 'StdSetter' 'Assign'.
-type SetTo f v = SetWith f (OverwriteWith v)
-
--- | Alternative version of 'SetTo'
-type SetToAlt f v = SetWith f (AltSetter (OverwriteWith v))
-
--- | A setter for 'f', that creates a named parameter for runtime
--- values to set the field.
---
--- An alias for 'SetWith' using the 'StdSetter' 'Assign'.
-type Defer label f = SetWith f (NamedRuntimeParameter label)
-
--- | Alternative version of 'Defer'
-type DeferAlt label f = SetWith f (AltSetter (NamedRuntimeParameter label))
-
--- | Set something to a value in a specific way.
---
--- The way how a field is assigned to a value is controlled through the 'Eval'
--- instances, that can vary depending on @f@ and @setter v@.
-data SetWith :: IsAn f -> IsA Setter -> IsAn f
-
--- | Abstract kind of 'SetWith' setter parameter
-data Setter
-
--- | Assign to a value known at compile-time.
-data OverwriteWith v :: IsA Setter
-
--- | Assign a value obtained from a named parameter, e.g. with a value
--- obtained at runtime.
-data NamedRuntimeParameter :: Symbol -> IsA Setter
-
--- | Assign a value obtained from a named parameter, e.g. with a value
--- obtained at runtime.
-data AltSetter :: IsA Setter -> IsA Setter
+type instance Eval (OptionalRecordOf 'Nothing) = 'EmptyBitRecord
 
 -- ** Record PrettyPrinting
 
 -- | Augment the pretty printed output of a 'BitRecord'
-type prettyTitle #: r = ('BitRecordDoc prettyTitle) ':>: r
+data (prettyTitle :: PrettyType) #: (r :: IsA BitRecord) :: IsA BitRecord
 infixr 2 #:
+type instance Eval (prettyTitle #: r)  = ('BitRecordDoc prettyTitle) ':>: Eval r
+
 -- | Augment the pretty printed output of a 'BitRecord'
-type prettyTitle #$ r = 'BitRecordDocNested prettyTitle r
+data (prettyTitle :: PrettyType) #$ (r :: IsA BitRecord) :: IsA BitRecord
+type instance Eval (prettyTitle #$ r) = 'BitRecordDocNested prettyTitle (Eval r)
+
 infixr 1 #$
 
 -- ** Record composition
@@ -138,24 +91,26 @@ infixr 1 #$
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
 data (:>:) (l :: IsA BitRecord) (r :: IsA BitRecord) :: IsA BitRecord
-
 type instance Eval (l :>: r) = Eval l ':>: Eval r
-infixl 3 :>:
+
+-- | Append a 'BitRecordField' to a BitRecord
+data (:+=) (l :: IsA BitRecord) (r :: BitRecordField) :: IsA BitRecord
+type instance Eval (l :+= r) = Eval l ':>: ('BitRecordMember r)
 
 -- *** Record Arrays and Repitition
 
 -- | An array of records with a fixed number of elements, NOTE: this type is
 -- actually not really necessary since 'ReplicateRecord' exists, but this allows
 -- to have a different 'showRecord' output.
-data RecArray :: k -> Nat -> Type
+data RecArray :: IsA BitRecord -> Nat -> IsA BitRecord
 
 type r ^^ n = RecArray r n
 infixr 8 ^^
 
-type instance ToBitRecord (RecArray (r :: k) n) = RecArrayToBitRecord r n
+type instance Eval (RecArray (r :: IsA BitRecord) n ) = RecArrayToBitRecord r n
 
 -- | Repeat a bit record @n@ times.
-type family RecArrayToBitRecord (rec :: k) (n :: Nat) :: BitRecord where
+type family RecArrayToBitRecord (rec :: IsA BitRecord) (n :: Nat) :: BitRecord where
   RecArrayToBitRecord r 0 = 'EmptyBitRecord
   RecArrayToBitRecord r 1 = ToBitRecord r
   RecArrayToBitRecord r n = (ToBitRecord r) ':>: (RecArrayToBitRecord r (n - 1))
@@ -163,7 +118,7 @@ type family RecArrayToBitRecord (rec :: k) (n :: Nat) :: BitRecord where
 -- *** Lists of Records
 
 -- | Let type level lists also be recrods
-type instance ToBitRecord (xs :: [k]) = ListToBitRecord xs
+type instance (xs :: [IsA BitRecord]) ~~> BitRecord = ListToBitRecord xs
 
 type family ListToBitRecord (xs :: [k]) :: BitRecord where
   ListToBitRecord '[] = 'EmptyBitRecord
@@ -175,9 +130,6 @@ type family ListToBitRecord (xs :: [k]) :: BitRecord where
 data OptionalRecord :: Maybe (IsA BitRecord) -> IsA BitRecord
 type instance Eval (OptionalRecord ('Just t)) = Eval t
 type instance Eval (OptionalRecord 'Nothing) = 'EmptyBitRecord
-
-type instance ToBitRecord ('Nothing :: Maybe k) = 'EmptyBitRecord
-type instance ToBitRecord ('Just r :: Maybe k) = ToBitRecord r
 
 -- ** Field ADT
 
@@ -193,11 +145,7 @@ data BitRecordField where
   MkField :: demoteRep -> Nat -> BitRecordField
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
-type instance ToBitRecord (a :: BitRecordField) = 'BitRecordMember a
-
--- | Type class of types that can be represented as a 'BitRecordField'
-type family ToBitRecordField (t :: k) :: BitRecordField
-type instance ToBitRecordField (x :: BitRecordField) = x
+type instance (a :: BitRecordField) ~~> BitRecord = 'BitRecordMember a
 
 -- | Extract the size in as a number of bits from a 'BitRecordField'
 type family BitRecordFieldSize (x :: BitRecordField) where
@@ -214,12 +162,20 @@ type family BitFieldDemoteRep (x :: BitRecordField) where
 -- **** Setting a Label
 
 -- | A field with a label assigned to it.
-type family (:=>) (l :: Symbol) (b :: BitRecordField) :: BitRecordField where
-  (:=>) label ('MkField dr size) = 'MkField (Tagged label dr) size
-  (:=>) label ('AssignF v f) = 'AssignF v (label :=> f)
+data (:=>) (l :: Symbol) (b :: BitRecordField) :: IsA BitRecord
 infixr 5 :=>
+type instance Eval ((:=>) l b) = 'BitRecordMember (l @: b)
+
+-- | A field with a label assigned to it.
+type family (@:) (l :: Symbol) (b :: BitRecordField) :: BitRecordField where
+  (@:) l ('MkField dr size) = 'MkField (Tagged l dr) size
+  (@:) l ('AssignF v f)     = 'AssignF v ((@:) l f)
+infixr 5 @:
 
 -- **** Assignment
+data (:=~) :: BitRecordField -> k -> IsA BitRecord
+infixr 6 :=~
+type instance Eval (b :=~ k) = 'BitRecordMember (b := k)
 
 -- | A field with a (type-level-) value assigned to.
 type family (:=) (b :: BitRecordField) (v :: k) :: BitRecordField where
@@ -235,18 +191,6 @@ infixr 6 :=
 -- | A single bit (boolean) field
 type Flag = 'MkField Bool 1
 
--- | A single bit (Boolean) field
-type instance ToBitRecordField Bool = Flag
-
--- | A promoted Bool field
-type instance ToBitRecordField (x :: Bool) = Flag := x
-
--- | A single bit (Boolean) record
-type instance ToBitRecord Bool = ToBitRecord Flag
-
--- | A promoted Bool record
-type instance ToBitRecord (x :: Bool) = 'BitRecordMember (ToBitRecordField x)
-
 -- | Define a field of bits with a size and 'Word64' as default demote rep.
 type Field n = 'MkField Word64 n
 
@@ -254,8 +198,7 @@ type FieldU8 = 'MkField Word8 8
 
 type FieldU16 = 'MkField Word16 16
 
-type FieldU32 =
-  'MkField Word32 32
+type FieldU32 = 'MkField Word32 32
 
 type FieldU64 =
   'MkField Word64 64
@@ -296,9 +239,9 @@ data ToStringLength :: Type -> Type -> Type -- TODO move
 -- | An optional field
 data MaybeField :: BitRecordField -> Maybe v -> IsA BitRecord
 type instance Eval (MaybeField f ('Just  v)) =
-  PutStr "Just" #: 'BitRecordMember (f := v)
+  'BitRecordDoc (PutStr "Just") ':>: 'BitRecordMember (f := v)
 type instance Eval (MaybeField f 'Nothing) =
-  PutStr "Nothing" #: 'EmptyBitRecord
+  'BitRecordDoc (PutStr "Nothing") ':>: 'EmptyBitRecord
 
 -- ** Auto-Padding
 
@@ -306,10 +249,10 @@ type Align padRight a f =
     AddPadding padRight ((a - (BitRecordSize f `Rem` a)) `Rem` a) f
 
 type family
-  AddPadding (padRight :: Bool) (n :: Nat) (r :: rk) :: rk where
+  AddPadding (padRight :: Bool) (n :: Nat) (r :: BitRecord) :: BitRecord where
   AddPadding padRight 0 r = r
-  AddPadding 'True n r = r :>: Field n := 0
-  AddPadding 'False n r = Field n := 0 :>: r
+  AddPadding 'True n r  = r            ':>: 'BitRecordMember (Field n := 0)
+  AddPadding 'False n r = 'BitRecordMember (Field n := 0) ':>: r
 
 -- * Field and Record PrettyType Instances
 
@@ -355,3 +298,50 @@ type family
   RunConstraintE t :: Constraint where
   RunConstraintE ('Left t) = t
   RunConstraintE ('Right t) = t
+
+
+
+
+
+
+
+
+
+
+
+-- -- | A setter for 'f', that assigns a value.
+-- --
+-- -- An alias for 'SetWith' using the 'StdSetter' 'Assign'.
+-- type SetTo f v = SetWith f (OverwriteWith v)
+
+-- -- | Alternative version of 'SetTo'
+-- type SetToAlt f v = SetWith f (AltSetter (OverwriteWith v))
+
+-- -- | A setter for 'f', that creates a named parameter for runtime
+-- -- values to set the field.
+-- --
+-- -- An alias for 'SetWith' using the 'StdSetter' 'Assign'.
+-- type Defer label f = SetWith f (NamedRuntimeParameter label)
+
+-- -- | Alternative version of 'Defer'
+-- type DeferAlt label f = SetWith f (AltSetter (NamedRuntimeParameter label))
+
+-- -- | Set something to a value in a specific way.
+-- --
+-- -- The way how a field is assigned to a value is controlled through the 'Eval'
+-- -- instances, that can vary depending on @f@ and @setter v@.
+-- data SetWith :: IsAn f -> IsA Setter -> IsAn f
+
+-- -- | Abstract kind of 'SetWith' setter parameter
+-- data Setter
+
+-- -- | Assign to a value known at compile-time.
+-- data OverwriteWith v :: IsA Setter
+
+-- -- | Assign a value obtained from a named parameter, e.g. with a value
+-- -- obtained at runtime.
+-- data NamedRuntimeParameter :: Symbol -> IsA Setter
+
+-- -- | Assign a value obtained from a named parameter, e.g. with a value
+-- -- obtained at runtime.
+-- data AltSetter :: IsA Setter -> IsA Setter

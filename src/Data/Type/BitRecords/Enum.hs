@@ -6,81 +6,80 @@ import Data.Type.BitRecords.Builder.Holey
 import Data.Type.BitRecords.Builder.LazyByteStringBuilder
 import Data.Proxy
 import Data.Word
+import Data.Kind (Type)
 import GHC.TypeLits
 import Data.Kind.Extra
 
 -- * BitRecordFields containing /enum/-like types
 
-type instance ToBitRecord (ef :: IsAn (EnumField e s)) =
-  ef --> EnumOf e --> BitRecordOf (EnumOf e) -->| BitRecord
-
+-- | Wrapper around a type that can be represented as a short number, indexing
+-- the clauses of the (sum) type.
 data EnumOf enum where
   MkEnumOf :: BitRecord -> EnumOf enum
 
-type instance ToBitRecord (t :: EnumOf e) =
-  t ~~> BitRecordOf (EnumOf e) -->| BitRecord
+type instance ('MkEnumOf b :: EnumOf e) ~~> BitRecord = b
 
-type instance Eval (('MkEnumOf br :: EnumOf e) ~~> BitRecordOf (EnumOf e)) =
-  'MkBitRecord br
-
-data EnumField enum (size :: Nat) where
-  MkEnumField :: BitRecord -> EnumField e s
-
-type instance Eval (('MkEnumField br :: EnumField e s) ~~> EnumOf e) =
-  'MkEnumOf br
-
--- | Create a 'BitRecord' for setting an enum to a value.
-type family StaticEnumRecord (ef :: IsAn (EnumField enum size)) (v :: enum) :: BitRecord where
-  StaticEnumRecord ef v =
-    ToBitRecord (SetTo ef v)
-
--- | Create an 'EnumOf' that sets an enum to a static value.
-type SetEnum (ef :: IsAn (EnumField enum size)) (v :: enum) =
-  (SetTo ef v -->| EnumOf enum)
-
--- | Create an 'EnumOf' that sets the enum to a runtime value.
-type EnumParam (ef :: IsAn (EnumField enum size)) (label :: Symbol) =
-  (Defer label ef -->| EnumOf enum)
-
--- | Create an 'EnumOf' that sets an extended enum to an extended static value.
-type SetEnumAlt (ef :: IsAn (EnumField enum size)) v =
-  (SetToAlt ef v -->| EnumOf enum)
-
--- | Create an 'EnumOf' that sets the extended enum to a runtime value.
-type EnumParamAlt (ef :: IsAn (EnumField enum size)) (label :: Symbol) =
-  (DeferAlt label ef -->| EnumOf enum)
-
--- ** Composing BitRecords with enum fields
+-- | Physical representation of an 'EnumOf', this is an abstract type
+data EnumField (enum :: Type) (size :: Nat)
 
 -- | A fixed size 'EnumField'
-data FixedEnum enum size :: IsAn (EnumField enum size)
+data FixedEnum (enum :: Type) (size :: Nat) :: IsAn (EnumField enum size)
 
 -- | An enum that can be extended with an additional 'BitRecordField', following
 -- the  regular enum field; the extension is optional, i.e. only if the
 -- /regular/  field contains a special value (e.g. 0xff).
-data ExtEnum enum size (extInd :: enum) extField :: IsAn (EnumField enum size)
+data ExtEnum (enum :: Type) (size :: Nat) (extInd :: enum) (extField :: IsA BitRecordField) :: IsAn (EnumField enum size)
+
+type instance (EnumField e s) ~~> BitRecordField =
+  'MkField (EnumValue e) s
+
+-- | Create an 'EnumOf' that sets an enum to a static value.
+data SetEnum (ef :: IsAn (EnumField enum size)) (v :: enum) :: IsAn (EnumOf enum)
+
+type instance Eval (SetEnum (ei :: IsAn (EnumField enum size)) value) =
+  'MkEnumOf ('BitRecordMember (Field size := FromEnum enum value))
+
+-- | Create an 'EnumOf' that sets the enum to a runtime value.
+data EnumParam (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (label :: Symbol) :: IsAn (EnumOf enum)
+type instance Eval (EnumParam (ei :: IsAn (EnumField enum size)) label) =
+  'MkEnumOf ('BitRecordMember (label @: 'MkField (EnumValue enum) size))
+
+-- | Create an 'EnumOf' that sets an extended enum to an extended static value.
+data SetEnumAlt (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (v :: k) :: IsAn (EnumOf enum)
+
+type instance Eval (SetEnumAlt (ExtEnum enum size extInd extField) value) =
+  -- TODO maybe enrich the demoteRep type of 'MkField??
+  'MkEnumOf
+  ('BitRecordMember (Field size := FromEnum enum extInd)
+   ':>: 'BitRecordMember (extField   := value))
+
+type instance Eval (SetEnumAlt (FixedEnum enum size) value) =
+  TypeError ('Text "Cannot assign an 'extended' value to the 'FixedEnum' "
+             ':<>: 'ShowType enum)
+
+-- | Create an 'EnumOf' that sets the extended enum to a runtime value.
+data EnumParamAlt
+  (ef :: IsAn (EnumField (enum :: Type) (size :: Nat)))
+  (label :: Symbol)
+  :: IsAn (EnumOf enum)
+
+type instance Eval (EnumParamAlt (ExtEnum enum size extId extField) label) =
+  'MkEnumOf ('BitRecordMember (label :=> 'MkField (EnumValue enum) size))
+
+type instance Eval (EnumParamAlt (FixedEnum enum size) label) =
+  TypeError ('Text "Cannot assign an extension value to the FixedEnum "
+             ':<>: 'ShowType enum)
+
+-- ** Composing BitRecords with enum fields
 
 -- | Return the numeric /index/ of an entry in a table. This emulates 'fromEnum' a bit.
 type family FromEnum enum (entry :: enum) :: Nat
 
-type instance Eval (SetWith (ei :: IsAn (EnumField enum size)) (OverwriteWith value)) =
-  'MkEnumField ('BitRecordMember (Field size := FromEnum enum value))
-
-type instance Eval (SetWith (ei :: IsAn (EnumField enum size)) (NamedRuntimeParameter label)) =
-  'MkEnumField ('BitRecordMember (label :=> 'MkField (EnumValue enum) size))
-
-type instance Eval (SetWith (ExtEnum enum size extInd extField) (AltSetter (OverwriteWith value))) =
-  'MkEnumField (Field size := FromEnum enum extInd :>: extField := value)
-type instance Eval (SetWith (FixedEnum enum size) (AltSetter (OverwriteWith value))) =
-  TypeError ('Text "Cannot assign an extension value to the FixedEnum " ':<>: 'ShowType enum)
-
-type instance Eval (SetWith (ExtEnum enum size extId extField) (AltSetter (NamedRuntimeParameter label))) =
-  'MkEnumField ('BitRecordMember (label :=> 'MkField (EnumValue enum) size))
-type instance Eval (SetWith (FixedEnum enum size) (AltSetter (NamedRuntimeParameter label))) =
-  TypeError ('Text "Cannot assign an extension value to the FixedEnum " ':<>: 'ShowType enum)
-
 data EnumValue e where
   EnumValue :: KnownNat (FromEnum e v) => Proxy (v :: e) -> EnumValue e
+  StaticEnumValue :: Proxy (v :: e) -> EnumValue e
+
+type ToEnumValue (v :: e) = ('StaticEnumValue ('Proxy :: Proxy v) :: EnumValue e)
 
 fromEnumValue :: EnumValue e -> Word64
 fromEnumValue (EnumValue p) = enumValue p
