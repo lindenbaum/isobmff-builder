@@ -24,15 +24,26 @@ data BitRecord where
   EmptyBitRecord     :: BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 
--- | Type class of types that can be represented as a 'BitRecord'
-type family ToBitRecord (t :: k) :: BitRecord
-type instance ToBitRecord (x :: BitRecord)     = x
-type instance ToBitRecord (x :: IsA BitRecord) = Eval x
-
 -- | A conditional 'BitRecord'
-type family WhenR (b :: Bool) (x :: k) :: BitRecord where
+type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
   WhenR 'False r = 'EmptyBitRecord
-  WhenR 'True r  = ToBitRecord r
+  WhenR 'True r  = r
+
+-- | /Smart/ constructor for bit records.
+--
+-- A constructor that takes any type to a 'BitRecord' that has one of the
+-- following kinds:
+--
+-- 1. 'IsA BitRecord'
+-- 2. 'IsA BitRecordField'
+-- 3. 'IsA (BitRecordOf t)'
+-- 4. 'IsA k', where @x '-->' BitRecord@ is 'Eval'ed
+--
+type family ToBitRecord (x :: IsA k) :: BitRecord where
+  ToBitRecord (x :: IsA BitRecord) = Eval x
+  ToBitRecord (x :: IsA BitRecordField) = 'BitRecordMember (Eval x)
+  ToBitRecord (x :: IsA (BitRecordOf t)) = Eval x
+  ToBitRecord (x :: IsA k) = x -->| BitRecord
 
 -- *** Basic Accessor
 
@@ -57,7 +68,7 @@ getRecordSizeFromProxy
   :: forall px (rec :: BitRecord) . KnownNat (BitRecordSize rec) => px rec -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
--- ** Type-Safe Record Creation
+-- ** Type-Tagged Record Creation
 
 -- | The kind of 'BitRecord' constructors for some type.
 --
@@ -69,8 +80,6 @@ getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 data BitRecordOf t where
   MkBitRecord :: BitRecord -> BitRecordOf f
 
-type instance ToBitRecord ('MkBitRecord br) = br
-type instance ToBitRecord (p :: IsA (BitRecordOf k)) = ToBitRecord (Eval p)
 type instance Eval ('MkBitRecord br ~~> BitRecord) = br
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
@@ -128,11 +137,9 @@ infixr 1 #$
 
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
-type family (:>:) (l :: j) (r :: k) :: BitRecord where
- (:>:) 'EmptyBitRecord r               = ToBitRecord r
- (:>:) l 'EmptyBitRecord               = ToBitRecord l
- (:>:) (l :: BitRecord) (r :: BitRecord) = l ':>: r
- (:>:) l r                             = ToBitRecord l :>: ToBitRecord r
+data (:>:) (l :: IsA BitRecord) (r :: IsA BitRecord) :: IsA BitRecord
+
+type instance Eval (l :>: r) = Eval l ':>: Eval r
 infixl 3 :>:
 
 -- *** Record Arrays and Repitition

@@ -3,9 +3,8 @@
 module Data.Kind.Extra
   ( type IsA
   , type IsAn
-  , type Generates
   , type Eval
-  , type FromA
+  , type Convert
   , type (~~>)
   , type (-->)
   , type (-->|)
@@ -22,12 +21,9 @@ type IsA foo = foo -> Type
 -- | An alias to 'IsA'
 type IsAn oo = IsA oo
 
--- | An alias to 'IsA'
-type Generates foo = IsA foo
-
 -- | A type family for generating the (promoted) types of a phantom data
 --  type(kind) from other data types that have a kind that /ends/ in e.g.
---  @'Generates' Foo@.
+--  @'IsA' Foo@.
 --
 -- Complete example:
 --
@@ -43,24 +39,45 @@ type Generates foo = IsA foo
 -- type instance Eval (ColoredText c txt) = 'WithColor c ('RenderText txt)
 -- @
 --
-type family Eval (t :: Generates foo) :: foo
+type family Eval (t :: IsA foo) :: foo
 
--- | Convert something that 'Generates'  @foo@ to something that 'Generates' @bar@
-data FromA foo :: KProxy bar -> Generates bar
+-- | A type @foo@, of course, @'IsA' foo@ 'Itself'. All other good names, like
+-- 'Pure', 'Id' or 'Return' are taken.
+data Itself :: foo -> IsA foo
+type instance Eval (Itself foo) = foo
 
--- | Alias for 'FromA' that lifts the burden of creating a 'KProxy' from the
+-- | Coerce a type, that @'IsA' foo@ to a type that @'IsA' bar@, using
+-- 'CoerceTo'.
+--
+--  When 'Eval'uated, also 'Eval'uate the parameter, which @'IsA' foo@, and
+-- 'CoerceTo' a @bar@.
+--
+-- Consider using 'Promoted', like e.g.: type ToColor x = x :-->: Promoted Color
+data (:-->:) :: IsA foo -> IsA bar -> IsA bar
+type instance Eval (foo :-->: bar) = CoerceTo (Eval foo) bar
+
+-- | Alias for ':-->:' that lifts the burden of creating a 'KProxy' from the
 -- caller.
-type (~~>) foo bar = FromA foo ('KProxy :: KProxy bar)
-infixl 3 ~~>
--- | Alias for 'Eval' that evaluates the first parameter of 'FromA' and '~~>'
--- respectively.
-type (-->) foo bar = FromA (Eval foo) ('KProxy :: KProxy bar)
-infixl 2 -->
+type (x :: IsA foo) --> bar = (:-->:) x (A bar)
+infixl 3 -->
 
--- | Alias for 'Eval' that evaluates '-->'. This is the evalutated full
--- conversion from @IsA foo@ to @IsA bar@, i.e. @bar@ in this example..
-type (-->|) foo bar = Eval (FromA (Eval foo) ('KProxy :: KProxy bar))
+ -- | Alias for @'Eval' (foo ':-->:' A bar)@.
+type foo -->| bar = Eval (foo --> A bar)
 infixl 1 -->|
+
+-- | A type @foo@ (of kind 'Type') might give rise to a 'Promote'd type of
+-- __kind__ @foo@.
+data A foo :: IsA (Promoted foo)
+
+type instance Eval (A foo :: IsA promotedFoo) = Promoted foo
+
+-- | In certain cases this can replace the ugly 'KProxy', note that this is in
+-- many ways like a 'KProxy', since there is no way to pass anything but
+-- __kind__ information about the __type__ parameter.
+data Promoted bar
+
+-- | Define how a @foo@ could be converted to something that @'IsA' bar@
+type family CoerceTo (x :: foo) (p :: Promoted bar) :: bar
 
 -- ** Standard Types
 
