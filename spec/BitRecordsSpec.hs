@@ -52,7 +52,7 @@ basicsSpec = do
     describe "Bool" $ it "writes a single bit from a tagged 'Bool' parameter" $
       property $ \ v ->
         let actual = if v then "<< 80 >>" else "<< 00 >>" in
-        actual `shouldBe` bitStringPrinter (Proxy :: Proxy (ToBitRecord ("x" :=> Flag))) (Tagged v)
+        actual `shouldBe` bitStringPrinter (Proxy :: Proxy (ToBitRecord ("x" @: Flag))) (Tagged v)
     describe "FlagJust" $ do
       it "writes a single bit '1' for a 'Just ...' parameter" $
         bitStringPrinter (Proxy :: Proxy (FlagJust ('Just "test"))) `shouldBe` "<< 80 >>"
@@ -105,8 +105,8 @@ arraySpec =
               "The record size works"
               ~~~~~~~~~~~~~~~~~~~~~~~~
                   1 `ShouldBe` BitRecordSize (ToBitRecord (RecArray Flag 1))
-              -* 91 `ShouldBe` BitRecordSize (ToBitRecord (("foo" :=> Flag :>: FieldU8) ^^ 10 :>: Flag))
-              -* 91 `ShouldBe` BitRecordSize (ToBitRecord (RecArray ("foo" :=> Flag :>: FieldU8) 10 :>: Flag))
+              -* 91 `ShouldBe` BitRecordSize (ToBitRecord (("foo" @: Flag :>: FieldU8) ^^ 10 :>: Flag))
+              -* 91 `ShouldBe` BitRecordSize (ToBitRecord (RecArray ("foo" @: Flag :>: FieldU8) 10 :>: Flag))
             checkArrayRec = Valid
         runIO $ print checkArrayRec
       describe "showRecord" $
@@ -198,26 +198,26 @@ sizedSpec =
         "<< 00 00 00 00 00 00 00 03 41 42 43 >>"
 
 type TestRecAligned =
-  "bar" :=> Field 8       :>:
+  "bar" @: Field 8       :>:
             Field 8  := 0 :>:
-  "baz" :=> Field 8       :>:
+  "baz" @: Field 8       :>:
             Field 32 := 0 :>:
-  "foo" :=> Field 8       :>:
+  "foo" @: Field 8       :>:
             Field 8  := 0 :>:
-  "oof" :=> Field 8       :>:
+  "oof" @: Field 8       :>:
             Field 8  := 0 :>:
-  "rab" :=> Field 8
+  "rab" @: Field 8
 
 checkTestRecAligned
   :: Expect '[ ShouldBe 96        (BitRecordSize TestRecAligned)  ]
 checkTestRecAligned = Valid
 
 type TestRecUnAligned =
-  "bar" :=> Field 8       :>:
+  "bar" @: Field 8       :>:
             Field 8  := 0 :>:
-  "baz" :=> Field 7       :>:
+  "baz" @: Field 7       :>:
             Field 32 := 0 :>:
-  "foo" :=> Field 8       :>:
+  "foo" @: Field 8       :>:
             Field 8  := 0xfe
 
 checkTestRecUnAligned
@@ -455,7 +455,7 @@ spec = do
       it "only the addressed bits are copied to the output" $
         property $ \value ->
           let rec = Proxy
-              rec :: Proxy (Field 4 := 0 :>: "here" :=> Field 4)
+              rec :: Proxy (Field 4 := 0 :>: "here" @: Field 4)
               actualB :: Builder
               actualB = runBitStringBuilderHoley (bitStringBuilderHoley rec)
                           (Tagged value :: Tagged "here" Word64)

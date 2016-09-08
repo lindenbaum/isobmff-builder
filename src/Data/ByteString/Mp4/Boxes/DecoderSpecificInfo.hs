@@ -12,13 +12,10 @@ import           Data.Kind (type Type)
 
 -- | Base type of decoders
 data DecoderSpecificInfo :: ObjectTypeIndication -> StreamType -> Type where
-  MkDecoderSpecificInfo :: BitRecord -> DecoderSpecificInfo ot st
+  MkDecoderSpecificInfo :: IsA BitRecord -> DecoderSpecificInfo ot st
 
-type instance Eval ('MkDecoderSpecificInfo body ~~> Descriptor 'DecSpecificInfo) =
+type instance ('MkDecoderSpecificInfo body ~~> Descriptor 'DecSpecificInfo) =
   'MkDescriptor (PutStr "decoder-specific-info" #$ body)
-
-type instance ToBitRecord  (x :: DecoderSpecificInfo ot st) =
-  ToBitRecord (Eval (x ~~> Descriptor 'DecSpecificInfo))
 
 type ObjectTypeIndicationEnum = FixedEnum ObjectTypeIndication 8
 

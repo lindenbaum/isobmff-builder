@@ -33,11 +33,11 @@ type family
         ("streamType"           <:> PutHex8 (FromEnum StreamType           st)))
       #$ (StaticEnumRecord ObjectTypeIndicationEnum ot
            :>: StaticEnumRecord StreamTypeEnum st
-           :>: "upstream":=> Flag
-           :>: "reserved":=> Field 1        :=  1
-           :>: "bufferSizeDB" :=> Field 24
-           :>: "maxBitrate"   :=> FieldU32
-           :>: "avgBitrate"   :=> FieldU32
+           :>: "upstream"@: Flag
+           :>: "reserved"@: Field 1        :=  1
+           :>: "bufferSizeDB" @: Field 24
+           :>: "maxBitrate"   @: FieldU32
+           :>: "avgBitrate"   @: FieldU32
            :>: (di ?:: LengthIn 0 1)
            :>: (ps ?:: LengthIn 0 255)
          )
@@ -55,7 +55,7 @@ type instance Eval (SetWith
 type instance Eval (SetWith
                     (p :: IsA ProfileLevelIndicationIndexDescriptor)
                     (NamedRuntimeParameter label)) =
-  'MkProfileLevelIndicationIndexDescriptor (label :=> FieldU8)
+  'MkProfileLevelIndicationIndexDescriptor (label @: FieldU8)
 
 type instance
   Eval ('MkProfileLevelIndicationIndexDescriptor field

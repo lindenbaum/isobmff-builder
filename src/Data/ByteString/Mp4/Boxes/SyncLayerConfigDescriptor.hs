@@ -14,4 +14,5 @@ data Mp4SyncLayerDescriptor :: IsA (Descriptor 'SLConfigDescr)
 -- will use __256__.
 type instance Eval Mp4SyncLayerDescriptor =
   'MkDescriptor
-  (PutStr "mp4-sync-layer-descriptor" #$ 'BitRecordMember ("predefined" :=> FieldU8 := 0x02))
+  (PutStr "mp4-sync-layer-descriptor" #$
+   Itself ('BitRecordMember ("predefined" @: FieldU8 := 0x02)))

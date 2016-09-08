@@ -11,17 +11,17 @@ import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 -- TODO add error protection specific config
 -- TODO add sbr support
 data NonSbrAudioConfig
-  :: (IsAn (AudioSubConfig audioObjId))
-  -> EnumOf SamplingFreqTable
-  -> EnumOf ChannelConfigTable
+  :: IsAn (AudioSubConfig audioObjId)
+  -> IsAn (EnumOf SamplingFreqTable)
+  -> IsAn (EnumOf ChannelConfigTable)
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance Eval
   (NonSbrAudioConfig (subCfg :: IsAn (AudioSubConfig aoId)) freq channels) =
   'MkDecoderSpecificInfo
   (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
-    #$ (AudioConfigBeginning aoId freq channels
-         :>: ToBitRecord (Eval subCfg)))
+    #$ (AudioConfigBeginning aoId (freq --> BitRecord) (channels --> BitRecord)
+         :>: subCfg --> BitRecord))
 
 type AudioConfigBeginning audioObjId freq channels =
       AudioObjectTypeRec audioObjId
@@ -108,7 +108,7 @@ type AudioObjectTypeRec n =
             "AudioObjectType"
             "ExtAudioObjectType") <:> PutHex8 (FromEnum AudioObjectTypeId n)
     #$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
-    :>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
+    .>: Itself (AudioObjectTypeField2 (FromEnum AudioObjectTypeId n))
 
 type family AudioObjectTypeField1 (n :: Nat) :: BitRecordField where
   AudioObjectTypeField1 n =
@@ -116,11 +116,11 @@ type family AudioObjectTypeField1 (n :: Nat) :: BitRecordField where
 
 type family AudioObjectTypeField2 (n :: Nat) :: BitRecord where
   AudioObjectTypeField2 n =
-    If (n <=? 30) 'EmptyBitRecord (ToBitRecord (Field 6 := (n - 31)))
+    If (n <=? 30) 'EmptyBitRecord ('BitRecordMember (Field 6 := (n - 31)))
 
 -- *** Sampling Frequency
 
-type SamplingFreq = ExtEnum SamplingFreqTable 4 'SFCustom (Field 24)
+type SamplingFreq = ExtEnum SamplingFreqTable 4 'SFCustom (Itself (Field 24))
 
 data SamplingFreqTable =
       SF96000
@@ -181,15 +181,15 @@ type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
 -- ** More Specific audio decoder config
 
 data AudioSubConfig :: AudioObjectTypeId -> Type where
-  MkAudioSubConfig :: BitRecord -> AudioSubConfig t
+  MkAudioSubConfig :: IsA BitRecord -> AudioSubConfig t
 
-type instance ToBitRecord ('MkAudioSubConfig br) = br
+type instance 'MkAudioSubConfig br ~~> BitRecord = Eval br
 
 data GASpecificConfig
   (objectId       :: AudioObjectTypeId)
-  (frameLenFlag   :: Bool)
-  (coreCoderDelay :: Maybe Nat)
-  (extension      :: Maybe (IsA (BitRecordOf GASExtension)))
+  (frameLenFlag   :: IsA Flag)
+  (coreCoderDelay :: IsA (Field 14))
+  (extension      :: Maybe (IsA GASExtension))
                   :: IsA (AudioSubConfig objectId)
 
 type instance

@@ -3,6 +3,7 @@
 module Data.Kind.Extra
   ( type IsA
   , type IsAn
+  , type Itself
   , type Eval
   , type (~~>)
   , type (-->)
@@ -43,8 +44,8 @@ type family Eval (t :: IsA foo) :: foo
 
 -- | A type @foo@, of course, @'IsA' foo@ 'Itself'. All other good names, like
 -- 'Pure', 'Id' or 'Return' are taken.
-data Itself :: forall foo . foo -> IsA foo
-type instance Eval (Itself foo) = foo
+data Itself (a :: foo) :: IsA foo
+type instance Eval (Itself foo :: IsA fooKind) = foo
 
 -- | Coerce a type, that @'IsA' foo@ to a type that @'IsA' bar@, using
 -- '~~>'.
@@ -63,14 +64,15 @@ type instance Eval (foo :-->: bar) = (~~>) (Eval foo) bar
 -- This is used in the evaluation of ':-->:'.
 type family (~~>) (x :: foo) bar :: bar
 type instance (~~>) (x :: foo) foo = x
+infixl 9 ~~>
 
 -- | Alias for ':-->:' that lifts the burden of some nasty typing.
 type (-->) (x :: IsA foo) (p :: Type) = (((:-->:) x p) :: IsA p)
-infixl 3 -->
+infixl 9 -->
 
  -- | Alias for @'Eval' (foo ':-->:' bar)@.
 type (x :: IsA foo) -->| (p :: Type) = (Eval (x --> p) :: p)
-infixl 1 -->|
+infixl 9 -->|
 
 -- | Use promoted types of the kind @bar@. This data type isn't strictly
 -- required, but it help express explicitly that @bar@ is used only as kind.

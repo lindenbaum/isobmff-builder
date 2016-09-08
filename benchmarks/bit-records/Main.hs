@@ -35,9 +35,9 @@ type Static64WithParams =
       Field 3 := 0
   :>: Field 5 := 0
   :>: Field 9 := 0
-  :>: "x" :=> Field 7
+  :>: "x" @: Field 7
   :>: Field 30 := 0
-  :>: "y" :=> Field 2
+  :>: "y" @: Field 2
   :>: Field 2 := 0
   :>: Field 2 := 0
   :>: Field 4 := 0
@@ -54,8 +54,8 @@ type Static64 = ToBitRecord (Field 64 := 0)
 
 
 type Static64WithParams =
-      "x" :=> Field 32
-  :>: "y" :=> Field 32
+      "x" @: Field 32
+  :>: "y" @: Field 32
 
 #endif
 
