@@ -17,7 +17,7 @@ data DecoderConfigDescriptor
           -> [ProfileLevelIndicationIndexDescriptor]
           -> IsA (Descriptor 'DecoderConfigDescr)
 
-type instance Eval (DecoderConfigDescriptor ot st di ps) =
+type instance Extract (DecoderConfigDescriptor ot st di ps) =
   'MkDescriptor (DecoderConfigDescriptorBody ot st di ps)
 
 type family
@@ -47,17 +47,17 @@ type family
 data ProfileLevelIndicationIndexDescriptor =
   MkProfileLevelIndicationIndexDescriptor BitRecordField
 
-type instance Eval (SetWith
+type instance Extract (SetWith
                     (p :: IsA ProfileLevelIndicationIndexDescriptor)
                     (OverwriteWith n)) =
   'MkProfileLevelIndicationIndexDescriptor (FieldU8 := (Assert (NatIn 0 255) n))
 
-type instance Eval (SetWith
+type instance Extract (SetWith
                     (p :: IsA ProfileLevelIndicationIndexDescriptor)
                     (NamedRuntimeParameter label)) =
   'MkProfileLevelIndicationIndexDescriptor (label @: FieldU8)
 
 type instance
-  Eval ('MkProfileLevelIndicationIndexDescriptor field
+  Extract ('MkProfileLevelIndicationIndexDescriptor field
         ~~> Descriptor 'ProfileLevelIndicationIndexDescr) =
   'MkDescriptor (PutStr "profile-level-indication-index-descriptor" #$ 'BitRecordMember field)

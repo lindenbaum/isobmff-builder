@@ -16,7 +16,7 @@ data NonSbrAudioConfig
   -> IsAn (EnumOf ChannelConfigTable)
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
-type instance Eval
+type instance Extract
   (NonSbrAudioConfig (subCfg :: IsAn (AudioSubConfig aoId)) freq channels) =
   'MkDecoderSpecificInfo
   (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
@@ -108,7 +108,7 @@ type AudioObjectTypeRec n =
             "AudioObjectType"
             "ExtAudioObjectType") <:> PutHex8 (FromEnum AudioObjectTypeId n)
     #$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
-    .>: Itself (AudioObjectTypeField2 (FromEnum AudioObjectTypeId n))
+    .>: Return (AudioObjectTypeField2 (FromEnum AudioObjectTypeId n))
 
 type family AudioObjectTypeField1 (n :: Nat) :: BitRecordField where
   AudioObjectTypeField1 n =
@@ -120,7 +120,7 @@ type family AudioObjectTypeField2 (n :: Nat) :: BitRecord where
 
 -- *** Sampling Frequency
 
-type SamplingFreq = ExtEnum SamplingFreqTable 4 'SFCustom (Itself (Field 24))
+type SamplingFreq = ExtEnum SamplingFreqTable 4 'SFCustom (Return (Field 24))
 
 data SamplingFreqTable =
       SF96000
@@ -183,7 +183,7 @@ type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
 data AudioSubConfig :: AudioObjectTypeId -> Type where
   MkAudioSubConfig :: IsA BitRecord -> AudioSubConfig t
 
-type instance 'MkAudioSubConfig br ~~> BitRecord = Eval br
+type instance 'MkAudioSubConfig br ~~> BitRecord = Extract br
 
 data GASpecificConfig
   (objectId       :: AudioObjectTypeId)
@@ -193,7 +193,7 @@ data GASpecificConfig
                   :: IsA (AudioSubConfig objectId)
 
 type instance
-  Eval (GASpecificConfig aoid fl cd ext) =
+  Extract (GASpecificConfig aoid fl cd ext) =
   'MkAudioSubConfig
       (Flag := fl
       :>: FlagJust cd

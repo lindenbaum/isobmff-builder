@@ -10,7 +10,7 @@ data ESDescriptor dependsOnEsId url ocrEsId
   -> IsA (Descriptor 'SLConfigDescr)
   -> IsA (Descriptor 'ES_Descr)
 
-type instance Eval (ESDescriptor dependsOnEsId url ocrEsId decConfig slConfig)  =
+type instance Extract (ESDescriptor dependsOnEsId url ocrEsId decConfig slConfig)  =
   'MkDescriptor
      (PutStr "elementary-stream-descriptor" #$
        "esId" @: FieldU16

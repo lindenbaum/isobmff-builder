@@ -17,7 +17,7 @@ import Data.Kind.Extra
 data EnumOf enum where
   MkEnumOf :: IsA BitRecord -> EnumOf enum
 
-type instance ('MkEnumOf b :: EnumOf e) ~~> BitRecord = Eval b
+type instance ('MkEnumOf b :: EnumOf e) ~~> BitRecord = Extract b
 
 -- | Physical representation of an 'EnumOf', this is an abstract type
 data EnumField (enum :: Type) (size :: Nat)
@@ -33,23 +33,23 @@ data ExtEnum (enum :: Type) (size :: Nat) (extInd :: enum) (extField :: IsA BitR
 -- | Create an 'EnumOf' that sets an enum to a static value.
 data SetEnum (ef :: IsAn (EnumField enum size)) (v :: enum) :: IsAn (EnumOf enum)
 
-type instance Eval (SetEnum (ei :: IsAn (EnumField enum size)) value) =
-  'MkEnumOf (Itself ('BitRecordMember (Eval (Field size) := FromEnum enum value)))
+type instance Extract (SetEnum (ei :: IsAn (EnumField enum size)) value) =
+  'MkEnumOf (Return ('BitRecordMember (Extract (Field size) := FromEnum enum value)))
 
 -- | Create an 'EnumOf' that sets the enum to a runtime value.
 data EnumParam (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (label :: Symbol) :: IsAn (EnumOf enum)
-type instance Eval (EnumParam (ei :: IsAn (EnumField enum size)) label) =
-  'MkEnumOf (Itself ('BitRecordMember (label @: 'MkField (EnumValue enum) size)))
+type instance Extract (EnumParam (ei :: IsAn (EnumField enum size)) label) =
+  'MkEnumOf (Return ('BitRecordMember (label @: 'MkField (EnumValue enum) size)))
 
 -- | Create an 'EnumOf' that sets an extended enum to an extended static value.
 data SetEnumAlt (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (v :: k) :: IsAn (EnumOf enum)
 
-type instance Eval (SetEnumAlt (ExtEnum enum size extInd extField) value) =
+type instance Extract (SetEnumAlt (ExtEnum enum size extInd extField) value) =
   -- TODO maybe enrich the demoteRep type of 'MkField??
   'MkEnumOf
-  (Eval (Field size) := FromEnum enum extInd .>. Eval extField := value)
+  (Extract (Field size) := FromEnum enum extInd .>. Extract extField := value)
 
-type instance Eval (SetEnumAlt (FixedEnum enum size) value) =
+type instance Extract (SetEnumAlt (FixedEnum enum size) value) =
   TypeError ('Text "Cannot assign an 'extended' value to the 'FixedEnum' "
              ':<>: 'ShowType enum)
 
@@ -59,10 +59,10 @@ data EnumParamAlt
   (label :: Symbol)
   :: IsAn (EnumOf enum)
 
-type instance Eval (EnumParamAlt (ExtEnum enum size extId extField) label) =
-  'MkEnumOf (Itself ('BitRecordMember (label @: 'MkField (EnumValue enum) size)))
+type instance Extract (EnumParamAlt (ExtEnum enum size extId extField) label) =
+  'MkEnumOf (Return ('BitRecordMember (label @: 'MkField (EnumValue enum) size)))
 
-type instance Eval (EnumParamAlt (FixedEnum enum size) label) =
+type instance Extract (EnumParamAlt (FixedEnum enum size) label) =
   TypeError ('Text "Cannot assign an extension value to the FixedEnum "
              ':<>: 'ShowType enum)
 

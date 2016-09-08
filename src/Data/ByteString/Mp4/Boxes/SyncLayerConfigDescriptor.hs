@@ -12,7 +12,7 @@ data Mp4SyncLayerDescriptor :: IsA (Descriptor 'SLConfigDescr)
 -- blessed __SLDescriptor__. Not one, this is a value not big enough, nor three,
 -- this value is too much. The righteous one ever only uses __two__. Only a fool
 -- will use __256__.
-type instance Eval Mp4SyncLayerDescriptor =
+type instance Extract Mp4SyncLayerDescriptor =
   'MkDescriptor
   (PutStr "mp4-sync-layer-descriptor" #$
-   Itself ('BitRecordMember ("predefined" @: FieldU8 := 0x02)))
+   Return ('BitRecordMember ("predefined" @: FieldU8 := 0x02)))

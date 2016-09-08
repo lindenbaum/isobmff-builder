@@ -51,17 +51,17 @@ deriving instance (KnownExpandable r) => IsBoxContent (StaticExpandable r)
 type KnownExpandable record =
   (KnownNat
     (BitRecordSize
-      (Eval (StaticExpandableContent record))))
+      (Extract (StaticExpandableContent record))))
 
 data StaticExpandableContent :: IsA BitRecord -> IsA BitRecord
 
-type instance Eval (StaticExpandableContent record) =
-  Eval (("expandable-content-size" <:> PutHex32 (ShiftR 64 (BitRecordSize (Eval record)) 3)
-         #$ ExpandableSize (ShiftR 64 (BitRecordSize (Eval record)) 3)) :>: record)
+type instance Extract (StaticExpandableContent record) =
+  Extract (("expandable-content-size" <:> PutHex32 (ShiftR 64 (BitRecordSize (Extract record)) 3)
+         #$ ExpandableSize (ShiftR 64 (BitRecordSize (Extract record)) 3)) :>: record)
   -- TODO use 32 as SiftR size instead of 64
 
 type family ExpandableSize (s :: Nat) :: IsA BitRecord where
-  ExpandableSize 0 = Itself 'EmptyBitRecord
+  ExpandableSize 0 = Return 'EmptyBitRecord
   ExpandableSize s =
     If (s <=? 127)
       (                                       ExpandableSizeLastChunk s)
@@ -70,7 +70,7 @@ type family ExpandableSize (s :: Nat) :: IsA BitRecord where
 type ExpandableSizeLastChunk (s :: Nat) = Field 1 := 0 .>. Field 7 := s
 
 type family ExpandableSizeNext (s :: Nat) :: IsA BitRecord where
-  ExpandableSizeNext 0 = Itself 'EmptyBitRecord
+  ExpandableSizeNext 0 = Return 'EmptyBitRecord
   ExpandableSizeNext s =
     If (s <=? 127)
       (                                        ExpandableSizeNextChunk s)

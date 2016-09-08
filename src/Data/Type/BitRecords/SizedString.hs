@@ -40,7 +40,7 @@ type instance
      charCount
 
 type instance
-     Eval (SizedString str charCount byteCount bitCount) =
+     Extract (SizedString str charCount byteCount bitCount) =
      'MkField SizedString bitCount := SizedStringDemRep str byteCount
 
 type instance

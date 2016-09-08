@@ -15,7 +15,7 @@ data Descriptor :: ClassTag n -> Type where
 
 type instance
   (('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) ~~> BitRecord) =
-  Eval
+  Extract
   (("base-descriptor" <:> PutHex8 tagInd) #$
     FieldU8 := tagInd .>: StaticExpandableContent body)
 

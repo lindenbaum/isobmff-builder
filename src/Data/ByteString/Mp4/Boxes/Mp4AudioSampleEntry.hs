@@ -44,7 +44,7 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
   DecoderConfigDescriptor
    'AudioIso14496_3
    'AudioStream
-  '[Eval (NonSbrAudioConfig
+  '[Extract (NonSbrAudioConfig
           (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
           (SetEnum SamplingFreq 'SF88200)
           (SetEnum ChannelConfig 'GasChannelConfig))]
@@ -73,7 +73,7 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
 
 
 {-
- :kind! (Eval (NonSbrAudioConfig
+ :kind! (Extract (NonSbrAudioConfig
          (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
          ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))
          ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))))
