@@ -16,12 +16,12 @@ data NonSbrAudioConfig
   -> IsAn (EnumOf ChannelConfigTable)
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
-type instance Extract
+type instance Eval
   (NonSbrAudioConfig (subCfg :: IsAn (AudioSubConfig aoId)) freq channels) =
   'MkDecoderSpecificInfo
   (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
-    #$ (AudioConfigBeginning aoId (freq --> BitRecord) (channels --> BitRecord)
-         :>: subCfg --> BitRecord))
+    #$ (AudioConfigBeginning aoId (freq ~~> IsA BitRecord) (channels ~~> IsA BitRecord)
+         :>: (subCfg ~~> IsA BitRecord)))
 
 type AudioConfigBeginning audioObjId freq channels =
       AudioObjectTypeRec audioObjId
@@ -108,19 +108,19 @@ type AudioObjectTypeRec n =
             "AudioObjectType"
             "ExtAudioObjectType") <:> PutHex8 (FromEnum AudioObjectTypeId n)
     #$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
-    .>: Return (AudioObjectTypeField2 (FromEnum AudioObjectTypeId n))
+    .>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
-type family AudioObjectTypeField1 (n :: Nat) :: BitRecordField where
+type family AudioObjectTypeField1 (n :: Nat) :: IsA BitRecordField where
   AudioObjectTypeField1 n =
     If (n <=? 30) (Field 5 := n) (Field 5 := 31)
 
-type family AudioObjectTypeField2 (n :: Nat) :: BitRecord where
+type family AudioObjectTypeField2 (n :: Nat) :: IsA BitRecord where
   AudioObjectTypeField2 n =
-    If (n <=? 30) 'EmptyBitRecord ('BitRecordMember (Field 6 := (n - 31)))
+    If (n <=? 30) (Return 'EmptyBitRecord) (Field 6 := (n - 31) ~~> IsA BitRecord)
 
 -- *** Sampling Frequency
 
-type SamplingFreq = ExtEnum SamplingFreqTable 4 'SFCustom (Return (Field 24))
+type SamplingFreq = ExtEnum SamplingFreqTable 4 'SFCustom (Field 24)
 
 data SamplingFreqTable =
       SF96000
@@ -183,23 +183,31 @@ type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
 data AudioSubConfig :: AudioObjectTypeId -> Type where
   MkAudioSubConfig :: IsA BitRecord -> AudioSubConfig t
 
-type instance 'MkAudioSubConfig br ~~> BitRecord = Extract br
+type instance CoerceTo BitRecord ('MkAudioSubConfig br) = Eval br
 
 data GASpecificConfig
   (objectId       :: AudioObjectTypeId)
-  (frameLenFlag   :: IsA Flag)
-  (coreCoderDelay :: IsA (Field 14))
-  (extension      :: Maybe (IsA GASExtension))
-                  :: IsA (AudioSubConfig objectId)
+  (frameLenFlag   :: FieldValue Bool)
+  (coreCoderDelay :: CoreCoderDelay)
+  (extension      :: IsA GASExtension)
+  :: IsA (AudioSubConfig aoId)
 
 type instance
-  Extract (GASpecificConfig aoid fl cd ext) =
+  Eval (GASpecificConfig aoid fl cd ext) =
   'MkAudioSubConfig
-      (Flag := fl
-      :>: FlagJust cd
-      :>: MaybeField (Field 14) cd
-      :>: FlagJust ext
-      :>: OptionalRecordOf ext)
+     (    Flag :~ fl
+      .>: Pure (cd ~~> BitRecord)
+      :>: (ext ~~> IsA BitRecord)
+     )
+
+data CoreCoderDelay where
+  NoCoreCoderDelay :: CoreCoderDelay
+  MkCoreCoderDelay :: Nat -> CoreCoderDelay
+
+type instance CoerceTo BitRecord 'NoCoreCoderDelay         = 'EmptyBitRecord
+type instance CoerceTo BitRecord ('MkCoreCoderDelay delay) = Eval (Field 14 := delay) ~~> BitRecord
 
 -- | TODO implment that GAS extensions
-data GASExtension
+data GASExtension = MkGASExtension
+type instance CoerceTo BitRecord GASExtension =
+  Eval ("has-gas-extension" @: Flag := 'False) ~~> BitRecord

@@ -11,9 +11,9 @@ import GHC.TypeLits
 import Data.Kind.Extra
 
 -- | A record with a /size/ member, and a nested record that can be counted using 'SizeFieldValue'.
-data Sized (sf :: IsA BitRecordField) (t :: IsA BitRecord) :: IsA BitRecord
-type instance Extract (Sized sf r) =
-   Extract (PutStr "size" #: Extract sf := SizeFieldValue (Extract r) .>: r)
+data Sized (sf :: IsA BitRecordField) (r :: IsA BitRecord) :: IsA BitRecord
+type instance Eval (Sized sf r) =
+   Eval (PutStr "size" #: sf := SizeFieldValue (Eval r) .>: r)
 
 -- | A convenient alias for a 'Sized' with an 'FieldU8' size field.
 type Sized8 t = Sized FieldU8 t

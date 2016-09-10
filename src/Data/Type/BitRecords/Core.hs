@@ -23,7 +23,7 @@ data BitRecord where
   BitRecordDocNested :: PrettyType     -> BitRecord -> BitRecord
   EmptyBitRecord     :: BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
-infixr 3 :>:
+infixl 3 :>:
 
 -- | A conditional 'BitRecord'
 type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
@@ -32,7 +32,7 @@ type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
 
 -- *** Basic Accessor
 
--- | Extract the size in as a number of bits from a 'BitRecord'
+-- | Eval the size in as a number of bits from a 'BitRecord'
 type family BitRecordSize (x :: BitRecord) :: Nat where
   BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
   BitRecordSize (l ':>: r)                = BitRecordSize l + BitRecordSize r
@@ -53,59 +53,64 @@ getRecordSizeFromProxy
   :: forall px (rec :: BitRecord) . KnownNat (BitRecordSize rec) => px rec -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
--- | /Smart/ constructor for bit records.
---
--- A constructor that takes any type to a 'BitRecord' that has one of the
--- following kinds:
---
--- 1. 'IsA BitRecord'
--- 2. 'IsA BitRecordField'
--- 3. 'IsA k', where @x '-->' BitRecord@ is 'Extract'ed
---
-type family ToBitRecord (x :: IsA k) :: BitRecord where
-  ToBitRecord (x :: IsA BitRecord) = Extract x
-  ToBitRecord (x :: IsA BitRecordField) = 'BitRecordMember (Extract x)
-  ToBitRecord (x :: IsA k) = x -->| BitRecord
-
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
-data OptionalRecordOf :: Maybe (IsA BitRecord) -> IsA BitRecord
-type instance Extract (OptionalRecordOf ('Just t)) = Extract t
-type instance Extract (OptionalRecordOf 'Nothing) = 'EmptyBitRecord
+type OptionalRecordOf s = Optional (Pure 'EmptyBitRecord) s
+
+-- TODO remove??
 
 -- ** Record PrettyPrinting
 
 -- | Augment the pretty printed output of a 'BitRecord'
 data (prettyTitle :: PrettyType) #: (r :: IsA BitRecord) :: IsA BitRecord
 infixr 4 #:
-type instance Extract (prettyTitle #: r)  = ('BitRecordDoc prettyTitle) ':>: Extract r
+type instance Eval (prettyTitle #: r)  = ('BitRecordDoc prettyTitle) ':>: Eval r
 
 -- | Augment the pretty printed output of a 'BitRecord'
 data (prettyTitle :: PrettyType) #$ (r :: IsA BitRecord) :: IsA BitRecord
 infixr 2 #$
-type instance Extract (prettyTitle #$ r) = 'BitRecordDocNested prettyTitle (Extract r)
+type instance Eval (prettyTitle #$ r) = 'BitRecordDocNested prettyTitle (Eval r)
 
 -- ** Record composition
 
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
 data (:>:) (l :: IsA BitRecord) (r :: IsA BitRecord) :: IsA BitRecord
-type instance Extract (l :>: r) = Extract l ':>: Extract r
+type instance Eval (l :>: r) = Eval l ':>: Eval r
 
 -- | Append a 'BitRecord' and a 'BitRecordField'
-data (:>.) (l :: IsA BitRecord) (r :: BitRecordField) :: IsA BitRecord
+data (:>.) (l :: IsA BitRecord) (r :: IsA BitRecordField) :: IsA BitRecord
 infixl 6 :>.
-type instance Extract (l :>. r) = Extract l ':>: ('BitRecordMember r)
+type instance Eval (l :>. r) = Eval l ':>: 'BitRecordMember (Eval r)
 
 -- | Append a 'BitRecordField' and a 'BitRecord'
-data (.>:) (l :: BitRecordField) (r :: IsA BitRecord) :: IsA BitRecord
+data (.>:) (l :: IsA BitRecordField) (r :: IsA BitRecord) :: IsA BitRecord
 infixr 6 .>:
-type instance Extract (l .>: r) = ('BitRecordMember l) ':>: Extract r
+type instance Eval (l .>: r) = 'BitRecordMember (Eval l) ':>: Eval r
 
 -- | Append a 'BitRecordField' and a 'BitRecordField' forming a 'BitRecord' with
 -- two members.
-data (.>.) (l :: BitRecordField) (r :: BitRecordField) :: IsA BitRecord
+data (.>.) (l :: IsA BitRecordField) (r :: IsA BitRecordField) :: IsA BitRecord
 infixr 6 .>.
-type instance Extract (l .>. r) = 'BitRecordMember l ':>: 'BitRecordMember r
+type instance Eval (l .>. r) = 'BitRecordMember (Eval l) ':>: 'BitRecordMember (Eval r)
+
+-- | Set a field to either a static, compile time, value or a dynamic, runtime value.
+data (:~) :: forall (k :: Type) . IsA BitRecordField -> FieldValue k -> IsA BitRecordField
+infixl 7 :~
+type instance Eval (fld :~ 'StaticFieldValue ('KProxy :: KProxy v))  = Eval (fld := v)
+type instance Eval (fld :~ 'RuntimeFieldValue l) = Eval (l   @: fld)
+
+-- | Like ':~' but for a 'Maybe' parameter. In case of 'Just' it behaves like ':~'
+-- in case of 'Nothing' it return an 'EmptyBitRecord'.
+data (:~?) :: forall (k :: Type) . IsA BitRecordField -> Maybe (FieldValue k) -> IsA BitRecord
+infixl 7 :~?
+type instance Eval (fld :~? ('Just v)) = 'BitRecordMember (Eval (fld :~ v))
+type instance Eval (fld :~? 'Nothing) = 'EmptyBitRecord
+
+-- | The field value parameter for ':~', either a static, compile time, value or
+-- a dynamic, runtime value.
+data FieldValue demoteRep where
+  StaticFieldValue  :: value -> FieldValue demoteRep
+  RuntimeFieldValue :: Symbol -> FieldValue demoteRep
 
 -- *** Record Arrays and Repitition
 
@@ -117,29 +122,29 @@ data RecArray :: IsA BitRecord -> Nat -> IsA BitRecord
 type r ^^ n = RecArray r n
 infixl 5 ^^
 
-type instance Extract (RecArray (r :: IsA BitRecord) n ) = RecArrayToBitRecord r n
+type instance Eval (RecArray (r :: IsA BitRecord) n ) = RecArrayToBitRecord (Eval r) n
 
 -- | Repeat a bit record @n@ times.
-type family RecArrayToBitRecord (rec :: IsA BitRecord) (n :: Nat) :: BitRecord where
+type family RecArrayToBitRecord (r :: BitRecord) (n :: Nat) :: BitRecord where
   RecArrayToBitRecord r 0 = 'EmptyBitRecord
-  RecArrayToBitRecord r 1 = ToBitRecord r
-  RecArrayToBitRecord r n = (ToBitRecord r) ':>: (RecArrayToBitRecord r (n - 1))
+  RecArrayToBitRecord r 1 = r
+  RecArrayToBitRecord r n = r ':>: RecArrayToBitRecord r (n - 1)
 
 -- *** Lists of Records
 
--- | Let type level lists also be recrods
-type instance (xs :: [IsA BitRecord]) ~~> BitRecord = ListToBitRecord xs
+-- | Let type level lists also be records
+type instance CoerceTo BitRecord (xs :: [IsA BitRecord]) = ListToBitRecord xs
 
-type family ListToBitRecord (xs :: [k]) :: BitRecord where
-  ListToBitRecord '[] = 'EmptyBitRecord
-  ListToBitRecord (x ': xs )  =  (ToBitRecord x) ':>: (ListToBitRecord xs)
+type family ListToBitRecord (xs :: [IsA BitRecord]) :: BitRecord where
+  ListToBitRecord '[]        = 'EmptyBitRecord
+  ListToBitRecord (x ': xs ) =  Eval x ':>: ListToBitRecord xs
 
 -- *** Maybe Record
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
 data OptionalRecord :: Maybe (IsA BitRecord) -> IsA BitRecord
-type instance Extract (OptionalRecord ('Just t)) = Extract t
-type instance Extract (OptionalRecord 'Nothing) = 'EmptyBitRecord
+type instance Eval (OptionalRecord ('Just t)) = Eval t
+type instance Eval (OptionalRecord 'Nothing)  = 'EmptyBitRecord
 
 -- ** Field ADT
 
@@ -155,14 +160,14 @@ data BitRecordField where
   MkField :: demoteRep -> Nat -> BitRecordField
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
-type instance (a :: BitRecordField) ~~> BitRecord = 'BitRecordMember a
+type instance CoerceTo BitRecord (a :: BitRecordField) = 'BitRecordMember a
 
--- | Extract the size in as a number of bits from a 'BitRecordField'
+-- | Eval the size in as a number of bits from a 'BitRecordField'
 type family BitRecordFieldSize (x :: BitRecordField) where
   BitRecordFieldSize ('MkField dr size) = size
   BitRecordFieldSize ('AssignF l f)     = BitRecordFieldSize f
 
--- | Extract the value level assignment type a 'BitRecordField'
+-- | Eval the value level assignment type a 'BitRecordField'
 type family BitFieldDemoteRep (x :: BitRecordField) where
   BitFieldDemoteRep ('MkField dr size) = dr
   BitFieldDemoteRep ('AssignF l f)     = BitFieldDemoteRep f
@@ -174,7 +179,7 @@ type family BitFieldDemoteRep (x :: BitRecordField) where
 -- | A field with a label assigned to it.
 data (@:) (l :: Symbol) (b :: IsA BitRecordField) :: IsA BitRecordField
 infixr 8 @:
-type instance Extract (l @: f) = TagBitRecodField l (Extract f)
+type instance Eval (l @: f) = TagBitRecodField l (Eval f)
 type family TagBitRecodField (l :: Symbol) (b :: BitRecordField) :: BitRecordField where
   TagBitRecodField l ('MkField dr size) = 'MkField (Tagged l dr) size
   TagBitRecodField l ('AssignF v f)     = 'AssignF (Tagged l v) (TagBitRecodField l f)
@@ -182,8 +187,8 @@ type family TagBitRecodField (l :: Symbol) (b :: BitRecordField) :: BitRecordFie
 -- | Assign a label to a field.
 data (label :: Symbol) @:: (fld :: IsAn (IsA BitRecordField)) :: IsAn (IsA BitRecordField)
 infixr 8 @::
-type instance Extract (label @:: fld) = Extract (Pure ((@:) label) fld)
-  -- (label @: (Extract fld))
+type instance Eval (label @:: fld) =
+  (label @: (Eval fld))
 
 type (@:::) label f = Pure ((@:) label) f
 
@@ -191,8 +196,9 @@ type (@:::) label f = Pure ((@:) label) f
 
 -- | A field with a (type-level-) value assigned to.
 data (:=) (b :: IsA BitRecordField) (v :: k) :: IsA BitRecordField
+infixl 7 :=
 
-type instance Extract ((b :: IsA BitRecordField) := (v :: k)) = AssignFChecked (Extract b) v
+type instance Eval ((b :: IsA BitRecordField) := (v :: k)) = AssignFChecked (Eval b) v
 
 type family AssignFChecked (b :: BitRecordField) (v :: k) :: BitRecordField where
   AssignFChecked ('MkField demoteRep size) v = 'AssignF v ('MkField demoteRep size)
@@ -200,34 +206,33 @@ type family AssignFChecked (b :: BitRecordField) (v :: k) :: BitRecordField wher
                          ':<>: 'ShowType v
                          ':<>: 'Text " to field, that is already assigned: "
                          ':<>: 'ShowType o)
-infixr 7 :=
 
 -- | Assign a value (type-level) to a field assignment.
 data (fld :: IsAn (IsA BitRecordField)) ::= (value :: vk) :: IsAn (IsA BitRecordField)
-type instance Extract (fld ::= v) = (Extract fld := v)
+type instance Eval (fld ::= v) = (Eval fld := v)
 infixr 7 ::=
 
 -- *** Primitive Records and Field Types
 
 -- | A single bit (boolean) field
 data Flag :: IsA BitRecordField
-type instance Extract Flag = 'MkField Bool 1
+type instance Eval Flag = 'MkField Bool 1
 
 -- | Define a field of bits with a size and 'Word64' as default demote rep.
 data Field n :: IsA BitRecordField
-type instance Extract (Field n) = 'MkField Word64 n
+type instance Eval (Field n) = 'MkField Word64 n
 
 data FieldU8 :: IsA BitRecordField
-type instance Extract (FieldU8) = 'MkField Word8 8
+type instance Eval (FieldU8) = 'MkField Word8 8
 
 data FieldU16 :: IsA BitRecordField
-type instance Extract (FieldU16) = 'MkField Word16 16
+type instance Eval (FieldU16) = 'MkField Word16 16
 
 data FieldU32 :: IsA BitRecordField
-type instance Extract (FieldU32) = 'MkField Word32 32
+type instance Eval (FieldU32) = 'MkField Word32 32
 
 data FieldU64 :: IsA BitRecordField
-type instance Extract (FieldU64) =
+type instance Eval (FieldU64) =
   'MkField Word64 64
 
 -- | A signed field value.
@@ -236,32 +241,32 @@ data SignedNat where
   NegativeNat :: Nat -> SignedNat
 
 data FieldI8 :: IsA BitRecordField
-type instance Extract (FieldI8) =
+type instance Eval (FieldI8) =
   'MkField Int8 8
 
 data FieldI16 :: IsA BitRecordField
-type instance Extract (FieldI16) =
+type instance Eval (FieldI16) =
   'MkField Int16 16
 
 data FieldI32 :: IsA BitRecordField
-type instance Extract (FieldI32) =
+type instance Eval (FieldI32) =
   'MkField Int32 32
 
 data FieldI64 :: IsA BitRecordField
-type instance Extract (FieldI64) =
+type instance Eval (FieldI64) =
   'MkField Int64 64
 
 -- *** Composed Fields
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Just'.
 data FlagJust (a :: Maybe v) :: IsA BitRecordField
-type instance Extract (FlagJust ('Just x)) = Extract (Flag := 'True)
-type instance Extract (FlagJust 'Nothing)  = Extract (Flag := 'False)
+type instance Eval (FlagJust ('Just x)) = Eval (Flag := 'True)
+type instance Eval (FlagJust 'Nothing)  = Eval (Flag := 'False)
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Nothing'.
 data FlagNothing (a :: Maybe v) :: IsA BitRecordField
-type instance Extract (FlagNothing ('Just x)) = Extract (Flag := 'False)
-type instance Extract (FlagNothing 'Nothing)  = Extract (Flag := 'True)
+type instance Eval (FlagNothing ('Just x)) = Eval (Flag := 'False)
+type instance Eval (FlagNothing 'Nothing)  = Eval (Flag := 'True)
 
 -- | A field that renders to the length of a 'SizedString' using the given
 -- word type for the size.
@@ -269,9 +274,9 @@ data ToStringLength :: Type -> Type -> Type -- TODO move
 
 -- | An optional field in a bit record
 data MaybeField :: Maybe (IsA BitRecordField) -> IsA BitRecord
-type instance Extract (MaybeField ('Just  fld)) =
-  'BitRecordDoc (PutStr "Just") ':>: 'BitRecordMember (Extract fld)
-type instance Extract (MaybeField 'Nothing) =
+type instance Eval (MaybeField ('Just  fld)) =
+  'BitRecordDoc (PutStr "Just") ':>: 'BitRecordMember (Eval fld)
+type instance Eval (MaybeField 'Nothing) =
   'BitRecordDoc (PutStr "Nothing")
 
 -- ** Auto-Padding
@@ -359,7 +364,7 @@ type family
 
 -- -- | Set something to a value in a specific way.
 -- --
--- -- The way how a field is assigned to a value is controlled through the 'Extract'
+-- -- The way how a field is assigned to a value is controlled through the 'Eval'
 -- -- instances, that can vary depending on @f@ and @setter v@.
 -- data SetWith :: IsAn f -> IsA Setter -> IsAn f
 

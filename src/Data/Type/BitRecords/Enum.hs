@@ -15,12 +15,20 @@ import Data.Kind.Extra
 -- | Wrapper around a type that can be represented as a short number, indexing
 -- the clauses of the (sum) type.
 data EnumOf enum where
-  MkEnumOf :: IsA BitRecord -> EnumOf enum
+  MkEnumOf
+    :: IsAn (EnumField enum size)
+    -> FieldValue (EnumValue enum)
+    -> IsA BitRecord
+    -> EnumOf enum
 
-type instance ('MkEnumOf b :: EnumOf e) ~~> BitRecord = Extract b
+type instance CoerceTo (IsA BitRecord) ('MkEnumOf mainField mainFieldVal extra) =
+  (mainField ~~> IsA BitRecordField) :~ mainFieldVal .>: extra
 
 -- | Physical representation of an 'EnumOf', this is an abstract type
 data EnumField (enum :: Type) (size :: Nat)
+
+type instance CoerceTo BitRecordField (EnumField e s) =
+  'MkField (FieldValue e) s
 
 -- | A fixed size 'EnumField'
 data FixedEnum (enum :: Type) (size :: Nat) :: IsAn (EnumField enum size)
@@ -28,28 +36,43 @@ data FixedEnum (enum :: Type) (size :: Nat) :: IsAn (EnumField enum size)
 -- | An enum that can be extended with an additional 'BitRecordField', following
 -- the  regular enum field; the extension is optional, i.e. only if the
 -- /regular/  field contains a special value (e.g. 0xff).
-data ExtEnum (enum :: Type) (size :: Nat) (extInd :: enum) (extField :: IsA BitRecordField) :: IsAn (EnumField enum size)
+data ExtEnum (enum :: Type)
+             (size :: Nat)
+             (extInd :: enum)
+             (extField :: IsA BitRecordField)
+             :: IsAn (EnumField enum size)
 
 -- | Create an 'EnumOf' that sets an enum to a static value.
 data SetEnum (ef :: IsAn (EnumField enum size)) (v :: enum) :: IsAn (EnumOf enum)
 
-type instance Extract (SetEnum (ei :: IsAn (EnumField enum size)) value) =
-  'MkEnumOf (Return ('BitRecordMember (Extract (Field size) := FromEnum enum value)))
+type instance Eval (SetEnum (ei :: IsAn (EnumField enum size)) value) =
+  'MkEnumOf
+     ei
+     ('StaticFieldValue (FromEnum enum value))
+     (Pure 'EmptyBitRecord)
 
 -- | Create an 'EnumOf' that sets the enum to a runtime value.
-data EnumParam (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (label :: Symbol) :: IsAn (EnumOf enum)
-type instance Extract (EnumParam (ei :: IsAn (EnumField enum size)) label) =
-  'MkEnumOf (Return ('BitRecordMember (label @: 'MkField (EnumValue enum) size)))
+data EnumParam
+     (ef :: IsAn (EnumField (enum :: Type) (size :: Nat)))
+     (label :: Symbol)
+     :: IsAn (EnumOf enum)
+type instance Eval (EnumParam (ei :: IsAn (EnumField enum size)) label) =
+  'MkEnumOf
+     ei
+     ('RuntimeFieldValue label)
+     (Pure 'EmptyBitRecord)
 
 -- | Create an 'EnumOf' that sets an extended enum to an extended static value.
 data SetEnumAlt (ef :: IsAn (EnumField (enum :: Type) (size :: Nat))) (v :: k) :: IsAn (EnumOf enum)
 
-type instance Extract (SetEnumAlt (ExtEnum enum size extInd extField) value) =
+type instance Eval (SetEnumAlt (ExtEnum enum size extInd extField) value) =
   -- TODO maybe enrich the demoteRep type of 'MkField??
   'MkEnumOf
-  (Extract (Field size) := FromEnum enum extInd .>. Extract extField := value)
+     (ExtEnum enum size extInd extField)
+     ('StaticFieldValue (FromEnum enum extInd))
+     (extField := value ~~> IsA BitRecord)
 
-type instance Extract (SetEnumAlt (FixedEnum enum size) value) =
+type instance Eval (SetEnumAlt (FixedEnum enum size) value) =
   TypeError ('Text "Cannot assign an 'extended' value to the 'FixedEnum' "
              ':<>: 'ShowType enum)
 
@@ -59,10 +82,13 @@ data EnumParamAlt
   (label :: Symbol)
   :: IsAn (EnumOf enum)
 
-type instance Extract (EnumParamAlt (ExtEnum enum size extId extField) label) =
-  'MkEnumOf (Return ('BitRecordMember (label @: 'MkField (EnumValue enum) size)))
+type instance Eval (EnumParamAlt (ExtEnum enum size extInd extField) label) =
+  'MkEnumOf
+  (ExtEnum enum size extInd extField)
+  ('StaticFieldValue (FromEnum enum extInd))
+  (extField :~ 'RuntimeFieldValue label ~~> IsA BitRecord)
 
-type instance Extract (EnumParamAlt (FixedEnum enum size) label) =
+type instance Eval (EnumParamAlt (FixedEnum enum size) label) =
   TypeError ('Text "Cannot assign an extension value to the FixedEnum "
              ':<>: 'ShowType enum)
 

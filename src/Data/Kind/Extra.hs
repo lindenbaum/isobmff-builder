@@ -1,28 +1,35 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- | Kind-level utilities to guide and simplify programming at the type level
 module Data.Kind.Extra
-  ( type IsA
+  ( type A
+  , type IsA
   , type IsAn
   , type Return
-  , type Extract
+  , type Pure
+  , type Eval
+  , type (:->)
+  , type Apply
+  , type (:$)
+  , type ($~)
+  , type CoerceTo
   , type (~~>)
-  , type (-->)
-  , type (-->|)
+  , type FromA
+  -- , type CoercionTo
+  -- , type As
+  -- , type (-->)
+  , type Optional
   ) where
 
 import Data.Kind (type Type)
 
--- | A kind alias to turn a data type used as kind type to a kind signature
--- matching other data types (umh.. kinds?) whose data-type signature ends in
--- @foo -> Type@.
-type IsA (foo :: Type) = (foo -> Type :: Type)
+-- * Symbolic Types and Type Functions
 
--- | An alias to 'IsA'
-type IsAn (oo :: Type) = (IsA oo :: Type)
-
--- | A type family for generating the (promoted) types of a phantom data
---  type(kind) from other data types that have a kind that /ends/ in e.g.
---  @'IsA' Foo@.
+-- | A /symbolic/ type, i.e. a wrapper around a (poly kinded) type to be
+-- produced by 'Eval' instances.
+--
+-- All data types, e.g. @data Point2 x y :: Type@ can be made into /symbolic
+-- representations/ of other types, by adding a /symbolic/ type parameter:
+-- @data Point2 x y :: A Vec2 -> Type@.
 --
 -- Complete example:
 --
@@ -35,62 +42,80 @@ type IsAn (oo :: Type) = (IsA oo :: Type)
 --
 -- data ColoredText :: Color -> Symbol -> IsA (PrettyPrinter Symbol)
 --
--- type instance Extract (ColoredText c txt) = 'WithColor c ('RenderText txt)
+-- type instance Eval (ColoredText c txt) = 'WithColor c ('RenderText txt)
 -- @
---
-type family Extract (t :: IsA foo) :: foo
+data A :: forall foo . foo -> Type
 
--- | A type @foo@, of course, @'IsA' foo@ 'Return'. All other good names, like
--- 'Pure', 'Id' or 'Return' are taken.
-data Return (a :: foo) :: IsA foo
-type instance Extract (Return foo :: IsA fooKind) = foo
+-- | Type alias for 'A' such that @data Point2 x y :: A Vec2 -> Type@ becomes
+-- @data Point2 x y :: IsA Vec2@
+type IsA (foo :: k) = (A foo -> Type :: Type)
 
--- | Coerce a type, that @'IsA' foo@ to a type that @'IsA' bar@, using
--- '~~>'.
---
---  When 'Extract'uated, also 'Extract'uate the parameter, which @'IsA' foo@, and
--- '~~>' a @bar@.
---
--- Instead of just allowing to pass the destination kind directly as a type,
--- accept only 'Promoted'; this makes clear that the parameter is thrown away
--- after ripping the type information of it. 'Promoted is exactly equal to e.g.
--- 'KProxy', but the name 'KProxy' just looks confusing.
-data (:->:) (t :: IsA foo) bar :: IsA bar
-type instance Extract (foo :->: bar) = (~~>) (Extract foo) bar
+-- | An alias to 'IsA'
+type IsAn (oo :: k) = (IsA oo :: Type)
 
-data FMap (f :: i -> o) :: IsAn i -> IsAn o
-type instance Extract (FMap f i) = f (Extract i)
+-- | An open type family to turn /symbolic/ type representations created with
+-- 'A' or 'IsA' into the actual types.
+type family Eval (t :: IsA foo) :: foo
 
+-- | A type @foo@, @'IsA' foo@.
 data Pure (f :: o) :: IsAn o
-type instance Extract (Pure f) = f
+type instance Eval (Pure f) = f
 type Return f = Pure f
 
-data Duplicate :: IsAn a -> IsAn (IsAn a)
-type instance Extract (Duplicate f) = f
+-- | A symbolic type-level function.
+data (:->) foo bar
 
-data Extend :: (IsA foo -> bar) -> IsA foo -> IsA bar
-type instance Extract (Extend f aFoo) = f aFoo
+-- | An open family of functions from @foo@ to @bar@
+type family (f :: IsA (foo :-> bar)) $~ (x :: foo) :: bar
 
-data (:<@>) :: IsA (a -> b) -> IsAn a -> IsA b
-type instance Extract (f :<@> a) = (Extract f) (Extract a)
+-- | An alias for '$~'
+type Apply f x = f $~ x
 
--- | Define how a @foo@ could be converted to something that @'IsA' bar@.
--- This is used in the evaluation of ':->:'.
-type family (~~>) (x :: foo) bar :: bar
-type instance (~~>) (x :: foo) foo = x
-infixl 9 ~~>
+-- | Symbolic function application
+data (:$) :: IsA (foo :-> bar) -> IsA foo -> IsA bar
+type instance Eval ((f :: IsA (foo :-> bar)) :$ (x :: IsA foo)) =
+  f $~ (Eval x)
 
--- | Alias for ':-->:' that lifts the burden of some nasty typing.
-type (-->) (x :: IsA foo) (p :: Type) = (((:->:) x p) :: IsA p)
-infixl 9 -->
+-- | Define how a @foo@ could be converted to a @bar@.
+type family CoerceTo bar (x :: foo) :: bar
+type instance CoerceTo (IsA bar) (x :: IsA foo) = Return (CoerceTo bar (Eval x))
 
- -- | Alias for @'Extract' (foo ':-->:' bar)@.
-type (x :: IsA foo) -->| (p :: Type) = (Extract (x --> p) :: p)
-infixl 9 -->|
+-- | Automatic coercion to a symbolic type inferred from the context.
+data FromA (x :: IsA foo) :: IsA bar
+type instance Eval (FromA (x::IsA foo) :: IsA bar) = CoerceTo bar (Eval x)
 
--- ** Standard Types
+-- | An alias for 'CoerceTo'.
+type (x :: foo) ~~> bar = (CoerceTo bar x :: bar)
+infixl 0 ~~>
+-- TODO probably dead code:
+-- -- | Symbolic coercion of type @foo@ to __kind__ @bar@ via the `CoerceTo` type
+-- -- family.
+-- --
+-- -- @
+-- -- data Foo (n :: Nat)
+-- -- data Bar = MkBar Nat
+-- --
+-- -- type instance CoerceTo Bar (Foo n) = 'MkBar n
+-- --
+-- -- type Fun1As (x :: Foo Nat) = Fun2 (x `As` Bar)
+-- -- type Fun1Op (x :: Foo Nat) = Fun2 (x --> Bar)
+-- -- type Fun1   (x :: Foo Nat) = Fun2 (CoercionTo Bar $~ x)
+-- --
+-- -- type Fun2 (x :: Bar)     = ...
+-- -- @
+-- --
+-- data CoercionTo (bar :: Type) :: forall (foo :: Type) . IsA (foo :-> bar)
+-- type instance CoercionTo bar $~ foo = CoerceTo bar foo
+
+-- -- | Alias for the application of a 'CoercionTo'
+-- type As (x :: foo) bar = (CoercionTo bar :: IsA (foo :-> bar)) $~ x
+
+-- -- | Alias for the application of a 'CoercionTo'
+-- type (x :: foo) --> bar = (CoercionTo bar :: IsA (foo :-> bar)) $~ x
+
+-- infixl 0 -->
 
 -- | Either use the value from @Just@ or return a fallback value(types(kinds))
-data FromMaybe :: forall x . IsAn x -> Maybe x -> IsAn x
-type instance Extract (FromMaybe fallback ('Just t)) = t
-type instance Extract (FromMaybe fallback 'Nothing) = Extract fallback
+data Optional :: IsA t -> Maybe s -> IsA t
+type instance Eval (Optional ignored ('Just s) :: IsA dest) = s ~~> dest
+type instance Eval (Optional t 'Nothing :: IsA dest) = Eval t

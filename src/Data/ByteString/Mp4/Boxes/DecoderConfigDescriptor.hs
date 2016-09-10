@@ -5,7 +5,7 @@ import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 import           Data.Type.BitRecords
 import           Data.Type.Pretty
-
+import           Data.Word
 import           Data.Kind.Extra
 
 -- | Information about what decoder is required for the an elementary stream.
@@ -14,50 +14,39 @@ data DecoderConfigDescriptor
        (ot :: ObjectTypeIndication)
        (st :: StreamType)
           :: [DecoderSpecificInfo ot st]
-          -> [ProfileLevelIndicationIndexDescriptor]
+          -> [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)]
           -> IsA (Descriptor 'DecoderConfigDescr)
 
-type instance Extract (DecoderConfigDescriptor ot st di ps) =
+type instance Eval (DecoderConfigDescriptor ot st di ps) =
   'MkDescriptor (DecoderConfigDescriptorBody ot st di ps)
 
 type family
     DecoderConfigDescriptorBody
       ot st
       (di :: [DecoderSpecificInfo ot st])
-      (ps :: [ProfileLevelIndicationIndexDescriptor])
-        :: BitRecord
+      (ps :: [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)])
+        :: IsA BitRecord
   where
     DecoderConfigDescriptorBody ot st di ps =
       (PutStr "decoder-config-descriptor" <+>
         ("objectTypeIndication" <:> PutHex8 (FromEnum ObjectTypeIndication ot)) <+>
         ("streamType"           <:> PutHex8 (FromEnum StreamType           st)))
-      #$ (StaticEnumRecord ObjectTypeIndicationEnum ot
-           :>: StaticEnumRecord StreamTypeEnum st
+      #$ (FromA (SetEnum ObjectTypeIndicationEnum ot)
+           :>: FromA (SetEnum StreamTypeEnum st)
            :>: "upstream"@: Flag
-           :>: "reserved"@: Field 1        :=  1
-           :>: "bufferSizeDB" @: Field 24
-           :>: "maxBitrate"   @: FieldU32
-           :>: "avgBitrate"   @: FieldU32
-           :>: (di ?:: LengthIn 0 1)
-           :>: (ps ?:: LengthIn 0 255)
+           .>: "reserved"@: Field 1        :=  1
+           .>: "bufferSizeDB" @: Field 24
+           .>: "maxBitrate"   @: FieldU32
+           .>: "avgBitrate"   @: FieldU32
+           .>: ((di ?:: LengthIn 0 1) ~~> IsA BitRecord)
+           :>: ((ps ?:: LengthIn 0 255) ~~> IsA BitRecord)
          )
 
 -- ** 'ProfileLevelIndicationIndexDescriptor'
 
-data ProfileLevelIndicationIndexDescriptor =
-  MkProfileLevelIndicationIndexDescriptor BitRecordField
-
-type instance Extract (SetWith
-                    (p :: IsA ProfileLevelIndicationIndexDescriptor)
-                    (OverwriteWith n)) =
-  'MkProfileLevelIndicationIndexDescriptor (FieldU8 := (Assert (NatIn 0 255) n))
-
-type instance Extract (SetWith
-                    (p :: IsA ProfileLevelIndicationIndexDescriptor)
-                    (NamedRuntimeParameter label)) =
-  'MkProfileLevelIndicationIndexDescriptor (label @: FieldU8)
-
-type instance
-  Extract ('MkProfileLevelIndicationIndexDescriptor field
-        ~~> Descriptor 'ProfileLevelIndicationIndexDescr) =
-  'MkDescriptor (PutStr "profile-level-indication-index-descriptor" #$ 'BitRecordMember field)
+data ProfileLevelIndicationIndexDescriptor
+  :: FieldValue Word8
+  -> IsA (Descriptor 'ProfileLevelIndicationIndexDescr)
+type instance Eval (ProfileLevelIndicationIndexDescriptor val) =
+  'MkDescriptor
+  (FromA ("profileLevelIndicationIndex" @: FieldU8 :~ val))

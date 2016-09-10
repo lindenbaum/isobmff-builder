@@ -301,29 +301,30 @@ instance Default (U32Text label) where
 
 -- * BoxContent from 'BitRecord's
 
-newtype BitBox record where
-  BitBox :: Builder -> BitBox record
+newtype BitBox (record :: IsA BitRecord) where
+  BitBox :: forall (record :: IsA BitRecord) . Builder -> BitBox record
   deriving (Monoid)
 
-bitBoxWithArgs :: forall record . BitStringBuilderHoley (Proxy record) (BitBox record)
+bitBoxWithArgs :: forall (record :: IsA BitRecord) . BitStringBuilderHoley (Proxy record) (BitBox record)
        => Proxy record -> ToBitStringBuilder (Proxy record) (BitBox record)
 bitBoxWithArgs = runHoley . bitBoxHoley
 
-bitBox :: forall record . (BitStringBuilderHoley (Proxy record) (BitBox record),
-                           ToBitStringBuilder (Proxy record) (BitBox record) ~ (BitBox record))
+bitBox :: forall (record :: IsA BitRecord)
+         . (BitStringBuilderHoley (Proxy record) (BitBox record),
+             ToBitStringBuilder (Proxy record) (BitBox record) ~ (BitBox record))
        => Proxy record -> BitBox record
 bitBox = bitBoxWithArgs
 
-bitBoxHoley :: forall record r . BitStringBuilderHoley (Proxy record) r
+bitBoxHoley :: forall (record :: IsA BitRecord) r . BitStringBuilderHoley (Proxy record) r
        => Proxy record -> Holey (BitBox record) r (ToBitStringBuilder (Proxy record) r)
 bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (bitStringBuilderHoley px)
 
 -- TODO why 'ToBitRecord' ????
-instance (KnownNat (BitRecordSize (ToBitRecord content)))
+instance (KnownNat (BitRecordSize (Eval content)))
    => IsBoxContent (BitBox content) where
   boxSize _ =
     -- convert from bits to bytes
-    fromIntegral (getRecordSizeFromProxy (Proxy @(ToBitRecord content)) `unsafeShiftR` 3)
+    fromIntegral (getRecordSizeFromProxy (Proxy @(Eval content)) `unsafeShiftR` 3)
   boxBuilder (BitBox cnt) = cnt
 
 instance

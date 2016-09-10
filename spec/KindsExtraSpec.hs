@@ -32,4 +32,4 @@ data Dog where
   MkDog :: Symbol -> Dog
 
 data Lessy :: IsA Dog
-type instance Extract Lessy = 'MkDog "Lessy!"
+type instance Eval Lessy = 'MkDog "Lessy!"

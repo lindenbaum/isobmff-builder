@@ -6,7 +6,7 @@ import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Boxes
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.ReExports
-import           Data.ByteString.Mp4.Boxes.BaseDescriptor
+
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 import           Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor
@@ -38,24 +38,27 @@ newtype AudioEsd =
 instance IsBox AudioEsd
 type instance BoxTypeSymbol AudioEsd = "mp4a"
 
-type Mp4AudioEsDescriptor = (ESDescriptorMp4File Mp4AacLcAudioDecoderConfigDescriptor)
+type DefaultEsId = 'StaticFieldValue 1
+
+type Mp4AudioEsDescriptor =
+  ESDescriptorMp4File DefaultEsId Mp4AacLcAudioDecoderConfigDescriptor
 
 type Mp4AacLcAudioDecoderConfigDescriptor =
   DecoderConfigDescriptor
    'AudioIso14496_3
    'AudioStream
-  '[Extract (NonSbrAudioConfig
-          (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
+  '[Eval (NonSbrAudioConfig
+          (GASpecificConfig 'AacLc ('StaticFieldValue 'False) 'NoCoreCoderDelay (Return 'MkGASExtension))
           (SetEnum SamplingFreq 'SF88200)
           (SetEnum ChannelConfig 'GasChannelConfig))]
   '[]
 
 -- ** EsdBox
 
--- newtype EsdBox (d :: IsA (Descriptor 'ES_Descr)) where
---   EsdBox :: BitBox d -> EsdBox d
+-- data EsdBox (d :: IsA (Descriptor 'ES_Descr)) where
+--   EsdBox :: forall (d :: IsA (Descriptor 'ES_Descr)) . BitBox (d --> BitRecord) -> EsdBox d
 
--- deriving instance KnownNat (BitRecordSize (ToBitRecord d))
+-- deriving instance KnownNat (BitRecordSize d)
 --   => IsBoxContent (EsdBox d)
 
 
@@ -73,7 +76,7 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
 
 
 {-
- :kind! (Extract (NonSbrAudioConfig
+ :kind! (Eval (NonSbrAudioConfig
          (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
          ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))
          ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))))
