@@ -135,23 +135,19 @@ type family UnsignedDemoteRep i where
 -- *** Labbeled Fields
 
 instance
-  forall s r l d a .
-   ( BitStringBuilderHoley (Proxy ('MkField d s)) a
-   , ToBitStringBuilder (Proxy ('MkField d s)) a ~ (r -> a))
-  => BitStringBuilderHoley (Proxy ('MkField (Tagged l d) s)) a where
-  type ToBitStringBuilder (Proxy ('MkField (Tagged l d) s)) a =
-    TaggedArg l (ToBitStringBuilder (Proxy ('MkField d s)) a)
+  forall nested r l a .
+   ( BitStringBuilderHoley (Proxy nested) a
+   , ToBitStringBuilder (Proxy nested) a ~ (r -> a))
+  => BitStringBuilderHoley (Proxy ('LabelF l nested)) a where
+  type ToBitStringBuilder (Proxy ('LabelF l nested)) a =
+    TaggedArg l (ToBitStringBuilder (Proxy nested) a)
   bitStringBuilderHoley _ =
-    taggedHoley @l (bitStringBuilderHoley (Proxy @ ('MkField d s)))
+    taggedHoley @l (bitStringBuilderHoley (Proxy @nested))
 
 type family TaggedArg t f where
   TaggedArg t (a -> b) = Tagged t a -> b
 
 -- **** Bool
-
-instance  BitStringBuilderHoley (Proxy ('MkField Bool 1)) a where
-  type ToBitStringBuilder (Proxy ('MkField Bool 1)) a = Bool -> a
-  bitStringBuilderHoley _ = indirect (appendBitString . bitString 1 . fromIntegral . fromEnum)
 
 instance forall f a . (BitRecordFieldSize f ~ 1) =>
   BitStringBuilderHoley (Proxy ('AssignF 'True f)) a where
@@ -161,48 +157,60 @@ instance forall f a . (BitRecordFieldSize f ~ 1) =>
   BitStringBuilderHoley (Proxy ('AssignF 'False f)) a where
   bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 0))
 
--- **** Naturals
+instance forall a .
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldFlag))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldFlag))) a = Bool -> a
+  bitStringBuilderHoley _ = indirect (appendBitString . bitString 1 . (\ !t -> if t then 1 else 0))
 
-instance forall s a . KnownChunkSize s =>
-  BitStringBuilderHoley (Proxy ('MkField Word64 s)) a where
-  type ToBitStringBuilder (Proxy ('MkField Word64 s)) a = Word64 -> a
+-- **** Bits
+
+instance forall (s :: Nat) a . (KnownChunkSize s) =>
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy ('MkFieldBits :: RecordFieldType Word64 Nat s)))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy ('MkFieldBits :: RecordFieldType Word64 Nat s)))) a = Word64 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitStringProxyLength (Proxy @s))
 
+-- **** Naturals
+
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField Word32 32)) a where
-  type ToBitStringBuilder (Proxy ('MkField Word32 32)) a = Word32 -> a
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU64))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU64))) a = Word64 -> a
+  bitStringBuilderHoley _ = indirect (appendBitString . bitString 64)
+
+instance forall a .
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU32))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU32))) a = Word32 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 32 . fromIntegral)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField Word16 16)) a where
-  type ToBitStringBuilder (Proxy ('MkField Word16 16)) a = Word16 -> a
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU16))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU16))) a = Word16 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 16 . fromIntegral)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField Word8 8)) a where
-  type ToBitStringBuilder (Proxy ('MkField Word8 8)) a = Word8 -> a
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU8))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU8))) a = Word8 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 8 . fromIntegral)
 
 -- **** Signed
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField Int64 64)) a where
-  type ToBitStringBuilder (Proxy ('MkField Int64 64)) a = Int64 -> a
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI64))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI64))) a = Int64 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 64 . fromIntegral @Int64 @Word64)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField Int32 32)) a where
-  type ToBitStringBuilder (Proxy ('MkField Int32 32)) a = Int32 -> a
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI32))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI32))) a = Int32 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 32 . fromIntegral . fromIntegral @Int32 @Word32)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField Int16 16)) a where
-  type ToBitStringBuilder (Proxy ('MkField Int16 16)) a = Int16 -> a
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI16))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI16))) a = Int16 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 16 . fromIntegral . fromIntegral @Int16 @Word16)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField Int8 8)) a where
-  type ToBitStringBuilder (Proxy ('MkField Int8 8)) a = Int8 -> a
+  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI8))) a where
+  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI8))) a = Int8 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 8 . fromIntegral . fromIntegral @Int8 @Word8)
 
 
@@ -237,7 +245,7 @@ instance forall l r a .
     ToBitStringBuilder (Proxy l) (ToBitStringBuilder (Proxy r) a)
   bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @l) . bitStringBuilderHoley (Proxy @r)
 
--- *** 'EmptyBitRecord' and 'ReplacePretty'
+-- *** 'EmptyBitRecord' and '...Pretty'
 
 instance forall d r a . BitStringBuilderHoley (Proxy r) a =>
   BitStringBuilderHoley (Proxy ('BitRecordDocNested d r)) a where

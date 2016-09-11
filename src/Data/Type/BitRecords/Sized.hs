@@ -9,9 +9,14 @@ import Data.Type.BitRecords.Core
 import Data.Word
 import GHC.TypeLits
 import Data.Kind.Extra
+import Data.Kind (type Type)
 
--- | A record with a /size/ member, and a nested record that can be counted using 'SizeFieldValue'.
-data Sized (sf :: IsA BitRecordField) (r :: IsA BitRecord) :: IsA BitRecord
+-- | A record with a /size/ member, and a nested record that can be counted
+-- using 'SizeFieldValue'.
+data Sized
+  (sf :: IsA (BitRecordField (t :: RecordFieldType (rt :: Type) Nat (size :: Nat))))
+  (r :: IsA BitRecord)
+  :: IsA BitRecord
 type instance Eval (Sized sf r) =
    Eval (PutStr "size" #: sf := SizeFieldValue (Eval r) .>: r)
 
