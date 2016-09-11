@@ -14,7 +14,7 @@ import Data.Kind (type Type)
 -- | A record with a /size/ member, and a nested record that can be counted
 -- using 'SizeFieldValue'.
 data Sized
-  (sf :: IsA (BitRecordField (t :: RecordFieldType (rt :: Type) Nat (size :: Nat))))
+  (sf :: IsA (BitRecordField (t :: BitField (rt :: Type) Nat (size :: Nat))))
   (r :: IsA BitRecord)
   :: IsA BitRecord
 type instance Eval (Sized sf r) =
@@ -38,7 +38,7 @@ type Sized64 t = Sized FieldU64 t
 type family SizeFieldValue (c :: k) :: Nat
 
 type instance SizeFieldValue (b :: BitRecord) = BitRecordMemberCount b
-type instance SizeFieldValue ('AssignF v f) = SizeFieldValue v
+type instance SizeFieldValue (AssignF v f) = SizeFieldValue v
 
 type family PrintHexIfPossible t (s :: Nat) :: PrettyType where
   PrintHexIfPossible Word64 s = PutHex64 s

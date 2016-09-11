@@ -138,8 +138,8 @@ instance
   forall nested r l a .
    ( BitStringBuilderHoley (Proxy nested) a
    , ToBitStringBuilder (Proxy nested) a ~ (r -> a))
-  => BitStringBuilderHoley (Proxy ('LabelF l nested)) a where
-  type ToBitStringBuilder (Proxy ('LabelF l nested)) a =
+  => BitStringBuilderHoley (Proxy (LabelF l nested)) a where
+  type ToBitStringBuilder (Proxy (LabelF l nested)) a =
     TaggedArg l (ToBitStringBuilder (Proxy nested) a)
   bitStringBuilderHoley _ =
     taggedHoley @l (bitStringBuilderHoley (Proxy @nested))
@@ -150,81 +150,82 @@ type family TaggedArg t f where
 -- **** Bool
 
 instance forall f a . (BitRecordFieldSize f ~ 1) =>
-  BitStringBuilderHoley (Proxy ('AssignF 'True f)) a where
+  BitStringBuilderHoley (Proxy (AssignF 'True f)) a where
   bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 1))
 
 instance forall f a . (BitRecordFieldSize f ~ 1) =>
-  BitStringBuilderHoley (Proxy ('AssignF 'False f)) a where
+  BitStringBuilderHoley (Proxy (AssignF 'False f)) a where
   bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 0))
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldFlag))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldFlag))) a = Bool -> a
-  bitStringBuilderHoley _ = indirect (appendBitString . bitString 1 . (\ !t -> if t then 1 else 0))
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldFlag)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldFlag)) a = Bool -> a
+  bitStringBuilderHoley _ =
+    indirect (appendBitString . bitString 1 . (\ !t -> if t then 1 else 0))
 
 -- **** Bits
 
 instance forall (s :: Nat) a . (KnownChunkSize s) =>
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy ('MkFieldBits :: RecordFieldType Word64 Nat s)))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy ('MkFieldBits :: RecordFieldType Word64 Nat s)))) a = Word64 -> a
+  BitStringBuilderHoley (Proxy (MkField ('MkFieldBits :: BitField Word64 Nat s))) a where
+  type ToBitStringBuilder (Proxy (MkField ('MkFieldBits :: BitField Word64 Nat s))) a = Word64 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitStringProxyLength (Proxy @s))
 
 -- **** Naturals
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU64))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU64))) a = Word64 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldU64)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldU64)) a = Word64 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 64)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU32))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU32))) a = Word32 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldU32)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldU32)) a = Word32 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 32 . fromIntegral)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU16))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU16))) a = Word16 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldU16)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldU16)) a = Word16 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 16 . fromIntegral)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU8))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldU8))) a = Word8 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldU8)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldU8)) a = Word8 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 8 . fromIntegral)
 
 -- **** Signed
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI64))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI64))) a = Int64 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldI64)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldI64)) a = Int64 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 64 . fromIntegral @Int64 @Word64)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI32))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI32))) a = Int32 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldI32)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldI32)) a = Int32 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 32 . fromIntegral . fromIntegral @Int32 @Word32)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI16))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI16))) a = Int16 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldI16)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldI16)) a = Int16 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 16 . fromIntegral . fromIntegral @Int16 @Word16)
 
 instance forall a .
-  BitStringBuilderHoley (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI8))) a where
-  type ToBitStringBuilder (Proxy ('MkField ('Proxy :: Proxy 'MkFieldI8))) a = Int8 -> a
+  BitStringBuilderHoley (Proxy (MkField 'MkFieldI8)) a where
+  type ToBitStringBuilder (Proxy (MkField 'MkFieldI8)) a = Int8 -> a
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 8 . fromIntegral . fromIntegral @Int8 @Word8)
 
 
 instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (x -> a), Num x) =>
-  BitStringBuilderHoley (Proxy ('AssignF (v :: Nat) f)) a where
+  BitStringBuilderHoley (Proxy (AssignF (v :: Nat) f)) a where
   bitStringBuilderHoley _ = applyHoley (bitStringBuilderHoley (Proxy @f)) (fromIntegral (natVal (Proxy @v)))
 
 instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (x -> a), Num x) =>
-  BitStringBuilderHoley (Proxy ('AssignF ('PositiveNat v) f)) a where
+  BitStringBuilderHoley (Proxy (AssignF ('PositiveNat v) f)) a where
   bitStringBuilderHoley _ =  applyHoley (bitStringBuilderHoley (Proxy @f)) (fromIntegral (natVal (Proxy @v)))
 
 
 instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (x -> a), Num x) =>
-  BitStringBuilderHoley (Proxy ('AssignF ('NegativeNat v) f)) a where
+  BitStringBuilderHoley (Proxy (AssignF ('NegativeNat v) f)) a where
   bitStringBuilderHoley _ = applyHoley (bitStringBuilderHoley (Proxy @f)) (fromIntegral (-1 * (natVal (Proxy @v))))
 
 -- ** 'BitRecord' instances

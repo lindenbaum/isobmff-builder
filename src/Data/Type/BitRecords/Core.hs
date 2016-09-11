@@ -5,7 +5,7 @@ import Data.Int
 import Data.Kind (Type, Constraint)
 import Data.Kind.Extra
 import Data.Proxy
-import Data.Type.BitRecords.Arithmetic
+
 
 import Data.Type.Pretty
 import Data.Word
@@ -17,7 +17,7 @@ import GHC.TypeLits
 
 -- | 'BitRecordField's assembly
 data BitRecord where
-  BitRecordMember    :: forall (t :: RecordFieldType rt st len) . BitRecordField t -> BitRecord
+  BitRecordMember    :: IsA (BitRecordField t) -> BitRecord
   (:>:)              :: BitRecord      -> BitRecord -> BitRecord
   BitRecordDoc       :: PrettyType     -> BitRecord
   BitRecordDocNested :: PrettyType     -> BitRecord -> BitRecord
@@ -79,51 +79,43 @@ data (:>:) (l :: IsA BitRecord) (r :: IsA BitRecord) :: IsA BitRecord
 type instance Eval (l :>: r) = Eval l ':>: Eval r
 
 -- | Append a 'BitRecord' and a 'BitRecordField'
-data (:>.) ::
-  forall (t1 :: RecordFieldType rt1 st1 len1) .
-   IsA BitRecord
-  -> IsA (BitRecordField t1)
-  -> IsA BitRecord
+data (:>.) :: IsA BitRecord
+           -> IsA (BitRecordField t1)
+           -> IsA BitRecord
 infixl 6 :>.
-type instance Eval (l :>. r) = Eval l ':>: 'BitRecordMember (Eval r)
+type instance Eval (l :>. r) = Eval l ':>: 'BitRecordMember r
 
 -- | Append a 'BitRecordField' and a 'BitRecord'
-data (.>:) ::
-  forall (t1 :: RecordFieldType rt1 st1 len1) .
-     IsA (BitRecordField t1)
-  -> IsA BitRecord
-  -> IsA BitRecord
+data (.>:) :: IsA (BitRecordField t1)
+           -> IsA BitRecord
+           -> IsA BitRecord
 infixr 6 .>:
-type instance Eval (l .>: r) = 'BitRecordMember (Eval l) ':>: Eval r
+type instance Eval (l .>: r) = 'BitRecordMember l ':>: Eval r
 
 -- | Append a 'BitRecordField' and a 'BitRecordField' forming a 'BitRecord' with
 -- two members.
-data (.>.) ::
-  forall (t1 :: RecordFieldType rt1 st1 len1)
-     (t2 :: RecordFieldType rt2 st2 len2) .
-     IsA (BitRecordField t1)
-  -> IsA (BitRecordField t2)
-  -> IsA BitRecord
+data (.>.) :: IsA (BitRecordField t1)
+           -> IsA (BitRecordField t2)
+           -> IsA BitRecord
 infixr 6 .>.
-type instance Eval (l .>. r) = 'BitRecordMember (Eval l) ':>: 'BitRecordMember (Eval r)
+type instance Eval (l .>. r) = 'BitRecordMember l ':>: 'BitRecordMember r
 
 -- | Set a field to either a static, compile time, value or a dynamic, runtime value.
-data (:~) :: forall (t :: RecordFieldType rt st len) .
-    IsA (BitRecordField t)
+data (:~) ::
+    IsA (BitRecordField (t :: BitField rt st len))
   -> IsA (FieldValue st)
-  -> IsA (BitRecordField t)
+  -> IsA (BitRecordField (t :: BitField rt st len))
 infixl 7 :~
 type instance Eval (fld :~ StaticFieldValue v)  = Eval (fld := v)
 type instance Eval (fld :~ RuntimeFieldValue l) = Eval (l   @: fld)
 
 -- | Like ':~' but for a 'Maybe' parameter. In case of 'Just' it behaves like ':~'
 -- in case of 'Nothing' it return an 'EmptyBitRecord'.
-data (:~?) :: forall (t :: RecordFieldType rt st len) .
-             IsA (BitRecordField t)
+data (:~?) :: IsA (BitRecordField (t :: BitField rt st len))
            -> Maybe (IsA (FieldValue st))
            -> IsA BitRecord
 infixl 7 :~?
-type instance Eval (fld :~? ('Just v)) = 'BitRecordMember (Eval (fld :~ v))
+type instance Eval (fld :~? ('Just v)) = 'BitRecordMember (fld :~ v)
 type instance Eval (fld :~? 'Nothing) = 'EmptyBitRecord
 
 -- | The field value parameter for ':~', either a static, compile time, value or
@@ -175,15 +167,22 @@ type instance Eval (OptionalRecord 'Nothing)  = 'EmptyBitRecord
 -- A bit field always has a size, i.e. the number of bits it uses, as well as a
 -- term level value type and a type level value type. It also has an optional
 -- label, and an optional value assigned to it.
-data BitRecordField (t :: RecordFieldType rt (st :: l) len) where
-  -- | A field with a value set at compile time.
-  AssignF :: value
-          -> BitRecordField (t :: RecordFieldType rt value len)
-          -> BitRecordField t
+data BitRecordField :: BitField rt st len -> Type
+     -- (runtimeRep :: Type)
+     -- (staticRep :: Type)
+     -- (bitCount :: Nat)
+
+-- | A field with a value set at compile time.
+data AssignF :: st
+             -> IsA (BitRecordField (t :: BitField rt st len))
+             -> IsA (BitRecordField (t :: BitField rt st len))
+
   -- | A bit record field with a number of bits
-  MkField :: forall rt k (st :: k) (len :: Nat) (t :: RecordFieldType rt st len) . Proxy t -> BitRecordField t
+data MkField t :: IsA (BitRecordField t)
+
+
   -- | A bit record field with a number of bits
-  LabelF :: Symbol -> BitRecordField t -> BitRecordField t
+data LabelF :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
 
 -- | Types of this kind define the basic type of a 'BitRecordField'. Sure, this
 -- could have been an open type, but really, how many actual useful field types
@@ -192,27 +191,27 @@ data BitRecordField (t :: RecordFieldType rt (st :: l) len) where
 -- libraries, and hence, there is actually only very little reason to
 -- differentiate types of record fields, other than what low-level library
 -- function to apply and how to pretty print the field.
-data RecordFieldType
+data BitField
      (runtimeRep :: Type)
-     (staticRep :: k)
+     (staticRep :: Type)
      (bitCount :: Nat)
   where
-    MkFieldFlag :: RecordFieldType Bool Bool 1
-    MkFieldBits :: forall (n :: Nat) . RecordFieldType Word64 Nat n
-    MkFieldBitsXXL :: forall (n :: Nat) . RecordFieldType Integer Nat n
+    MkFieldFlag :: BitField Bool Bool 1
+    MkFieldBits :: forall (n :: Nat) . BitField Word64 Nat n
+    MkFieldBitsXXL :: forall (n :: Nat) . BitField Integer Nat n
     -- TODO:
-    -- MkFieldBits :: forall (n :: Nat) . n <= 64 => Proxy n -> RecordFieldType Word64 Nat n
-    -- MkFieldBitsXXL :: forall (n :: Nat) . n <= 4294967295 => Proxy n -> RecordFieldType Integer Nat n
-    MkFieldU8  :: RecordFieldType Word8 Nat 8
-    MkFieldU16 :: RecordFieldType Word16 Nat 16
-    MkFieldU32 :: RecordFieldType Word32 Nat 32
-    MkFieldU64 :: RecordFieldType Word64 Nat 64
-    MkFieldI8  :: RecordFieldType Int8  SignedNat 8
-    MkFieldI16 :: RecordFieldType Int16 SignedNat 16
-    MkFieldI32 :: RecordFieldType Int32 SignedNat 32
-    MkFieldI64 :: RecordFieldType Int64 SignedNat 64
-    MkFieldCustom :: Proxy t -> Proxy n -> RecordFieldType () t n
-    -- TODO : MkFieldCustom :: forall (t :: Type) (n :: Nat) . n <= 4294967295  => RecordFieldType () t n
+    -- MkFieldBits :: forall (n :: Nat) . n <= 64 => Proxy n -> BitField Word64 Nat n
+    -- MkFieldBitsXXL :: forall (n :: Nat) . n <= 4294967295 => Proxy n -> BitField Integer Nat n
+    MkFieldU8  :: BitField Word8 Nat 8
+    MkFieldU16 :: BitField Word16 Nat 16
+    MkFieldU32 :: BitField Word32 Nat 32
+    MkFieldU64 :: BitField Word64 Nat 64
+    MkFieldI8  :: BitField Int8  SignedNat 8
+    MkFieldI16 :: BitField Int16 SignedNat 16
+    MkFieldI32 :: BitField Int32 SignedNat 32
+    MkFieldI64 :: BitField Int64 SignedNat 64
+    MkFieldCustom :: Type -> Nat -> BitField () () 0
+    -- TODO : MkFieldCustom :: forall (t :: Type) (n :: Nat) . n <= 4294967295  => BitField () t n
 
 --type family UntaggedFieldType (bf
 
@@ -225,38 +224,28 @@ data SignedNat where
 
 -- | A single bit (boolean) field
 data Flag :: IsA (BitRecordField 'MkFieldFlag)
-type instance Eval Flag = 'MkField ('Proxy :: Proxy  'MkFieldFlag)
 
 -- | Define a field of bits with a size and 'Word64' as default demote rep.
-data Field n :: IsA (BitRecordField ('MkFieldBits :: RecordFieldType Word64 Nat n))
-type instance Eval (Field n) = 'MkField ('Proxy :: Proxy ('MkFieldBits :: RecordFieldType Word64 Nat n))
+data Field n :: IsA (BitRecordField ('MkFieldBits :: BitField Word64 Nat n))
 
 -- data FieldXXL n :: n <= 4294967295
---                 => IsA (BitRecordField ('MkFieldBitsXXL :: RecordFieldType Integer Nat n))
+--                 => IsA (BitRecordField ('MkFieldBitsXXL :: BitField Integer Nat n))
 
 data FieldU8 :: IsA (BitRecordField 'MkFieldU8)
-type instance Eval (FieldU8) = 'MkField ('Proxy :: Proxy  'MkFieldU8)
 
 data FieldU16 :: IsA (BitRecordField 'MkFieldU16)
-type instance Eval (FieldU16) = 'MkField ('Proxy :: Proxy  'MkFieldU16)
 
 data FieldU32 :: IsA (BitRecordField 'MkFieldU32)
-type instance Eval (FieldU32) = 'MkField ('Proxy :: Proxy  'MkFieldU32)
 
 data FieldU64 :: IsA (BitRecordField 'MkFieldU64)
-type instance Eval (FieldU64) = 'MkField ('Proxy :: Proxy  'MkFieldU64)
 
 data FieldI8 :: IsA (BitRecordField 'MkFieldI8)
-type instance Eval (FieldI8) = 'MkField ('Proxy :: Proxy  'MkFieldI8)
 
 data FieldI16 :: IsA (BitRecordField 'MkFieldI16)
-type instance Eval (FieldI16) = 'MkField ('Proxy :: Proxy  'MkFieldI16)
 
 data FieldI32 :: IsA (BitRecordField 'MkFieldI32)
-type instance Eval (FieldI32) = 'MkField ('Proxy :: Proxy  'MkFieldI32)
 
 data FieldI64 :: IsA (BitRecordField 'MkFieldI64)
-type instance Eval (FieldI64) = 'MkField ('Proxy :: Proxy  'MkFieldI64)
 
 -- *** Composed Fields
 
@@ -277,17 +266,17 @@ data ToStringLength :: Type -> Type -> Type -- TODO move
 -- | An optional field in a bit record
 data MaybeField :: Maybe (IsA (BitRecordField t)) -> IsA BitRecord
 type instance Eval (MaybeField ('Just  fld)) =
-  'BitRecordDoc (PutStr "Just") ':>: 'BitRecordMember (Eval fld)
+  'BitRecordDoc (PutStr "Just") ':>: 'BitRecordMember fld
 type instance Eval (MaybeField 'Nothing) =
   'BitRecordDoc (PutStr "Nothing")
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
 data RecordField :: IsA (BitRecordField t) -> IsA BitRecord
-type instance Eval (RecordField f) = 'BitRecordMember (Eval f)
+type instance Eval (RecordField f) = 'BitRecordMember f
 
 -- | Calculate the size as a number of bits from a 'BitRecordField'
-type family BitRecordFieldSize (x :: BitRecordField t) where
-  BitRecordFieldSize (x :: BitRecordField (t :: RecordFieldType rt st size)) = size
+type family BitRecordFieldSize (x :: IsA (BitRecordField t)) where
+  BitRecordFieldSize (x :: IsA (BitRecordField (t :: BitField rt st size))) = size
 
 -- *** Field Constructor
 
@@ -296,46 +285,13 @@ type family BitRecordFieldSize (x :: BitRecordField t) where
 -- | A field with a label assigned to it.
 data (@:) :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
 infixr 8 @:
-type instance Eval (l @: f) = 'LabelF l (Eval f)
 
 -- **** Assignment
 
 -- | A field with a (type-level-) value assigned to.
-data (:=) :: IsA (BitRecordField t) -> st -> IsA (BitRecordField t)
+data (:=) :: IsA (BitRecordField (t :: BitField rt st size)) -> st -> IsA (BitRecordField t)
 infixl 7 :=
 
-type instance Eval ((b :: IsA (BitRecordField t)) := (v :: k))
-  = AssignFChecked (Eval b) v
-
-type family AssignFChecked (b :: BitRecordField (t :: RecordFieldType (rt :: Type) (st :: Type) (s :: Nat))) (v :: st) :: BitRecordField t where
-  AssignFChecked ('MkField ('Proxy :: Proxy t) :: BitRecordField t) (v :: st) =
-    'AssignF v ('MkField ('Proxy :: Proxy t) :: BitRecordField t)
-  AssignFChecked o v = TypeError ('Text "Cannot assign (type-level-) value "
-                         ':<>: 'ShowType v
-                         ':<>: 'Text " to field, that is already assigned: "
-                         ':<>: 'ShowType o)
-
--- ** Auto-Padding
-
-type Align padRight a f =
-    AddPadding padRight ((a - (BitRecordSize f `Rem` a)) `Rem` a) f
-
-type family
-  AddPadding (padRight :: Bool) (n :: Nat) (r :: BitRecord) :: BitRecord where
-  AddPadding padRight 0 r = r
-  AddPadding 'True n r  =
-    r ':>:
-    'BitRecordMember
-       ('AssignF 0 ('MkField
-                    ('Proxy :: Proxy
-                              ('MkFieldBits :: RecordFieldType Word64 Nat n))))
-
-  AddPadding 'False n r =
-    'BitRecordMember
-    ('AssignF 0 ('MkField
-                  ('Proxy :: Proxy
-                            ('MkFieldBits :: RecordFieldType Word64 Nat n))))
-    ':>: r
 
 -- * Field and Record PrettyType Instances
 
@@ -355,18 +311,18 @@ type family PrettyRecord (rec :: BitRecord) :: PrettyType where
    PrettyRecord ('BitRecordDoc p) = p
    PrettyRecord ('BitRecordDocNested p r) = p <$$--> PrettyRecord r
 
-type instance ToPretty (f :: BitRecordField t) = PrettyField f
+type instance ToPretty (f :: IsA (BitRecordField t)) = PrettyField f
 
-type family PrettyField (f :: BitRecordField (t :: RecordFieldType (rt :: Type) (st :: Type) (size :: Nat))) :: PrettyType where
-  PrettyField ('MkField ('Proxy :: Proxy t)) = PrettyFieldType t
-  PrettyField ('AssignF v (f :: BitRecordField (t :: RecordFieldType rt st size))) =
+type family PrettyField (f :: IsA (BitRecordField (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)))) :: PrettyType where
+  PrettyField (MkField t) = PrettyFieldType t
+  PrettyField (AssignF v (f :: IsA (BitRecordField t))) =
     PrettyField f <+> PutStr ":=" <+> PrettyFieldValue t v
-  PrettyField ('LabelF l f) = l <:> PrettyField f
+  PrettyField (LabelF l f) = l <:> PrettyField f
 
-type family PrettyFieldType (t :: RecordFieldType (rt :: Type) (st :: Type) (size :: Nat)) :: PrettyType where
+type family PrettyFieldType (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)) :: PrettyType where
   PrettyFieldType ('MkFieldFlag) = PutStr "boolean"
-  PrettyFieldType ('MkFieldBits :: RecordFieldType Word64 Nat (s :: Nat)) = PutStr "bits" <++> PrettyParens (PutNat s)
-  PrettyFieldType ('MkFieldBitsXXL :: RecordFieldType Integer Nat (s :: Nat)) = PutStr "bits-XXL" <++> PrettyParens (PutNat s)
+  PrettyFieldType ('MkFieldBits :: BitField Word64 Nat (s :: Nat)) = PutStr "bits" <++> PrettyParens (PutNat s)
+  PrettyFieldType ('MkFieldBitsXXL :: BitField Integer Nat (s :: Nat)) = PutStr "bits-XXL" <++> PrettyParens (PutNat s)
   PrettyFieldType ('MkFieldU64) = PutStr "U64"
   PrettyFieldType ('MkFieldU32) = PutStr "U32"
   PrettyFieldType ('MkFieldU16) = PutStr "U16"
@@ -375,12 +331,12 @@ type family PrettyFieldType (t :: RecordFieldType (rt :: Type) (st :: Type) (siz
   PrettyFieldType ('MkFieldI32) = PutStr "I32"
   PrettyFieldType ('MkFieldI16) = PutStr "I16"
   PrettyFieldType ('MkFieldI8) = PutStr "I8"
-  PrettyFieldType ('MkFieldCustom ('Proxy :: Proxy ct) ('Proxy :: Proxy size)) = PutStr "custom" <++> PrettyParens (PutNat size) <+> ToPretty ct
+  PrettyFieldType ('MkFieldCustom ct size) = PutStr "custom" <++> PrettyParens (PutNat size) <+> ToPretty ct
 
-type family PrettyFieldValue (t :: RecordFieldType (rt :: Type) (st :: Type) (size :: Nat)) (v :: st) :: PrettyType where
+type family PrettyFieldValue (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)) (v :: st) :: PrettyType where
   PrettyFieldValue ('MkFieldFlag) 'True = PutStr "yes"
   PrettyFieldValue ('MkFieldFlag) 'False = PutStr "no"
-  PrettyFieldValue ('MkFieldBits :: RecordFieldType Word64 Nat (s::Nat)) v =
+  PrettyFieldValue ('MkFieldBits :: BitField Word64 Nat (s::Nat)) v =
     'PrettyNat 'PrettyUnpadded ('PrettyPrecision s) 'PrettyBit v  <+> PrettyParens (("hex" <:> PutHex v) <+> ("dec" <:> PutNat v))
   PrettyFieldValue ('MkFieldU8)  v = ("hex" <:> PutHex8 v) <+> PrettyParens ("dec" <:> PutNat v)
   PrettyFieldValue ('MkFieldU16) v = ("hex" <:> PutHex16 v) <+> PrettyParens ("dec" <:> PutNat v)

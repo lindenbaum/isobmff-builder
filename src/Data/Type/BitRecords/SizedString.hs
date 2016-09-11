@@ -31,19 +31,10 @@ data SizedStringRep :: Symbol -> Nat -> Type
 
 data SizedString
   :: SizedStringRep str bytes
-  -> IsA (BitRecordField t)
+  -> IsA (BitRecordField ('MkFieldCustom (SizedStringRep str bytes) bytes))
 
 type instance
      SizeFieldValue (SizedStringRep str byteCount) = byteCount
-
-type instance
-  Eval (SizedString (t :: SizedStringRep str bytes)) =
-     'AssignF (SizedStringRep str bytes)
-     ('MkField
-       ('Proxy :: Proxy
-         (MkFieldCustom
-           ('Proxy :: Proxy (SizedStringRep str bytes))
-           ('Proxy :: Proxy bytes))))
 
 
 type instance
@@ -64,6 +55,6 @@ utf8 = TH.QuasiQuoter undefined undefined mkSizedStr undefined
                TH.PromotedT ''SizedString `TH.AppT` strT `TH.AppT` byteCountT
 
 instance forall str byteCount f a . KnownSymbol str =>
-  BitStringBuilderHoley (Proxy ('AssignF (SizedStringRep str byteCount) f)) a where
+  BitStringBuilderHoley (Proxy (AssignF (SizedStringRep str byteCount) f)) a where
   bitStringBuilderHoley _ =
     immediate (appendStrictByteString (E.encodeUtf8 (T.pack (symbolVal (Proxy :: Proxy str)))))
