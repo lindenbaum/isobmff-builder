@@ -16,12 +16,13 @@ data NonSbrAudioConfig
   -> IsAn (EnumOf ChannelConfigTable)
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
-type instance Eval
+type instance CoerceTo BitRecord
   (NonSbrAudioConfig (subCfg :: IsAn (AudioSubConfig aoId)) freq channels) =
-  'MkDecoderSpecificInfo
-  (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
-    #$ (AudioConfigBeginning aoId (freq ~~> IsA BitRecord) (channels ~~> IsA BitRecord)
-         :>: (subCfg ~~> IsA BitRecord)))
+  CoerceTo BitRecord
+  (MkDecoderSpecificInfo
+   (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
+    #$ (AudioConfigBeginning aoId (freq ~~> BitRecord) (channels ~~> BitRecord)
+         :>: (subCfg ~~> BitRecord))))
 
 type AudioConfigBeginning audioObjId freq channels =
       AudioObjectTypeRec audioObjId
@@ -116,7 +117,7 @@ type family AudioObjectTypeField1 (n :: Nat) :: IsA BitRecordField where
 
 type family AudioObjectTypeField2 (n :: Nat) :: IsA BitRecord where
   AudioObjectTypeField2 n =
-    If (n <=? 30) (Return 'EmptyBitRecord) (Field 6 := (n - 31) ~~> IsA BitRecord)
+    If (n <=? 30) (Return 'EmptyBitRecord) (Field 6 := (n - 31) ~~> BitRecord)
 
 -- *** Sampling Frequency
 
@@ -180,34 +181,25 @@ type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
 
 -- ** More Specific audio decoder config
 
-data AudioSubConfig :: AudioObjectTypeId -> Type where
-  MkAudioSubConfig :: IsA BitRecord -> AudioSubConfig t
-
-type instance CoerceTo BitRecord ('MkAudioSubConfig br) = Eval br
+data AudioSubConfig :: AudioObjectTypeId -> Type
 
 data GASpecificConfig
   (objectId       :: AudioObjectTypeId)
-  (frameLenFlag   :: FieldValue Bool)
-  (coreCoderDelay :: CoreCoderDelay)
+  (frameLenFlag   :: IsA (FieldValue Bool))
+  (coreCoderDelay :: Maybe (IsA (FieldValue (Tagged "coreCoderDelay" Word64))))
   (extension      :: IsA GASExtension)
   :: IsA (AudioSubConfig aoId)
 
 type instance
-  Eval (GASpecificConfig aoid fl cd ext) =
-  'MkAudioSubConfig
+  CoerceTo BitRecord (GASpecificConfig aoid fl cd ext) =
      (    Flag :~ fl
-      .>: Pure (cd ~~> BitRecord)
-      :>: (ext ~~> IsA BitRecord)
+      .>: Field 14 :~? cd
+      :>: (ext ~~> BitRecord)
      )
 
-data CoreCoderDelay where
-  NoCoreCoderDelay :: CoreCoderDelay
-  MkCoreCoderDelay :: Nat -> CoreCoderDelay
-
-type instance CoerceTo BitRecord 'NoCoreCoderDelay         = 'EmptyBitRecord
-type instance CoerceTo BitRecord ('MkCoreCoderDelay delay) = Eval (Field 14 := delay) ~~> BitRecord
-
 -- | TODO implment that GAS extensions
-data GASExtension = MkGASExtension
-type instance CoerceTo BitRecord GASExtension =
-  Eval ("has-gas-extension" @: Flag := 'False) ~~> BitRecord
+data GASExtension
+data MkGASExtension :: IsA GASExtension
+
+type instance CoerceTo BitRecord (g :: IsA GASExtension) =
+  ("has-gas-extension" @: Flag := 'False) ~~> BitRecord

@@ -1,9 +1,23 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor where
 
+import           Data.ByteString.IsoBaseFileFormat.Box
+import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor
+
+-- * Esd Box
+
+newtype EsdBox (d :: IsA (Descriptor 'ES_Descr)) where
+  EsdBox :: forall (d :: IsA (Descriptor 'ES_Descr)) . BitBox (d ~~> BitRecord) -> EsdBox d
+
+deriving instance KnownNat (BitRecordSize (Eval (d ~~> BitRecord)))
+  => IsBoxContent (EsdBox d)
+
+-- * Esd Record
+
+type DefaultEsId = 'StaticFieldValue 1
 
 data ESDescriptor
   :: FieldValue (Tagged "esId" Word16)

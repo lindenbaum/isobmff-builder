@@ -33,12 +33,10 @@ audioSampleEntry ase eds = const (Box eds) <$> ase
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
 newtype AudioEsd =
   AudioEsd (U8 "TODO")
-  deriving IsBoxContent
+  deriving (Default, IsBoxContent)
 
 instance IsBox AudioEsd
 type instance BoxTypeSymbol AudioEsd = "mp4a"
-
-type DefaultEsId = 'StaticFieldValue 1
 
 type Mp4AudioEsDescriptor =
   ESDescriptorMp4File DefaultEsId Mp4AacLcAudioDecoderConfigDescriptor
@@ -47,19 +45,11 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
   DecoderConfigDescriptor
    'AudioIso14496_3
    'AudioStream
-  '[Eval (NonSbrAudioConfig
-          (GASpecificConfig 'AacLc ('StaticFieldValue 'False) 'NoCoreCoderDelay (Return 'MkGASExtension))
-          (SetEnum SamplingFreq 'SF88200)
-          (SetEnum ChannelConfig 'GasChannelConfig))]
+  '[NonSbrAudioConfig
+     (GASpecificConfig 'AacLc ('StaticFieldValue 'False) 'Nothing MkGASExtension)
+     (SetEnum SamplingFreq 'SF88200)
+     (SetEnum ChannelConfig 'GasChannelConfig)]
   '[]
-
--- ** EsdBox
-
--- data EsdBox (d :: IsA (Descriptor 'ES_Descr)) where
---   EsdBox :: forall (d :: IsA (Descriptor 'ES_Descr)) . BitBox (d --> BitRecord) -> EsdBox d
-
--- deriving instance KnownNat (BitRecordSize d)
---   => IsBoxContent (EsdBox d)
 
 
 -- -- TODO rename project
@@ -70,7 +60,7 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
 --   :: forall (di :: IsA (Descriptor 'DecoderConfigDescr)) .
 --     (BitStringBuilderHoley (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di)))
 --   => Proxy di
---   -> ToBitStringBuilder (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di))
+--   -> ToBitStringBuilder (Proxy (ESqDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di))
 -- esDescriptorBitBox _ =
 --   bitBoxWithArgs (Proxy @(ESDescriptorMp4File di))
 

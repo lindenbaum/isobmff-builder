@@ -14,8 +14,11 @@ data Descriptor :: ClassTag n -> Type where
 -- TODO ok... this fixed the current problem in DecoderSpecificInfo .. but remove this instances ... or the above ... or ... I dunno
 
 type instance
-  CoerceTo BitRecord ('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) =
-   Eval (("base-descriptor" <:> PutHex8 tagInd) #$  FieldU8 := tagInd .>: StaticExpandableContent body)
+  CoerceTo BitRecord (d :: IsA (Descriptor c)) = RenderDescriptor (Eval d)
+
+type family RenderDescriptor (d :: Descriptor (n :: ClassTag m)) :: IsA BitRecord where
+  RenderDescriptor ('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) =
+   ("base-descriptor" <:> PutHex8 tagInd) #$ FieldU8 := tagInd .>: StaticExpandableContent body
 
 type family GetClassTag (c :: ClassTag n) :: Nat where
   GetClassTag (c :: ClassTag n) = n

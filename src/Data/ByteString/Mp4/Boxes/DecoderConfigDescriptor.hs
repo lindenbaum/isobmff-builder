@@ -13,7 +13,7 @@ import           Data.Kind.Extra
 data DecoderConfigDescriptor
        (ot :: ObjectTypeIndication)
        (st :: StreamType)
-          :: [DecoderSpecificInfo ot st]
+          :: [IsA (DecoderSpecificInfo ot st)]
           -> [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)]
           -> IsA (Descriptor 'DecoderConfigDescr)
 
@@ -23,7 +23,7 @@ type instance Eval (DecoderConfigDescriptor ot st di ps) =
 type family
     DecoderConfigDescriptorBody
       ot st
-      (di :: [DecoderSpecificInfo ot st])
+      (di :: [IsA (DecoderSpecificInfo ot st)])
       (ps :: [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)])
         :: IsA BitRecord
   where
@@ -31,15 +31,15 @@ type family
       (PutStr "decoder-config-descriptor" <+>
         ("objectTypeIndication" <:> PutHex8 (FromEnum ObjectTypeIndication ot)) <+>
         ("streamType"           <:> PutHex8 (FromEnum StreamType           st)))
-      #$ (FromA (SetEnum ObjectTypeIndicationEnum ot)
-           :>: FromA (SetEnum StreamTypeEnum st)
+      #$ ((SetEnum ObjectTypeIndicationEnum ot ~~> BitRecord)
+           :>: (SetEnum StreamTypeEnum st ~~> BitRecord)
            :>: "upstream"@: Flag
            .>: "reserved"@: Field 1        :=  1
            .>: "bufferSizeDB" @: Field 24
            .>: "maxBitrate"   @: FieldU32
            .>: "avgBitrate"   @: FieldU32
-           .>: ((di ?:: LengthIn 0 1) ~~> IsA BitRecord)
-           :>: ((ps ?:: LengthIn 0 255) ~~> IsA BitRecord)
+           .>: (Pure (CoerceListTo BitRecord (di ?:: LengthIn 0 1)) ~~> BitRecord)
+           :>: (Pure (CoerceListTo BitRecord (ps ?:: LengthIn 0 255)) ~~> BitRecord)
          )
 
 -- ** 'ProfileLevelIndicationIndexDescriptor'
@@ -49,4 +49,4 @@ data ProfileLevelIndicationIndexDescriptor
   -> IsA (Descriptor 'ProfileLevelIndicationIndexDescr)
 type instance Eval (ProfileLevelIndicationIndexDescriptor val) =
   'MkDescriptor
-  (FromA ("profileLevelIndicationIndex" @: FieldU8 :~ val))
+  (("profileLevelIndicationIndex" @: FieldU8 :~ val) ~~> BitRecord)

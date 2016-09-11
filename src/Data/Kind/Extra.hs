@@ -13,11 +13,8 @@ module Data.Kind.Extra
   , type ($~)
   , type CoerceTo
   , type (~~>)
-  , type FromA
-  -- , type CoercionTo
-  -- , type As
-  -- , type (-->)
   , type Optional
+  , type CoerceListTo
   ) where
 
 import Data.Kind (type Type)
@@ -44,7 +41,8 @@ import Data.Kind (type Type)
 --
 -- type instance Eval (ColoredText c txt) = 'WithColor c ('RenderText txt)
 -- @
-data A :: forall foo . foo -> Type
+data A :: forall foo . foo -> Type where
+  MkA :: A foo
 
 -- | Type alias for 'A' such that @data Point2 x y :: A Vec2 -> Type@ becomes
 -- @data Point2 x y :: IsA Vec2@
@@ -55,7 +53,7 @@ type IsAn (oo :: k) = (IsA oo :: Type)
 
 -- | An open type family to turn /symbolic/ type representations created with
 -- 'A' or 'IsA' into the actual types.
-type family Eval (t :: IsA foo) :: foo
+type family Eval (t :: A foo -> Type) :: foo
 
 -- | A type @foo@, @'IsA' foo@.
 data Pure (f :: o) :: IsAn o
@@ -77,45 +75,42 @@ type instance Eval ((f :: IsA (foo :-> bar)) :$ (x :: IsA foo)) =
   f $~ (Eval x)
 
 -- | Define how a @foo@ could be converted to a @bar@.
-type family CoerceTo bar (x :: foo) :: bar
-type instance CoerceTo (IsA bar) (x :: IsA foo) = Return (CoerceTo bar (Eval x))
-
--- | Automatic coercion to a symbolic type inferred from the context.
-data FromA (x :: IsA foo) :: IsA bar
-type instance Eval (FromA (x::IsA foo) :: IsA bar) = CoerceTo bar (Eval x)
+type family CoerceTo (bar :: j) (x :: IsA (foo :: k)) :: IsA bar
 
 -- | An alias for 'CoerceTo'.
-type (x :: foo) ~~> bar = (CoerceTo bar x :: bar)
+type (x :: IsA foo) ~~> bar = (CoerceTo bar x :: IsA bar)
 infixl 0 ~~>
--- TODO probably dead code:
--- -- | Symbolic coercion of type @foo@ to __kind__ @bar@ via the `CoerceTo` type
--- -- family.
--- --
--- -- @
--- -- data Foo (n :: Nat)
--- -- data Bar = MkBar Nat
--- --
--- -- type instance CoerceTo Bar (Foo n) = 'MkBar n
--- --
--- -- type Fun1As (x :: Foo Nat) = Fun2 (x `As` Bar)
--- -- type Fun1Op (x :: Foo Nat) = Fun2 (x --> Bar)
--- -- type Fun1   (x :: Foo Nat) = Fun2 (CoercionTo Bar $~ x)
--- --
--- -- type Fun2 (x :: Bar)     = ...
--- -- @
--- --
--- data CoercionTo (bar :: Type) :: forall (foo :: Type) . IsA (foo :-> bar)
--- type instance CoercionTo bar $~ foo = CoerceTo bar foo
-
--- -- | Alias for the application of a 'CoercionTo'
--- type As (x :: foo) bar = (CoercionTo bar :: IsA (foo :-> bar)) $~ x
-
--- -- | Alias for the application of a 'CoercionTo'
--- type (x :: foo) --> bar = (CoercionTo bar :: IsA (foo :-> bar)) $~ x
-
--- infixl 0 -->
 
 -- | Either use the value from @Just@ or return a fallback value(types(kinds))
-data Optional :: IsA t -> Maybe s -> IsA t
-type instance Eval (Optional ignored ('Just s) :: IsA dest) = s ~~> dest
+data Optional :: IsA t -> Maybe (IsA s) -> IsA t
+type instance Eval (Optional ignored ('Just s) :: IsA dest) = Eval (s ~~> dest)
 type instance Eval (Optional t 'Nothing :: IsA dest) = Eval t
+
+-- | Coerce the elements of a list all to a @bar@.
+type family CoerceListTo bar (xs :: [IsA foo]) :: [IsA bar] where
+  CoerceListTo bar '[] = '[]
+  CoerceListTo bar (x ': xs) = CoerceTo bar x ': CoerceListTo bar xs
+
+type ImplOf c = A (c 'MkA) -> Type
+
+data Term
+type IsATerm = A Term -> Type
+
+data Base :: IsATerm where
+  MkBase :: Base super
+
+data Class :: ImplOf Base where
+  MkClass :: Class super
+
+data SubClass ::  ImplOf Class where
+  MkSubClass :: SubClass super
+
+type instance Eval (SubClass) = 'MkClass
+
+data SubSubClass :: ImplOf SubClass where
+  MkSubSubClass :: SubSubClass super
+
+
+type instance Eval (SubSubClass) = 'MkSubClass
+
+data WantsBase :: IsA Term -> ImplOf Class -> Type

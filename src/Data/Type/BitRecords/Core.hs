@@ -94,23 +94,23 @@ infixr 6 .>.
 type instance Eval (l .>. r) = 'BitRecordMember (Eval l) ':>: 'BitRecordMember (Eval r)
 
 -- | Set a field to either a static, compile time, value or a dynamic, runtime value.
-data (:~) :: forall (k :: Type) . IsA BitRecordField -> FieldValue k -> IsA BitRecordField
+data (:~) :: forall (k :: Type) . IsA BitRecordField -> IsA (FieldValue k) -> IsA BitRecordField
 infixl 7 :~
-type instance Eval (fld :~ 'StaticFieldValue ('KProxy :: KProxy v))  = Eval (fld := v)
-type instance Eval (fld :~ 'RuntimeFieldValue l) = Eval (l   @: fld)
+type instance Eval (fld :~ StaticFieldValue v)  = Eval (fld := v)
+type instance Eval (fld :~ RuntimeFieldValue l) = Eval (l   @: fld)
 
 -- | Like ':~' but for a 'Maybe' parameter. In case of 'Just' it behaves like ':~'
 -- in case of 'Nothing' it return an 'EmptyBitRecord'.
-data (:~?) :: forall (k :: Type) . IsA BitRecordField -> Maybe (FieldValue k) -> IsA BitRecord
+data (:~?) :: forall (k :: Type) . IsA BitRecordField -> Maybe (IsA (FieldValue k)) -> IsA BitRecord
 infixl 7 :~?
 type instance Eval (fld :~? ('Just v)) = 'BitRecordMember (Eval (fld :~ v))
 type instance Eval (fld :~? 'Nothing) = 'EmptyBitRecord
 
 -- | The field value parameter for ':~', either a static, compile time, value or
 -- a dynamic, runtime value.
-data FieldValue demoteRep where
-  StaticFieldValue  :: value -> FieldValue demoteRep
-  RuntimeFieldValue :: Symbol -> FieldValue demoteRep
+data FieldValue demoteRep
+data StaticFieldValue  :: value  -> IsA (FieldValue demoteRep)
+data RuntimeFieldValue :: Symbol -> IsA (FieldValue demoteRep)
 
 -- *** Record Arrays and Repitition
 
@@ -133,11 +133,11 @@ type family RecArrayToBitRecord (r :: BitRecord) (n :: Nat) :: BitRecord where
 -- *** Lists of Records
 
 -- | Let type level lists also be records
-type instance CoerceTo BitRecord (xs :: [IsA BitRecord]) = ListToBitRecord xs
+type instance CoerceTo BitRecord (xs :: IsA [IsA BitRecord]) = ListToBitRecord (Eval xs)
 
-type family ListToBitRecord (xs :: [IsA BitRecord]) :: BitRecord where
-  ListToBitRecord '[]        = 'EmptyBitRecord
-  ListToBitRecord (x ': xs ) =  Eval x ':>: ListToBitRecord xs
+type family ListToBitRecord (xs :: [IsA BitRecord]) :: IsA BitRecord where
+  ListToBitRecord '[]        = Return 'EmptyBitRecord
+  ListToBitRecord (x ': xs ) = x :>: ListToBitRecord xs
 
 -- *** Maybe Record
 
@@ -160,7 +160,7 @@ data BitRecordField where
   MkField :: demoteRep -> Nat -> BitRecordField
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
-type instance CoerceTo BitRecord (a :: BitRecordField) = 'BitRecordMember a
+type instance CoerceTo BitRecord (a :: IsA BitRecordField) = Return ('BitRecordMember (Eval a))
 
 -- | Eval the size in as a number of bits from a 'BitRecordField'
 type family BitRecordFieldSize (x :: BitRecordField) where
