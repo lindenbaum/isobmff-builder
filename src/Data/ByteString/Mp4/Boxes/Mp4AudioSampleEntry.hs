@@ -46,23 +46,14 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
    'AudioIso14496_3
    'AudioStream
   '[NonSbrAudioConfig
-     (GASpecificConfig 'AacLc ('StaticFieldValue 'False) 'Nothing MkGASExtension)
-     (SetEnum SamplingFreq 'SF88200)
-     (SetEnum ChannelConfig 'GasChannelConfig)]
+    'AacLc
+    (GASpecificConfig (StaticFieldValue 'False) 'Nothing MkGASExtension)
+    (SetEnum SamplingFreq 'SF88200)
+    (SetEnum ChannelConfig 'GasChannelConfig)]
   '[]
 
 
 -- -- TODO rename project
-
--- -- TODO seperate this and other modules so theres the same seperation as in between
--- -- the parts of the standard.
--- esDescriptorBitBox
---   :: forall (di :: IsA (Descriptor 'DecoderConfigDescr)) .
---     (BitStringBuilderHoley (Proxy (ESDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di)))
---   => Proxy di
---   -> ToBitStringBuilder (Proxy (ESqDescriptorMp4File di)) (BitBox (ESDescriptorMp4File di))
--- esDescriptorBitBox _ =
---   bitBoxWithArgs (Proxy @(ESDescriptorMp4File di))
 
 
 {-

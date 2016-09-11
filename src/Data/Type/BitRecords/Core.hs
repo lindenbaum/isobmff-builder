@@ -54,7 +54,8 @@ getRecordSizeFromProxy
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
-type OptionalRecordOf s = Optional (Pure 'EmptyBitRecord) s
+type OptionalRecordOf f s =
+  (Optional (Pure 'EmptyBitRecord) f $~ s :: IsA BitRecord)
 
 -- TODO remove??
 
@@ -133,11 +134,13 @@ type family RecArrayToBitRecord (r :: BitRecord) (n :: Nat) :: BitRecord where
 -- *** Lists of Records
 
 -- | Let type level lists also be records
-type instance CoerceTo BitRecord (xs :: IsA [IsA BitRecord]) = ListToBitRecord (Eval xs)
-
-type family ListToBitRecord (xs :: [IsA BitRecord]) :: IsA BitRecord where
-  ListToBitRecord '[]        = Return 'EmptyBitRecord
-  ListToBitRecord (x ': xs ) = x :>: ListToBitRecord xs
+type family
+    BitRecordOfList
+      (f :: IsA ((foo :: Type) :-> IsA BitRecord))
+      (xs :: [foo])
+      :: IsA BitRecord
+  where
+    BitRecordOfList f xs = FoldMap (Fun2 (:>:)) (Pure 'EmptyBitRecord) f xs
 
 -- *** Maybe Record
 
@@ -160,7 +163,8 @@ data BitRecordField where
   MkField :: demoteRep -> Nat -> BitRecordField
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
-type instance CoerceTo BitRecord (a :: IsA BitRecordField) = Return ('BitRecordMember (Eval a))
+data RecordField :: IsA BitRecordField -> IsA BitRecord
+type instance Eval (RecordField f) = 'BitRecordMember (Eval f)
 
 -- | Eval the size in as a number of bits from a 'BitRecordField'
 type family BitRecordFieldSize (x :: BitRecordField) where
@@ -318,7 +322,11 @@ type family PrettyField (f :: BitRecordField) :: PrettyType where
     PrettyField ('MkField demRep size) <+> PutStr ":=" <+> PrettyFieldValue v demRep size
   PrettyField ('AssignF v f) = PrettyField f
 
-type family PrettyFieldValue v demRep (size :: Nat) where
+type family PrettyFieldValue v (demRep :: Type) (size :: Nat) where
+  -- TODO
+  -- PrettyFieldValue ('False :: Bool) Bool 1 = PutStr "False"
+  -- PrettyFieldValue ('True :: Bool) Bool 1 = PutStr "True"
+
   PrettyFieldValue (v :: Nat) Word64 size =
     'PrettyNat 'PrettyUnpadded ('PrettyPrecision size) 'PrettyBit v
     <+> PrettyParens (("hex" <:> PutHex v) <+> ("dec" <:> PutNat v))

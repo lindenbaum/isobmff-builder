@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- | Kind-level utilities to guide and simplify programming at the type level
 module Data.Kind.Extra
-  ( type A
+  ( type A(..)
   , type IsA
   , type IsAn
   , type Return
@@ -9,12 +9,20 @@ module Data.Kind.Extra
   , type Eval
   , type (:->)
   , type Apply
-  , type (:$)
+  , type (^$^)
   , type ($~)
-  , type CoerceTo
-  , type (~~>)
+  , type (:>>=:)
+  , type (:>>>:)
+  , type (:^>>>:)
+  , type (:>>>^:)
+  , type (:^>>>^:)
+  , type Extract
   , type Optional
-  , type CoerceListTo
+  , type FoldMap
+  , type Fun1
+  , type Fun2
+  , type Fun3
+  , type Fun4
   ) where
 
 import Data.Kind (type Type)
@@ -65,52 +73,82 @@ data (:->) foo bar
 
 -- | An open family of functions from @foo@ to @bar@
 type family (f :: IsA (foo :-> bar)) $~ (x :: foo) :: bar
+infixl 0 $~
 
 -- | An alias for '$~'
 type Apply f x = f $~ x
 
 -- | Symbolic function application
-data (:$) :: IsA (foo :-> bar) -> IsA foo -> IsA bar
-type instance Eval ((f :: IsA (foo :-> bar)) :$ (x :: IsA foo)) =
+data (^$^) :: IsA (foo :-> bar) -> IsA foo -> IsA bar
+infixl 0 ^$^
+type instance Eval ((f :: IsA (foo :-> bar)) ^$^ (x :: IsA foo)) =
   f $~ (Eval x)
 
--- | Define how a @foo@ could be converted to a @bar@.
-type family CoerceTo (bar :: j) (x :: IsA (foo :: k)) :: IsA bar
+-- | Compose functions
+data (:>>>:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (good :-> best)
+infixl 1 :>>>:
+type instance (f :>>>: g) $~ x = g $~ (f $~ x)
 
--- | An alias for 'CoerceTo'.
-type (x :: IsA foo) ~~> bar = (CoerceTo bar x :: IsA bar)
-infixl 0 ~~>
+-- | Eval Input & Compose
+data (:^>>>:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (IsA good :-> best)
+infixl 1 :^>>>:
+type instance (f :^>>>: g) $~ x = g $~ (f $~ Eval x)
+
+-- | Compose and 'Return'
+data (:>>>^:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (good :-> IsA best)
+infixl 1 :>>>^:
+type instance (f :>>>^: g) $~ x = Return (g $~ (f $~ x))
+
+-- | Eval compose and return
+data (:^>>>^:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (IsA good :-> IsA best)
+infixl 1 :^>>>^:
+type instance (f :^>>>^: g) $~ x = f :>>>: g ^$^ x
+
+-- | A function that applies 'Eval'
+data Extract :: IsA (IsA x :-> x)
+type instance Extract $~ x = Eval x
+
+-- | Eval and ApplyCompose functions
+data (:>>=:) :: IsA foo -> IsA (foo :-> IsA bar) -> IsA bar
+infixl 1 :>>=:
+type instance Eval (x :>>=: f) = Eval (f $~ Eval x)
 
 -- | Either use the value from @Just@ or return a fallback value(types(kinds))
-data Optional :: IsA t -> Maybe (IsA s) -> IsA t
-type instance Eval (Optional ignored ('Just s) :: IsA dest) = Eval (s ~~> dest)
-type instance Eval (Optional t 'Nothing :: IsA dest) = Eval t
+data Optional :: IsA t -> IsA (s :-> IsA t) -> IsA (Maybe s :-> IsA t)
+
+type instance (Optional fallback f) $~ ('Just s) = f $~ s
+type instance (Optional fallback f) $~ 'Nothing = fallback
 
 -- | Coerce the elements of a list all to a @bar@.
-type family CoerceListTo bar (xs :: [IsA foo]) :: [IsA bar] where
-  CoerceListTo bar '[] = '[]
-  CoerceListTo bar (x ': xs) = CoerceTo bar x ': CoerceListTo bar xs
-
-type ImplOf c = A (c 'MkA) -> Type
-
-data Term
-type IsATerm = A Term -> Type
-
-data Base :: IsATerm where
-  MkBase :: Base super
-
-data Class :: ImplOf Base where
-  MkClass :: Class super
-
-data SubClass ::  ImplOf Class where
-  MkSubClass :: SubClass super
-
-type instance Eval (SubClass) = 'MkClass
-
-data SubSubClass :: ImplOf SubClass where
-  MkSubSubClass :: SubSubClass super
+type family
+  FoldMap
+          (append :: IsA (bar :-> IsA (bar :-> bar)))
+          (zero :: bar)
+          (f :: IsA (foo :-> bar))
+          (xs :: [(foo :: Type)]) :: (bar :: Type) where
+  FoldMap append zero f '[]       = zero
+  FoldMap append zero f (x ': xs) = append $~ (f $~ x) $~ FoldMap append zero f xs
 
 
-type instance Eval (SubSubClass) = 'MkSubClass
+--  TODONT safe coercions (with undecidable instances) could be done only with a
+--  type-level equivilant of a type class dictionary, A good place for that
+--  might be 'A'. For now I only had trouble with 'CoerceTo' because it is open
+--  and the compiler often used up __all__ main memory when an instance was
+--  missing.
 
-data WantsBase :: IsA Term -> ImplOf Class -> Type
+-- | Like @TyCon1@ from Data.Singletons
+data Fun1 :: (a -> IsA b)
+            -> IsA (a :-> IsA b)
+type instance (Fun1 f) $~ x = (f x)
+
+data Fun2 :: (a -> b -> IsA c)
+            -> IsA (a :-> IsA (b :-> IsA c))
+type instance (Fun2 f) $~ x = Fun1 (f x)
+
+data Fun3 :: (a -> b -> c -> IsA d)
+            -> IsA (a :-> IsA (b :-> IsA (c :-> IsA d)))
+type instance (Fun3 f) $~ x = Fun2 (f x)
+
+data Fun4 :: (a -> b -> c -> d -> IsAn e)
+            -> IsA (a :-> IsA (b :-> IsA (c :-> IsA (d :-> IsAn e))))
+type instance (Fun4 f) $~ x = Fun3 (f x)

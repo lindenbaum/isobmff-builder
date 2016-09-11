@@ -31,22 +31,28 @@ type family
       (PutStr "decoder-config-descriptor" <+>
         ("objectTypeIndication" <:> PutHex8 (FromEnum ObjectTypeIndication ot)) <+>
         ("streamType"           <:> PutHex8 (FromEnum StreamType           st)))
-      #$ ((SetEnum ObjectTypeIndicationEnum ot ~~> BitRecord)
-           :>: (SetEnum StreamTypeEnum st ~~> BitRecord)
+      #$ (BitRecordOfEnum (SetEnum ObjectTypeIndicationEnum ot)
+           :>: BitRecordOfEnum (SetEnum StreamTypeEnum st)
            :>: "upstream"@: Flag
            .>: "reserved"@: Field 1        :=  1
            .>: "bufferSizeDB" @: Field 24
            .>: "maxBitrate"   @: FieldU32
            .>: "avgBitrate"   @: FieldU32
-           .>: (Pure (CoerceListTo BitRecord (di ?:: LengthIn 0 1)) ~~> BitRecord)
-           :>: (Pure (CoerceListTo BitRecord (ps ?:: LengthIn 0 255)) ~~> BitRecord)
+           .>: (BitRecordOfList
+                (DescriptorOfDecoderSpecificInfo
+                 :^>>>: BitRecordOfDescriptor)
+                (di ?:: LengthIn 0 1))
+           :>: (BitRecordOfList
+                (Extract :>>>: BitRecordOfDescriptor)
+                (ps ?:: LengthIn 0 255))
          )
 
 -- ** 'ProfileLevelIndicationIndexDescriptor'
 
 data ProfileLevelIndicationIndexDescriptor
-  :: FieldValue Word8
+  :: IsA (FieldValue Word8)
   -> IsA (Descriptor 'ProfileLevelIndicationIndexDescr)
+
 type instance Eval (ProfileLevelIndicationIndexDescriptor val) =
   'MkDescriptor
-  (("profileLevelIndicationIndex" @: FieldU8 :~ val) ~~> BitRecord)
+  (RecordField ("profileLevelIndicationIndex" @: FieldU8 :~ val))

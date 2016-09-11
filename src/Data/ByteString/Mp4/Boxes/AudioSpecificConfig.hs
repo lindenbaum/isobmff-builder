@@ -11,18 +11,25 @@ import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 -- TODO add error protection specific config
 -- TODO add sbr support
 data NonSbrAudioConfig
-  :: IsAn (AudioSubConfig audioObjId)
+  :: AudioObjectTypeId
+  -> IsAn AudioSubConfig
   -> IsAn (EnumOf SamplingFreqTable)
   -> IsAn (EnumOf ChannelConfigTable)
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
-type instance CoerceTo BitRecord
-  (NonSbrAudioConfig (subCfg :: IsAn (AudioSubConfig aoId)) freq channels) =
-  CoerceTo BitRecord
-  (MkDecoderSpecificInfo
-   (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
-    #$ (AudioConfigBeginning aoId (freq ~~> BitRecord) (channels ~~> BitRecord)
-         :>: (subCfg ~~> BitRecord))))
+type instance
+  Eval (NonSbrAudioConfig
+        aoId
+        subCfg
+        freq
+        channels) =
+   ('MkDecoderSpecificInfo
+    (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
+     #$ (AudioConfigBeginning
+         aoId
+         (BitRecordOfEnum freq)
+         (BitRecordOfEnum channels)
+         :>: (BitRecordOfAudioSubConfig subCfg))))
 
 type AudioConfigBeginning audioObjId freq channels =
       AudioObjectTypeRec audioObjId
@@ -117,7 +124,7 @@ type family AudioObjectTypeField1 (n :: Nat) :: IsA BitRecordField where
 
 type family AudioObjectTypeField2 (n :: Nat) :: IsA BitRecord where
   AudioObjectTypeField2 n =
-    If (n <=? 30) (Return 'EmptyBitRecord) (Field 6 := (n - 31) ~~> BitRecord)
+    If (n <=? 30) (Return 'EmptyBitRecord) (RecordField (Field 6 := (n - 31)))
 
 -- *** Sampling Frequency
 
@@ -181,25 +188,31 @@ type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
 
 -- ** More Specific audio decoder config
 
-data AudioSubConfig :: AudioObjectTypeId -> Type
+data AudioSubConfig :: Type
+
+type family BitRecordOfAudioSubConfig (x :: IsA AudioSubConfig) :: IsA BitRecord
+
 
 data GASpecificConfig
-  (objectId       :: AudioObjectTypeId)
   (frameLenFlag   :: IsA (FieldValue Bool))
   (coreCoderDelay :: Maybe (IsA (FieldValue (Tagged "coreCoderDelay" Word64))))
   (extension      :: IsA GASExtension)
-  :: IsA (AudioSubConfig aoId)
+  :: IsA AudioSubConfig
+
+type instance Eval (GASpecificConfig fl cd ext)
+  = TypeError ('Text "AudioSubConfig is abstract!")
+
 
 type instance
-  CoerceTo BitRecord (GASpecificConfig aoid fl cd ext) =
+  BitRecordOfAudioSubConfig (GASpecificConfig fl cd ext) =
      (    Flag :~ fl
       .>: Field 14 :~? cd
-      :>: (ext ~~> BitRecord)
+      :>: BitRecordOfGASExtension ext
      )
 
 -- | TODO implment that GAS extensions
 data GASExtension
 data MkGASExtension :: IsA GASExtension
 
-type instance CoerceTo BitRecord (g :: IsA GASExtension) =
-  ("has-gas-extension" @: Flag := 'False) ~~> BitRecord
+type BitRecordOfGASExtension (x :: IsA GASExtension) =
+  RecordField ("has-gas-extension" @: Flag := 'False)
