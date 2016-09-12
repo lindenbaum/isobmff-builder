@@ -6,7 +6,6 @@ import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Boxes
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.ReExports
-
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 import           Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor
@@ -52,17 +51,4 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
     (SetEnum "channelConfig" ChannelConfig 'GasChannelConfig)]
   '[]
 
-
--- -- TODO rename project
-
-
-{-
- :kind! (Eval (NonSbrAudioConfig
-         (GASpecificConfig 'AacLc 'False 'Nothing 'Nothing)
-         ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))
-         ('MkEnumOf ('BitRecordMember ('AssignF 1 ('MkField Word64 4))))))
-
-bitStringPrinter (Proxy @(ToBitRecord (ESDescriptor 'False 'False 'False Mp4AacLcAudioDecoderConfigDescriptor Mp4SyncLayerDescriptor)))
-
-bitStringPrinter (Proxy @(ToBitRecord (ESDescriptor 'False 'False 'False Mp4AacLcAudioDecoderConfigDescriptor Mp4SyncLayerDescriptor))) 3 3
--}
+-- :kind! (Eval (BitRecordOfDescriptor $~ (Eval Mp4AacLcAudioDecoderConfigDescriptor)))

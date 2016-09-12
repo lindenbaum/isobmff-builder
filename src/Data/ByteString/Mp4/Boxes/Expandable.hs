@@ -14,11 +14,11 @@ import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 staticExpandable
   :: forall record
    . (ToBitStringBuilder
-          (Proxy (StaticExpandableContent record))
+          (Proxy (Eval (StaticExpandableContent record)))
           (StaticExpandable record)
       ~ StaticExpandable record
    , BitStringBuilderHoley
-          (Proxy (StaticExpandableContent record))
+          (Proxy (Eval (StaticExpandableContent record)))
           (StaticExpandable record)
    , KnownExpandable record
    )
@@ -28,7 +28,7 @@ staticExpandable = runHoley . staticExpandableHoley
 staticExpandableWithArgs
   :: forall record
    . ( BitStringBuilderHoley
-          (Proxy (StaticExpandableContent record))
+          (Proxy (Eval (StaticExpandableContent record)))
           (StaticExpandable record)
    , KnownExpandable record )
    => Proxy record -> ToBitStringBuilder (Proxy (StaticExpandableContent record)) (StaticExpandable record)
@@ -37,13 +37,13 @@ staticExpandableWithArgs = runHoley . staticExpandableHoley
 staticExpandableHoley
   :: forall record r
    . ( KnownExpandable record
-     , BitStringBuilderHoley (Proxy (StaticExpandableContent record)) r)
+     , BitStringBuilderHoley (Proxy (Eval (StaticExpandableContent record))) r)
    => Proxy record -> Holey (StaticExpandable record) r (ToBitStringBuilder (Proxy (StaticExpandableContent record)) r)
 staticExpandableHoley _ =
-  hoistM StaticExpandable (bitBoxHoley (Proxy :: Proxy (StaticExpandableContent record)))
+  hoistM StaticExpandable (bitBoxHoley (Proxy :: Proxy (Eval (StaticExpandableContent record))))
 
 newtype StaticExpandable r =
-  StaticExpandable (BitBox (StaticExpandableContent r))
+  StaticExpandable (BitBox (Eval (StaticExpandableContent r)))
   deriving (Monoid)
 
 deriving instance (KnownExpandable r) => IsBoxContent (StaticExpandable r)

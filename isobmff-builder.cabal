@@ -108,7 +108,7 @@ library
                      , pretty-types >= 0.2.2 && < 0.3
                      , template-haskell >= 2.11 && < 3
   default-language:    Haskell2010
-  ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind
+  ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind -fprint-explicit-kinds
   if flag(tracing)
     cpp-options:      -DTRACING
   else
@@ -199,7 +199,7 @@ test-suite spec
                      , TypeSynonymInstances
                      , UnicodeSyntax
   ghc-options:       -Wall -O0 -j +RTS -A256m -n2m -RTS
-                     -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures
+                     -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures -fprint-explicit-kinds
 
 benchmark bit-records
   type:                exitcode-stdio-1.0
@@ -245,7 +245,7 @@ benchmark bit-records
                      , UnicodeSyntax
   ghc-options:       -O2 -j +RTS -A256m -n2m -RTS
                      -Wall -fwarn-unused-binds
-                     -fno-warn-unused-do-bind
+                     -fno-warn-unused-do-bind -fprint-explicit-kinds
   if flag(fullbenchmarks)
 
     cpp-options:       -DFULLBENCHMARKS

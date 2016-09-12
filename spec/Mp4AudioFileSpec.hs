@@ -18,14 +18,14 @@ spec =
        do it "renders some output at all" $
             do createionTime <- mp4CurrentTime
                let ct :: Word32
-                   ct = fromScalar createionTime
+                   ct = fromScalar creationTime
                    ct3 = (ct `shiftR` 24) .&. 255
                    ct2 = (ct `shiftR` 16) .&. 255
                    ct1 = (ct `shiftR` 8) .&. 255
                    ct0 = (ct `shiftR` 0) .&. 255
                    cts :: [Word8]
                    cts = fromIntegral <$> [ct3,ct2,ct1,ct0]
-               let args = exampleSingleTrackInit createionTime
+               let args = exampleSingleTrackInit creationTime
                    doc = mkSingleTrackInit args
                    rendered = BL.unpack $ toLazyByteString $ doc
                    expected =
@@ -82,8 +82,7 @@ spec =
                      ,0,0,0,12
                      ,117,114,108,32
                      ,0,0,0,1
-                     -- stblimport Data.ByteString.IsoBaseFileFormat.Boxes
-
+                     -- stbl
                      ,0,0,0,36,109,112,52,97
                      ,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,2,0,16,0,0,0,0
                      ,187,128,0,0
