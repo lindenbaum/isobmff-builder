@@ -58,7 +58,7 @@ type ABitRecordOfAnESDescriptor (d :: IsA (Descriptor 'ES_Descr))=
 
 -- * Esd Record
 
-data ESDescriptor -- TODO reduce all the IsA
+data ESDescriptor
   :: IsA (FieldValue "esId" Nat)
   -> Maybe (IsA (FieldValue "depEsId" Nat))
   -> Maybe (IsA (BitRecordField t))

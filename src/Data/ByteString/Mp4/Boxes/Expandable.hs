@@ -27,10 +27,10 @@ staticExpandable = runHoley . staticExpandableHoley
 
 staticExpandableWithArgs
   :: forall record
-   . ( BitStringBuilderHoley
-          (Proxy (Eval (StaticExpandableContent record)))
-          (StaticExpandable record)
-   , KnownExpandable record )
+   . (BitStringBuilderHoley
+         (Proxy (Eval (StaticExpandableContent record)))
+         (StaticExpandable record)
+   , KnownExpandable record)
    => Proxy record -> ToBitStringBuilder (Proxy (StaticExpandableContent record)) (StaticExpandable record)
 staticExpandableWithArgs = runHoley . staticExpandableHoley
 

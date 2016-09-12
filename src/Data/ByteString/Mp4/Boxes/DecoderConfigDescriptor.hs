@@ -31,8 +31,8 @@ type family
       PutStr "decoder-config-descriptor"
         #$ (BitRecordOfEnum (SetEnum "objectTypeIndication" ObjectTypeIndicationEnum ot)
            :>: BitRecordOfEnum (SetEnum "objectTypeIndication" StreamTypeEnum st)
-           :>: "upstream"@: Flag
-           .>: "reserved"@: Field 1        :=  1
+           :>: "upstream" @: Flag
+           .>: "reserved" @: Field 1        :=  1
            .>: "bufferSizeDB" @: Field 24
            .>: "maxBitrate"   @: FieldU32
            .>: "avgBitrate"   @: FieldU32

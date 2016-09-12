@@ -118,7 +118,8 @@ type AudioObjectTypeRec n =
     #$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
     .>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
-type family AudioObjectTypeField1 (n :: Nat) :: IsA (BitRecordField (t :: BitField (rt :: Type) (st::k) (len::Nat))) where
+type family AudioObjectTypeField1 (n :: Nat)
+  :: IsA (BitRecordField ('MkFieldBits :: BitField Word64 Nat 5)) where
   AudioObjectTypeField1 n =
     If (n <=? 30) (Field 5 := n) (Field 5 := 31)
 
@@ -191,7 +192,6 @@ type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
 data AudioSubConfig :: Type
 
 type family BitRecordOfAudioSubConfig (x :: IsA AudioSubConfig) :: IsA BitRecord
-
 
 data GASpecificConfig
   (frameLenFlag   :: IsA (FieldValue "frameLenFlag" Bool))
