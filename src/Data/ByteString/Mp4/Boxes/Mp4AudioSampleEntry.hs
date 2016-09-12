@@ -47,9 +47,9 @@ type Mp4AacLcAudioDecoderConfigDescriptor =
    'AudioStream
   '[NonSbrAudioConfig
     'AacLc
-    (GASpecificConfig (StaticFieldValue 'False) 'Nothing MkGASExtension)
-    (SetEnum SamplingFreq 'SF88200)
-    (SetEnum ChannelConfig 'GasChannelConfig)]
+    DefaultGASpecificConfig
+    (SetEnum "samplingFreq" SamplingFreq 'SF88200)
+    (SetEnum "channelConfig" ChannelConfig 'GasChannelConfig)]
   '[]
 
 

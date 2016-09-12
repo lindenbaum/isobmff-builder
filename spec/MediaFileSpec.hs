@@ -16,22 +16,22 @@ spec =
        let test =
              mediaBuilder (Proxy :: Proxy TestBrandEmpty)
                           NoBoxes
-       in printBuilder test
+       in printBuilderStdOut test
      describe "Single Box BoxLayout" $
        it "accepts valid box content types" $
        let test =
              mediaBuilder (Proxy :: Proxy TestBrandSingle)
                           (singletonBox testBox1)
-       in printBuilder test
+       in printBuilderStdOut test
      describe "Multiple nested Boxes BoxLayout" $
        it "accepts valid box content types" $
        let test =
              mediaBuilder (Proxy :: Proxy TestBrandNested)
                           (singletonBox (testParentBox1 $: testBox1))
-       in printBuilder test
+       in printBuilderStdOut test
 
-printBuilder :: Builder -> IO ()
-printBuilder b =
+printBuilderStdOut :: Builder -> IO ()
+printBuilderStdOut b =
   putStrLn $ unlines $ ("                     "++) <$> lines (show (unpack (toLazyByteString b)))
 
 data TestBox1

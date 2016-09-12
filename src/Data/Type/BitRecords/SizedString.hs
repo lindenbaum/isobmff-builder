@@ -17,30 +17,32 @@ import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import Data.Proxy
-import Data.Kind (type Type)
+
 import Data.Kind.Extra
 
 -- * String Fields
 
--- | A type level symbol paied with a type level length, that determines how
+-- | A type level symbol paired with a type level length, that determines how
 -- many characters of the symbol may be used. The first parameter defines the
 -- length field.
+type SizedString str bytes =
+  MkField ('MkFieldCustom :: BitField ASizedString ASizedString (8 * bytes)) := 'MkASizedString str bytes
 
-
-data SizedStringRep :: Symbol -> Nat -> Type
-
-data SizedString
-  :: SizedStringRep str bytes
-  -> IsA (BitRecordField ('MkFieldCustom (SizedStringRep str bytes) bytes))
+data ASizedString where
+  MkASizedString :: Symbol -> Nat -> ASizedString
 
 type instance
-     SizeFieldValue (SizedStringRep str byteCount) = byteCount
-
+     SizeFieldValue ('MkASizedString str byteCount) = byteCount
 
 type instance
-     ToPretty (SizedStringRep str byteCount) =
-       PrettySurrounded (PutStr "<<") (PutStr ">>")
-        (PutStr "utf-8[" <++> PutNat byteCount <++> PutStr " Bytes]:" <+> PutStr str)
+     ToPretty ASizedString = PutStr "utf-8"
+
+type instance PrettyCustomFieldValue ASizedString ASizedString s sr =
+     ToPretty sr
+
+type instance
+     ToPretty ('MkASizedString str byteCount) =
+       PrettySurrounded (PutStr "<<") (PutStr ">>") (PutStr str)<+> PutStr "[" <++> PutNat byteCount <++> PutStr " Bytes]"
 
 -- | Create a 'SizedString' from a utf-8 string
 utf8 :: TH.QuasiQuoter
@@ -54,7 +56,8 @@ utf8 = TH.QuasiQuoter undefined undefined mkSizedStr undefined
              return $
                TH.PromotedT ''SizedString `TH.AppT` strT `TH.AppT` byteCountT
 
-instance forall str byteCount f a . KnownSymbol str =>
-  BitStringBuilderHoley (Proxy (AssignF (SizedStringRep str byteCount) f)) a where
-  bitStringBuilderHoley _ =
-    immediate (appendStrictByteString (E.encodeUtf8 (T.pack (symbolVal (Proxy :: Proxy str)))))
+instance
+  forall (size :: Nat) (str :: Symbol) (bytes :: Nat) r (f :: IsA (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
+     (KnownSymbol str) =>
+  BitStringBuilderHoley (Proxy (AssignF ('MkASizedString str bytes) f)) r where
+  bitStringBuilderHoley _ = immediate (appendStrictByteString (E.encodeUtf8 (T.pack (symbolVal (Proxy :: Proxy str)))))

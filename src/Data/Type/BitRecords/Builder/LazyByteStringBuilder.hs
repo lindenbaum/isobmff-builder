@@ -12,7 +12,7 @@ import Data.Type.BitRecords.Core
 import Data.Word
 import Data.Int
 import Data.Bits
-
+import Data.Kind.Extra
 import Data.Proxy
 import GHC.TypeLits
 import Data.Monoid
@@ -140,9 +140,9 @@ instance
    , ToBitStringBuilder (Proxy nested) a ~ (r -> a))
   => BitStringBuilderHoley (Proxy (LabelF l nested)) a where
   type ToBitStringBuilder (Proxy (LabelF l nested)) a =
-    TaggedArg l (ToBitStringBuilder (Proxy nested) a)
-  bitStringBuilderHoley _ =
-    taggedHoley @l (bitStringBuilderHoley (Proxy @nested))
+    -- TODO TaggedArg l (ToBitStringBuilder (Proxy nested) a)
+    ToBitStringBuilder (Proxy nested) a
+  bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @nested)
 
 type family TaggedArg t f where
   TaggedArg t (a -> b) = Tagged t a -> b
@@ -215,8 +215,8 @@ instance forall a .
   bitStringBuilderHoley _ = indirect (appendBitString . bitString 8 . fromIntegral . fromIntegral @Int8 @Word8)
 
 
-instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (x -> a), Num x) =>
-  BitStringBuilderHoley (Proxy (AssignF (v :: Nat) f)) a where
+instance forall (f :: IsA (BitRecordField (t :: BitField rt Nat len))) (v :: Nat) a . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (rt -> a), Num rt) =>
+  BitStringBuilderHoley (Proxy (AssignF v f)) a where
   bitStringBuilderHoley _ = applyHoley (bitStringBuilderHoley (Proxy @f)) (fromIntegral (natVal (Proxy @v)))
 
 instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitStringBuilder (Proxy f) a ~ (x -> a), Num x) =>
@@ -229,6 +229,12 @@ instance forall v f a x . (KnownNat v, BitStringBuilderHoley (Proxy f) a, ToBitS
   bitStringBuilderHoley _ = applyHoley (bitStringBuilderHoley (Proxy @f)) (fromIntegral (-1 * (natVal (Proxy @v))))
 
 -- ** 'BitRecord' instances
+
+instance forall (r :: IsA BitRecord) a . BitStringBuilderHoley (Proxy (Eval r)) a =>
+  BitStringBuilderHoley (Proxy r) a where
+  type ToBitStringBuilder (Proxy r) a =
+    ToBitStringBuilder (Proxy (Eval r)) a
+  bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @(Eval r))
 
 -- *** 'BitRecordMember'
 

@@ -101,28 +101,23 @@ infixr 6 .>.
 type instance Eval (l .>. r) = 'BitRecordMember l ':>: 'BitRecordMember r
 
 -- | Set a field to either a static, compile time, value or a dynamic, runtime value.
-data (:~) ::
-    IsA (BitRecordField (t :: BitField rt st len))
-  -> IsA (FieldValue st)
-  -> IsA (BitRecordField (t :: BitField rt st len))
+type family (:~) (field :: IsA (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat)))) (value :: IsA (FieldValue (label :: Symbol) st)) :: IsA (BitRecordField t) where
+  fld :~ StaticFieldValue l v  = l @: fld := v
+  fld :~ RuntimeFieldValue l = l @: fld
 infixl 7 :~
-type instance Eval (fld :~ StaticFieldValue v)  = Eval (fld := v)
-type instance Eval (fld :~ RuntimeFieldValue l) = Eval (l   @: fld)
 
 -- | Like ':~' but for a 'Maybe' parameter. In case of 'Just' it behaves like ':~'
 -- in case of 'Nothing' it return an 'EmptyBitRecord'.
-data (:~?) :: IsA (BitRecordField (t :: BitField rt st len))
-           -> Maybe (IsA (FieldValue st))
-           -> IsA BitRecord
+type family (:~?) (fld :: IsA (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat)))) (value :: Maybe (IsA (FieldValue (label :: Symbol) st))) :: IsA BitRecord where
+  fld :~? ('Just v) = RecordField (fld :~ v)
+  fld :~? 'Nothing  = Pure 'EmptyBitRecord
 infixl 7 :~?
-type instance Eval (fld :~? ('Just v)) = 'BitRecordMember (fld :~ v)
-type instance Eval (fld :~? 'Nothing) = 'EmptyBitRecord
 
 -- | The field value parameter for ':~', either a static, compile time, value or
 -- a dynamic, runtime value.
-data FieldValue staticRep
-data StaticFieldValue  :: staticRep -> IsA (FieldValue staticRep)
-data RuntimeFieldValue :: Symbol -> IsA (FieldValue staticRep)
+data FieldValue :: Symbol -> staticRep -> Type
+data StaticFieldValue (label :: Symbol) :: staticRep -> IsA (FieldValue label staticRep)
+data RuntimeFieldValue (label :: Symbol) :: IsA (FieldValue label staticRep)
 
 -- *** Record Arrays and Repitition
 
@@ -172,17 +167,28 @@ data BitRecordField :: BitField rt st len -> Type
      -- (staticRep :: Type)
      -- (bitCount :: Nat)
 
+-- | A bit record field with a number of bits
+data MkField t :: IsA (BitRecordField t)
+
+-- **** Setting a Label
+
+-- | A bit record field with a number of bits
+data LabelF :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
+
+-- | A field with a label assigned to it.
+type label @: field = LabelF label field
+infixr 8 @:
+
+-- **** Assignment
+
 -- | A field with a value set at compile time.
 data AssignF :: st
              -> IsA (BitRecordField (t :: BitField rt st len))
              -> IsA (BitRecordField (t :: BitField rt st len))
 
-  -- | A bit record field with a number of bits
-data MkField t :: IsA (BitRecordField t)
-
-
-  -- | A bit record field with a number of bits
-data LabelF :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
+-- | A field with a (type-level-) value assigned to.
+type f := x = AssignF x f
+infixl 7 :=
 
 -- | Types of this kind define the basic type of a 'BitRecordField'. Sure, this
 -- could have been an open type, but really, how many actual useful field types
@@ -193,71 +199,52 @@ data LabelF :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
 -- function to apply and how to pretty print the field.
 data BitField
      (runtimeRep :: Type)
-     (staticRep :: Type)
+     (staticRep :: k)
      (bitCount :: Nat)
   where
-    MkFieldFlag :: BitField Bool Bool 1
-    MkFieldBits :: forall (n :: Nat) . BitField Word64 Nat n
+    MkFieldFlag    :: BitField Bool Bool 1
+    MkFieldBits    :: forall (n :: Nat) . BitField Word64 Nat n
     MkFieldBitsXXL :: forall (n :: Nat) . BitField Integer Nat n
-    -- TODO:
-    -- MkFieldBits :: forall (n :: Nat) . n <= 64 => Proxy n -> BitField Word64 Nat n
-    -- MkFieldBitsXXL :: forall (n :: Nat) . n <= 4294967295 => Proxy n -> BitField Integer Nat n
-    MkFieldU8  :: BitField Word8 Nat 8
-    MkFieldU16 :: BitField Word16 Nat 16
-    MkFieldU32 :: BitField Word32 Nat 32
-    MkFieldU64 :: BitField Word64 Nat 64
-    MkFieldI8  :: BitField Int8  SignedNat 8
-    MkFieldI16 :: BitField Int16 SignedNat 16
-    MkFieldI32 :: BitField Int32 SignedNat 32
-    MkFieldI64 :: BitField Int64 SignedNat 64
-    MkFieldCustom :: Type -> Nat -> BitField () () 0
-    -- TODO : MkFieldCustom :: forall (t :: Type) (n :: Nat) . n <= 4294967295  => BitField () t n
+    MkFieldU8      :: BitField Word8 Nat 8
+    MkFieldU16     :: BitField Word16 Nat 16
+    MkFieldU32     :: BitField Word32 Nat 32
+    MkFieldU64     :: BitField Word64 Nat 64
+    MkFieldI8      :: BitField Int8  SignedNat 8
+    MkFieldI16     :: BitField Int16 SignedNat 16
+    MkFieldI32     :: BitField Int32 SignedNat 32
+    MkFieldI64     :: BitField Int64 SignedNat 64
+    MkFieldCustom  :: BitField rt st n
 
---type family UntaggedFieldType (bf
+-- *** Primitive Records and Field Types
+
+type Flag     = MkField 'MkFieldFlag
+type Field n  = MkField ('MkFieldBits :: BitField Word64 Nat n)
+type FieldU8  = MkField 'MkFieldU8
+type FieldU16 = MkField 'MkFieldU16
+type FieldU32 = MkField 'MkFieldU32
+type FieldU64 = MkField 'MkFieldU64
+type FieldI8  = MkField 'MkFieldI8
+type FieldI16 = MkField 'MkFieldI16
+type FieldI32 = MkField 'MkFieldI32
+type FieldI64 = MkField 'MkFieldI64
 
 -- | A signed field value.
 data SignedNat where
   PositiveNat :: Nat -> SignedNat
   NegativeNat :: Nat -> SignedNat
 
--- *** Primitive Records and Field Types
-
--- | A single bit (boolean) field
-data Flag :: IsA (BitRecordField 'MkFieldFlag)
-
--- | Define a field of bits with a size and 'Word64' as default demote rep.
-data Field n :: IsA (BitRecordField ('MkFieldBits :: BitField Word64 Nat n))
-
--- data FieldXXL n :: n <= 4294967295
---                 => IsA (BitRecordField ('MkFieldBitsXXL :: BitField Integer Nat n))
-
-data FieldU8 :: IsA (BitRecordField 'MkFieldU8)
-
-data FieldU16 :: IsA (BitRecordField 'MkFieldU16)
-
-data FieldU32 :: IsA (BitRecordField 'MkFieldU32)
-
-data FieldU64 :: IsA (BitRecordField 'MkFieldU64)
-
-data FieldI8 :: IsA (BitRecordField 'MkFieldI8)
-
-data FieldI16 :: IsA (BitRecordField 'MkFieldI16)
-
-data FieldI32 :: IsA (BitRecordField 'MkFieldI32)
-
-data FieldI64 :: IsA (BitRecordField 'MkFieldI64)
 
 -- *** Composed Fields
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Just'.
-data FlagJust (a :: Maybe v) :: IsA (BitRecordField 'MkFieldFlag)
-type instance Eval (FlagJust ('Just x)) = Eval (Flag := 'True)
-type instance Eval (FlagJust 'Nothing)  = Eval (Flag := 'False)
+type family FlagJust (a :: Maybe v) :: IsA (BitRecordField 'MkFieldFlag) where
+  FlagJust ('Just x) = Flag := 'True
+  FlagJust 'Nothing  = Flag := 'False
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Nothing'.
-data FlagNothing (a :: Maybe v) :: IsA (BitRecordField 'MkFieldFlag)
-type instance Eval (FlagNothing ('Just x)) = Eval (Flag := 'False)
-type instance Eval (FlagNothing 'Nothing)  = Eval (Flag := 'True)
+type family FlagNothing (a :: Maybe v) :: IsA (BitRecordField 'MkFieldFlag) where
+  FlagNothing ('Just x) = Flag := 'False
+  FlagNothing 'Nothing  = Flag := 'True
 
 -- | A field that renders to the length of a 'SizedString' using the given
 -- word type for the size.
@@ -278,22 +265,15 @@ type instance Eval (RecordField f) = 'BitRecordMember f
 type family BitRecordFieldSize (x :: IsA (BitRecordField t)) where
   BitRecordFieldSize (x :: IsA (BitRecordField (t :: BitField rt st size))) = size
 
--- *** Field Constructor
-
--- **** Setting a Label
-
--- | A field with a label assigned to it.
-data (@:) :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
-infixr 8 @:
-
--- **** Assignment
-
--- | A field with a (type-level-) value assigned to.
-data (:=) :: IsA (BitRecordField (t :: BitField rt st size)) -> st -> IsA (BitRecordField t)
-infixl 7 :=
-
 
 -- * Field and Record PrettyType Instances
+
+-- | Render @rec@ to a pretty, human readable form. Internally this is a wrapper
+-- around 'ptShow' using 'PrettyRecord'.
+showARecord
+  :: forall proxy (rec :: IsA BitRecord) . PrettyTypeShow (PrettyRecord (Eval rec))
+  => proxy rec -> String
+showARecord _ = showPretty (Proxy :: Proxy (PrettyRecord (Eval rec)))
 
 -- | Render @rec@ to a pretty, human readable form. Internally this is a wrapper
 -- around 'ptShow' using 'PrettyRecord'.
@@ -331,7 +311,7 @@ type family PrettyFieldType (t :: BitField (rt :: Type) (st :: Type) (size :: Na
   PrettyFieldType ('MkFieldI32) = PutStr "I32"
   PrettyFieldType ('MkFieldI16) = PutStr "I16"
   PrettyFieldType ('MkFieldI8) = PutStr "I8"
-  PrettyFieldType ('MkFieldCustom ct size) = PutStr "custom" <++> PrettyParens (PutNat size) <+> ToPretty ct
+  PrettyFieldType ('MkFieldCustom :: BitField rt ct size) = ToPretty rt <++> PrettyParens (PutNat size)
 
 type family PrettyFieldValue (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)) (v :: st) :: PrettyType where
   PrettyFieldValue ('MkFieldFlag) 'True = PutStr "yes"
@@ -350,7 +330,9 @@ type family PrettyFieldValue (t :: BitField (rt :: Type) (st :: Type) (size :: N
   PrettyFieldValue ('MkFieldI16) ('NegativeNat v) = ("hex" <:> (PutStr "-" <++> PutHex16 v)) <+> PrettyParens ("dec" <:> (PutStr "-" <++> PutNat v))
   PrettyFieldValue ('MkFieldI32) ('NegativeNat v) = ("hex" <:> (PutStr "-" <++> PutHex32 v)) <+> PrettyParens ("dec" <:> (PutStr "-" <++> PutNat v))
   PrettyFieldValue ('MkFieldI64) ('NegativeNat v) = ("hex" <:> (PutStr "-" <++> PutHex64 v)) <+> PrettyParens ("dec" <:> (PutStr "-" <++> PutNat v))
-  PrettyFieldValue t v = ToPretty v
+  PrettyFieldValue ('MkFieldCustom :: BitField rt ct size) v = PrettyCustomFieldValue rt ct size v
+
+type family PrettyCustomFieldValue (rt :: Type) (st :: Type) (size :: Nat) (v :: st) :: PrettyType
 
 
 -- * Constraint Utilities

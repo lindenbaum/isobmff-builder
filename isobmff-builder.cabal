@@ -153,14 +153,13 @@ test-suite spec
                      , BoxSpec
                      , DataReferenceSpec
                      , ExpandableSpec
-                     , KindsExtraSpec
                      , Mp4AudioSampleEntry
                      , MediaFileSpec
                      , Mp4AudioFileSpec
                      , TypeLayoutSpec
   build-depends:       base >= 4.9 && < 5
                      , bytestring >= 0.10.8.1
-                     , hspec
+                     , hspec >= 2.2 && < 3
                      , isobmff-builder
                      , binary
                      , text >= 1.2.2.1 && < 2

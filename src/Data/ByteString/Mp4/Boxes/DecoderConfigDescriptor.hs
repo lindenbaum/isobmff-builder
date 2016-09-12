@@ -5,8 +5,8 @@ import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 import           Data.Type.BitRecords
 import           Data.Type.Pretty
-import           Data.Word
 import           Data.Kind.Extra
+import           GHC.TypeLits
 
 -- | Information about what decoder is required for the an elementary stream.
 -- The stream type indicates the general category of the stream and.
@@ -28,11 +28,9 @@ type family
         :: IsA BitRecord
   where
     DecoderConfigDescriptorBody ot st di ps =
-      (PutStr "decoder-config-descriptor" <+>
-        ("objectTypeIndication" <:> PutHex8 (FromEnum ObjectTypeIndication ot)) <+>
-        ("streamType"           <:> PutHex8 (FromEnum StreamType           st)))
-      #$ (BitRecordOfEnum (SetEnum ObjectTypeIndicationEnum ot)
-           :>: BitRecordOfEnum (SetEnum StreamTypeEnum st)
+      PutStr "decoder-config-descriptor"
+        #$ (BitRecordOfEnum (SetEnum "objectTypeIndication" ObjectTypeIndicationEnum ot)
+           :>: BitRecordOfEnum (SetEnum "objectTypeIndication" StreamTypeEnum st)
            :>: "upstream"@: Flag
            .>: "reserved"@: Field 1        :=  1
            .>: "bufferSizeDB" @: Field 24
@@ -50,9 +48,9 @@ type family
 -- ** 'ProfileLevelIndicationIndexDescriptor'
 
 data ProfileLevelIndicationIndexDescriptor
-  :: IsA (FieldValue Word8)
+  :: IsA (FieldValue "profileLevelIndicationIndex" Nat)
   -> IsA (Descriptor 'ProfileLevelIndicationIndexDescr)
 
 type instance Eval (ProfileLevelIndicationIndexDescriptor val) =
   'MkDescriptor
-  (RecordField ("profileLevelIndicationIndex" @: FieldU8 :~ val))
+  (RecordField (FieldU8 :~ val))

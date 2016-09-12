@@ -23,11 +23,11 @@ deriving instance KnownNat (BitRecordSize (Eval (ABitRecordOfAnESDescriptor d)))
 -- * Esd Record
 
 data ESDescriptor -- TODO reduce all the IsA
-  :: IsA (FieldValue (Tagged "esId" Word16))
-  -> Maybe (IsA (FieldValue (Tagged "depEsId" Word16)))
-  -> Maybe (IsA BitRecordField)
-  -> Maybe (IsA (FieldValue (Tagged "ocrEsId" Word16)))
-  -> IsA (FieldValue (Tagged "streamPrio" Word64))
+  :: IsA (FieldValue "esId" Nat)
+  -> Maybe (IsA (FieldValue "depEsId" Nat))
+  -> Maybe (IsA (BitRecordField t))
+  -> Maybe (IsA (FieldValue "ocrEsId" Nat))
+  -> IsA (FieldValue "streamPrio" Nat)
   -> IsA (Descriptor 'DecoderConfigDescr)
   -> IsA (Descriptor 'SLConfigDescr)
   -> IsA (Descriptor 'ES_Descr)
@@ -37,9 +37,10 @@ data ESDescriptor -- TODO reduce all the IsA
 -- TODO seperate this and other modules so theres the same seperation as in between
 -- the parts of the standard.
 type ESDescriptorMp4File esId decInfo =
-  ESDescriptor esId 'Nothing 'Nothing 'Nothing  DefaultEsId decInfo Mp4SyncLayerDescriptor
+  ESDescriptor esId 'Nothing 'Nothing 'Nothing DefaultStreamPrio decInfo Mp4SyncLayerDescriptor
 
-type DefaultEsId = StaticFieldValue 1
+type DefaultEsId = StaticFieldValue "esId" 1
+type DefaultStreamPrio = StaticFieldValue "streamPrio" 1
 
 type instance
   Eval (ESDescriptor esId depEsId url ocrEsId streamPrio decConfig slConfig) =

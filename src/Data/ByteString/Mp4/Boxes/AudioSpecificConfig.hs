@@ -118,7 +118,7 @@ type AudioObjectTypeRec n =
     #$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
     .>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
-type family AudioObjectTypeField1 (n :: Nat) :: IsA BitRecordField where
+type family AudioObjectTypeField1 (n :: Nat) :: IsA (BitRecordField (t :: BitField (rt :: Type) (st::k) (len::Nat))) where
   AudioObjectTypeField1 n =
     If (n <=? 30) (Field 5 := n) (Field 5 := 31)
 
@@ -194,10 +194,12 @@ type family BitRecordOfAudioSubConfig (x :: IsA AudioSubConfig) :: IsA BitRecord
 
 
 data GASpecificConfig
-  (frameLenFlag   :: IsA (FieldValue Bool))
-  (coreCoderDelay :: Maybe (IsA (FieldValue (Tagged "coreCoderDelay" Word64))))
+  (frameLenFlag   :: IsA (FieldValue "frameLenFlag" Bool))
+  (coreCoderDelay :: Maybe (IsA (FieldValue "coreCoderDelay" Nat)))
   (extension      :: IsA GASExtension)
   :: IsA AudioSubConfig
+
+type DefaultGASpecificConfig = GASpecificConfig (StaticFieldValue "frameLenFlag" 'False) 'Nothing MkGASExtension
 
 type instance Eval (GASpecificConfig fl cd ext)
   = TypeError ('Text "AudioSubConfig is abstract!")
