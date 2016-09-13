@@ -61,7 +61,7 @@ type SizedField64 t = SizedField FieldU64 t
 type family SizeFieldValue (c :: k) :: Nat
 
 type instance SizeFieldValue (b :: BitRecord) = BitRecordMemberCount b
-type instance SizeFieldValue (AssignF v f) = SizeFieldValue v
+type instance SizeFieldValue (f := v) = SizeFieldValue v
 type instance SizeFieldValue (LabelF l f) = SizeFieldValue f
 type instance SizeFieldValue (MkField (t :: BitField (rt:: Type) (st::k) (size::Nat))) = size
 

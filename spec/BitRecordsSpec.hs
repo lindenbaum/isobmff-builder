@@ -48,6 +48,10 @@ basicsSpec = do
       bitStringPrinter (Proxy :: Proxy (RecordField (Flag := 'True))) `shouldBe` "<< 80 >>"
     describe "'False" $ it "writes a single bit with a 0" $
       bitStringPrinter (Proxy :: Proxy (RecordField (Flag := 'False))) `shouldBe` "<< 00 >>"
+    describe "@: labelled fields"  $ do
+      it "writes them ..." $
+        let fld = Proxy @(Eval (RecordField ( "foo" @: FlagJust 'Nothing  )))
+        in bitStringPrinter fld `shouldBe` "<< 00 >>"
     describe "FlagJust" $ do
       it "writes a single bit '1' for a 'Just ...' parameter" $
         bitStringPrinter (Proxy :: Proxy (RecordField (FlagJust ('Just "test")))) `shouldBe` "<< 80 >>"

@@ -26,9 +26,9 @@ type instance
    ('MkDecoderSpecificInfo
     (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
      #$ (AudioConfigBeginning
-         aoId
-         (BitRecordOfEnum freq)
-         (BitRecordOfEnum channels)
+             aoId
+             (BitRecordOfEnum freq)
+             (BitRecordOfEnum channels)
          :>: (BitRecordOfAudioSubConfig subCfg))))
 
 type AudioConfigBeginning audioObjId freq channels =
@@ -199,7 +199,8 @@ data GASpecificConfig
   (extension      :: IsA GASExtension)
   :: IsA AudioSubConfig
 
-type DefaultGASpecificConfig = GASpecificConfig (StaticFieldValue "frameLenFlag" 'False) 'Nothing MkGASExtension
+type DefaultGASpecificConfig =
+  GASpecificConfig (StaticFieldValue "frameLenFlag" 'False) 'Nothing MkGASExtension
 
 type instance Eval (GASpecificConfig fl cd ext)
   = TypeError ('Text "AudioSubConfig is abstract!")
@@ -208,6 +209,7 @@ type instance Eval (GASpecificConfig fl cd ext)
 type instance
   BitRecordOfAudioSubConfig (GASpecificConfig fl cd ext) =
      (    Flag :~ fl
+      .>: FlagJust cd
       .>: Field 14 :~? cd
       :>: BitRecordOfGASExtension ext
      )

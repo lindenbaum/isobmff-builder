@@ -2,6 +2,7 @@
 
 module Data.Type.BitRecords.SizedString
   (SizedString()
+  ,ASizedString()
   ,utf8)
   where
 
@@ -17,8 +18,10 @@ import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import Data.Proxy
-
+import Data.Kind (type Type)
 import Data.Kind.Extra
+
+-- TODO Refactor
 
 -- * String Fields
 
@@ -42,7 +45,8 @@ type instance PrettyCustomFieldValue ASizedString ASizedString s sr =
 
 type instance
      ToPretty ('MkASizedString str byteCount) =
-       PrettySurrounded (PutStr "<<") (PutStr ">>") (PutStr str)<+> PutStr "[" <++> PutNat byteCount <++> PutStr " Bytes]"
+       PrettySurrounded (PutStr "<<") (PutStr ">>") (PutStr str)
+       <+> PutStr "[" <++> PutNat byteCount <++> PutStr " Bytes]"
 
 -- | Create a 'SizedString' from a utf-8 string
 utf8 :: TH.QuasiQuoter
@@ -57,7 +61,14 @@ utf8 = TH.QuasiQuoter undefined undefined mkSizedStr undefined
                TH.PromotedT ''SizedString `TH.AppT` strT `TH.AppT` byteCountT
 
 instance
-  forall (size :: Nat) (str :: Symbol) (bytes :: Nat) r (f :: IsA (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
-     (KnownSymbol str) =>
-  BitStringBuilderHoley (Proxy (AssignF ('MkASizedString str bytes) f)) r where
-  bitStringBuilderHoley _ = immediate (appendStrictByteString (E.encodeUtf8 (T.pack (symbolVal (Proxy :: Proxy str)))))
+  forall (size :: Nat)
+    (str :: Symbol)
+    (bytes :: Nat)
+    (r :: Type)
+    (f :: IsA (BitRecordField ('MkFieldCustom :: BitField ASizedString ASizedString size))) .
+      (KnownSymbol str)
+    => BitStringBuilderHoley (Proxy (f := 'MkASizedString str bytes)) r
+  where
+    bitStringBuilderHoley _ =
+      immediate (appendStrictByteString
+                 (E.encodeUtf8 (T.pack (symbolVal (Proxy @str)))))

@@ -37,18 +37,27 @@ newtype AudioEsd =
 instance IsBox AudioEsd
 type instance BoxTypeSymbol AudioEsd = "mp4a"
 
-type Mp4AudioEsDescriptor =
+type Mp4AacLcEsDescriptor  =
   ESDescriptorMp4File DefaultEsId Mp4AacLcAudioDecoderConfigDescriptor
 
-type Mp4AacLcAudioDecoderConfigDescriptor =
+-- xxx = bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel)))
+-- :kind! (Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel)))
+-- putStrLn $ showRecord (Proxy @(Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel))))
+-- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel))))
+
+
+type Mp4AacLcAudioDecoderConfigDescriptor  =
   DecoderConfigDescriptor
    'AudioIso14496_3
    'AudioStream
   '[NonSbrAudioConfig
     'AacLc
     DefaultGASpecificConfig
-    (SetEnum "samplingFreq" SamplingFreq 'SF88200)
-    (SetEnum "channelConfig" ChannelConfig 'GasChannelConfig)]
+    (EnumParam "samplingFreq" SamplingFreq)
+    (EnumParam "channelConfig" ChannelConfig)]
   '[]
 
--- :kind! (Eval (BitRecordOfDescriptor $~ (Eval Mp4AacLcAudioDecoderConfigDescriptor)))
+-- :kind! (Eval (BitRecordOfDescriptor $~ (Eval (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel)))
+-- putStrLn $ showARecord (Proxy @(BitRecordOfDescriptor $~ (Eval (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel))))
+-- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ (Eval (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel)))))
+-- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval  (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel)))) True 1 2 3

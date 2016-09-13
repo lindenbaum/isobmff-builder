@@ -8,6 +8,7 @@ module Data.Kind.Extra
   , type Pure
   , type Eval
   , type (:->)
+  , type Id
   , type Apply
   , type (^$^)
   , type ($~)
@@ -77,6 +78,10 @@ infixl 0 $~
 
 -- | An alias for '$~'
 type Apply f x = f $~ x
+
+-- | Identity
+data Id :: IsA (foo :-> foo)
+type instance Id $~ x = x
 
 -- | Symbolic function application
 data (^$^) :: IsA (foo :-> bar) -> IsA foo -> IsA bar

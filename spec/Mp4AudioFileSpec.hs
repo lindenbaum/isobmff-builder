@@ -2,6 +2,12 @@
 module Mp4AudioFileSpec (spec) where -- TODO rename to mp4 audio init spec
 
 import Test.Hspec
+import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
+import Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
+import Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor
+import Data.ByteString.Mp4.Boxes.BaseDescriptor
+import Data.ByteString.Mp4.Boxes.AudioSpecificConfig
+import Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
 import Data.ByteString.Mp4.AudioFile
 import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.ByteString.IsoBaseFileFormat.Boxes
@@ -14,9 +20,29 @@ import Data.Text ()
 
 spec :: Spec
 spec =
-  do describe "SingleAudioTrackInit version 0" $
+  do describe "Mp4AacLcAudioDecoderConfigDescriptor" $ do
+       it "can be pretty printed" $
+         showARecord (Proxy @(BitRecordOfDescriptor
+                              $~ (Eval (Mp4AacLcAudioDecoderConfigDescriptor))))
+         `shouldEndWith`
+         "has-gas-extension: boolean := no"
+
+       it "can be transformed to binary output" $
+         let actual =
+              bitStringPrinter
+                (Proxy @(Eval (BitRecordOfDescriptor
+                               $~ Eval  (Mp4AacLcAudioDecoderConfigDescriptor))))
+                True
+                1
+                2
+                3
+                (MkEnumValue (Proxy @'SF16000))
+                (MkEnumValue (Proxy @'SingleChannel))
+             expexted = "<< 04 11 40 17 00 00 01 00 00 00 02 00 00 00 03 05 02 14 10 >>"
+         in actual `shouldBe` expexted
+     describe "SingleAudioTrackInit version 0" $
        do it "renders some output at all" $
-            do createionTime <- mp4CurrentTime
+            do creationTime <- mp4CurrentTime
                let ct :: Word32
                    ct = fromScalar creationTime
                    ct3 = (ct `shiftR` 24) .&. 255
