@@ -40,10 +40,10 @@ type instance BoxTypeSymbol AudioEsd = "mp4a"
 type Mp4AacLcEsDescriptor  =
   ESDescriptorMp4File DefaultEsId Mp4AacLcAudioDecoderConfigDescriptor
 
--- xxx = bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel)))
--- :kind! (Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel)))
--- putStrLn $ showRecord (Proxy @(Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel))))
--- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval (Mp4AacLcEsDescriptor 'SF44100 'SingleChannel))))
+-- xxx = bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
+-- :kind! (Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
+-- putStrLn $ showRecord (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor)))
+-- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor)))
 
 
 type Mp4AacLcAudioDecoderConfigDescriptor  =

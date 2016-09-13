@@ -2,9 +2,6 @@
 module Mp4AudioFileSpec (spec) where -- TODO rename to mp4 audio init spec
 
 import Test.Hspec
-import Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
-import Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
-import Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor
 import Data.ByteString.Mp4.Boxes.BaseDescriptor
 import Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 import Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
@@ -40,6 +37,17 @@ spec =
                 (MkEnumValue (Proxy @'SingleChannel))
              expexted = "<< 04 11 40 17 00 00 01 00 00 00 02 00 00 00 03 05 02 14 10 >>"
          in actual `shouldBe` expexted
+     describe "Mp4AacLcEsDescriptor" $
+       do it "can be transformed to binary output" $
+            bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor)))
+                             False 0 0 0
+                             (MkEnumValue (Proxy @'SF48000))
+                             (MkEnumValue (Proxy @'SingleChannel))
+            `shouldBe`
+              "<< 03 19 00 01 01 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 90 06 01 02 >>"
+          it "can be pretty printed" $
+            showRecord (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor)))
+            `shouldStartWith` "base-descriptor: 03\n"
      describe "SingleAudioTrackInit version 0" $
        do it "renders some output at all" $
             do creationTime <- mp4CurrentTime
