@@ -38,8 +38,19 @@ bind mbc fm = HM $ \ kna -> runHM mbc (($ kna) . runHM . fm)
 applyHoley :: Holey m r (a -> b) -> a -> Holey m r b
 applyHoley (HM !f) x = HM $ \k -> f k x
 
-taggedHoley :: forall tag m r a x . Holey m r (a -> x) -> Holey m r (Tagged tag a -> x)
-taggedHoley = mapHoley (\f -> f . untag)
+
+class TaggedHoley a where
+  type TaggedArg a label
+  taggedHoley :: proxy label -> Holey m r a  -> Holey m r (TaggedArg a label)
+
+instance {-# OVERLAPPABLE #-} TaggedHoley a where
+  type TaggedArg a label = a
+  taggedHoley _ h = h
+
+instance {-# OVERLAPPING #-} TaggedHoley (a -> b) where
+  type TaggedArg (a -> b) t = Tagged t a -> b
+  taggedHoley _ h = mapHoley (\f -> f . untag)
+
 
 -- TODO prove Functor law, make functor
 mapHoley :: (a -> b) -> Holey m r a -> Holey m r b
