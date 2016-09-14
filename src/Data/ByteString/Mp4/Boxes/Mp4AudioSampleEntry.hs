@@ -25,14 +25,13 @@ audioSampleEntry
 audioSampleEntry ase eds = const (Box eds) <$> ase
 
 -- | Create an mp4 audio elementary stream descriptor full box
--- audioEsd
---  :: Tagged "esId" Word16 -> Tagged "streamPriority" Word64 -> AudioEsd
--- audioEsd = runHoley $ hoistR AudioEsd $ bitBoxHoley $ Proxy @ESDescriptorSimple
+aacLcMono16kEsd :: EnumValue SamplingFreqTable -> EnumValue ChannelConfigTable -> AudioEsd
+aacLcMono16kEsd sf cc = AudioEsd (esdBox (Proxy @Mp4AacLcEsDescriptor) False 0 0 0 sf cc)
 
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
 newtype AudioEsd =
-  AudioEsd (U8 "TODO")
-  deriving (Default, IsBoxContent)
+  AudioEsd EsdBox
+  deriving (IsBoxContent)
 
 instance IsBox AudioEsd
 type instance BoxTypeSymbol AudioEsd = "mp4a"
@@ -40,24 +39,13 @@ type instance BoxTypeSymbol AudioEsd = "mp4a"
 type Mp4AacLcEsDescriptor  =
   ESDescriptorMp4File DefaultEsId Mp4AacLcAudioDecoderConfigDescriptor
 
--- xxx = bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
--- :kind! (Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
--- putStrLn $ showRecord (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor)))
--- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor)))
-
-
 type Mp4AacLcAudioDecoderConfigDescriptor  =
   DecoderConfigDescriptor
-   'AudioIso14496_3
-   'AudioStream
+  'AudioIso14496_3
+  'AudioStream
   '[NonSbrAudioConfig
-    'AacLc
-    DefaultGASpecificConfig
-    (EnumParam "samplingFreq" SamplingFreq)
-    (EnumParam "channelConfig" ChannelConfig)]
+     'AacLc
+     DefaultGASpecificConfig
+     (EnumParam "samplingFreq" SamplingFreq)
+     (EnumParam "channelConfig" ChannelConfig)]
   '[]
-
--- :kind! (Eval (BitRecordOfDescriptor $~ (Eval (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel)))
--- putStrLn $ showARecord (Proxy @(BitRecordOfDescriptor $~ (Eval (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel))))
--- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ (Eval (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel)))))
--- bitStringPrinter (Proxy @(Eval (BitRecordOfDescriptor $~ Eval  (Mp4AacLcAudioDecoderConfigDescriptor 'SF44100 'SingleChannel)))) True 1 2 3

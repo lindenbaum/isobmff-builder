@@ -201,9 +201,9 @@ newtype FourCc =
   deriving (Show,Eq)
 
 instance IsString FourCc where
-  fromString str
+  fromString !str
     | length str == 4 =
-      let [a,b,c,d] = str
+      let [!a,!b,!c,!d] = str
       in FourCc (a,b,c,d)
     | otherwise =
       error ("cannot make a 'FourCc' of a String which isn't exactly 4 bytes long: " ++
@@ -211,7 +211,7 @@ instance IsString FourCc where
 
 instance IsBoxContent FourCc where
   boxSize _ = 4
-  boxBuilder (FourCc (a,b,c,d)) = putW a <> putW b <> putW c <> putW d
+  boxBuilder (FourCc (!a,!b,!c,!d)) = putW a <> putW b <> putW c <> putW d
     where putW = word8 . fromIntegral . fromEnum
 
 instance IsBoxContent BoxType where
@@ -228,10 +228,10 @@ newtype BoxTypeExtension =
   BoxTypeExtension BoxType
 
 instance IsBoxContent BoxTypeExtension where
-  boxSize (BoxTypeExtension (StdType _)) = 0
-  boxSize (BoxTypeExtension (CustomBoxType _)) = 16 * 4
-  boxBuilder (BoxTypeExtension (StdType _)) = mempty
-  boxBuilder (BoxTypeExtension (CustomBoxType str)) =
+  boxSize (BoxTypeExtension !(StdType _)) = 0
+  boxSize (BoxTypeExtension !(CustomBoxType _)) = 16 * 4
+  boxBuilder (BoxTypeExtension !(StdType _)) = mempty
+  boxBuilder (BoxTypeExtension !(CustomBoxType str)) =
     mconcat (map (word8 . fromIntegral . fromEnum)
                  (take (16 * 4) str) ++
              repeat (word8 0))
@@ -332,6 +332,16 @@ instance IsBoxContent Int32 where
 instance IsBoxContent Int64 where
   boxSize _ = 8
   boxBuilder = int64BE
+
+-- * Boxes of Bits
+
+instance IsBoxContent (BuilderBox tag) where
+  boxSize (MkBuilderBox !s _) = fromIntegral s
+  boxBuilder (MkBuilderBox _ !b) = b
+
+instance (KnownSymbol (BoxTypeSymbol tag)) => IsBox (BuilderBox tag) where
+
+type instance BoxTypeSymbol (BuilderBox tag) = BoxTypeSymbol tag
 
 -- * Type Layout Rule Matchers
 

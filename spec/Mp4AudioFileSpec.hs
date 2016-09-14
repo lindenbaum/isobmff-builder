@@ -44,7 +44,7 @@ spec =
                              (MkEnumValue (Proxy @'SF48000))
                              (MkEnumValue (Proxy @'SingleChannel))
             `shouldBe`
-              "<< 03 19 00 01 01 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 90 06 01 02 >>"
+              "<< 03 19 00 01 00 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 90 06 01 02 >>"
           it "can be pretty printed" $
             showRecord (Proxy @(Eval (BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor)))
             `shouldStartWith` "base-descriptor: 03\n"

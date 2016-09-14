@@ -152,6 +152,7 @@ test-suite spec
                      , BoxFieldsSpec
                      , BoxSpec
                      , DataReferenceSpec
+                     , ElementaryStreamDescriptorSpec
                      , EnumSpec
                      , ExpandableSpec
                      , Mp4AudioSampleEntry

@@ -106,7 +106,9 @@ type family FromEnum enum (entry :: enum) :: Nat
 data EnumValue e where
   MkEnumValue :: KnownNat (FromEnum e v) => Proxy (v :: e) -> EnumValue e
 
-
+-- | Create an 'EnumValue' from a 'Proxy'. TODO remove?
+enumValueProxy :: KnownNat (FromEnum e v) => Proxy (v :: e) -> EnumValue e
+enumValueProxy = MkEnumValue
 
 fromEnumValue :: EnumValue e -> Word64
 fromEnumValue (MkEnumValue p) = enumValue p

@@ -1,10 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints  #-}
-
 module Data.Type.BitRecords.Builder.LazyByteStringBuilder where
-
-
 
 import Data.Type.BitRecords.Builder.BitBuffer
 import Data.Type.BitRecords.Builder.Holey
@@ -17,12 +14,32 @@ import Data.Proxy
 import GHC.TypeLits
 import Data.Monoid
 import Control.Category
-import Data.Tagged
+
 import Prelude hiding ((.), id)
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString as SB
 import Text.Printf
+
+-- * A wrapper around a builder derived from a 'BitStringBuilderState'
+
+data BuilderBox tag where
+  MkBuilderBox :: !Word64 -> !Builder -> BuilderBox tag
+
+bitBuilderBox ::
+  forall tag (record :: BitRecord) r .
+  BitStringBuilderHoley (Proxy record) r
+  => Proxy tag -> Proxy record -> Holey (BuilderBox tag) r (ToBitStringBuilder (Proxy record) r)
+bitBuilderBox _ !p =
+  let fromBitStringBuilder !h =
+        let (BitStringBuilderState !builder _ !wsize) =
+              flushBitStringBuilder $ appBitStringBuilder h initialBitStringBuilderState
+            !out = MkBuilderBox wsize builder
+        in out
+  in hoistM fromBitStringBuilder (bitStringBuilderHoley p)
+
+
+-- * Low-level interface to building 'BitRecord's and other things
 
 newtype BitStringBuilder =
   BitStringBuilder {unBitStringBuilder :: Dual (Endo BitStringBuilderState)}
@@ -45,16 +62,16 @@ appBitStringBuilder !w = appEndo (getDual (unBitStringBuilder w))
 
 data BitStringBuilderState where
         BitStringBuilderState ::
-          !Builder -> !BitStringBuilderChunk -> BitStringBuilderState
+          !Builder -> !BitStringBuilderChunk -> !Word64 -> BitStringBuilderState
 
 getBitStringBuilderStateBuilder
   :: BitStringBuilderState -> Builder
-getBitStringBuilderStateBuilder (BitStringBuilderState !builder _) = builder
+getBitStringBuilderStateBuilder (BitStringBuilderState !builder _ _) = builder
 
 initialBitStringBuilderState
   :: BitStringBuilderState
 initialBitStringBuilderState =
-  BitStringBuilderState mempty emptyBitStringBuilderChunk
+  BitStringBuilderState mempty emptyBitStringBuilderChunk 0
 
 -- | Write the partial buffer contents using any number of 'word8' The unwritten
 --   parts of the bittr buffer are at the top.  If the
@@ -65,10 +82,13 @@ initialBitStringBuilderState =
 --
 flushBitStringBuilder
   :: BitStringBuilderState -> BitStringBuilderState
-flushBitStringBuilder (BitStringBuilderState !bldr !buff) =
+flushBitStringBuilder (BitStringBuilderState !bldr !buff !totalSize) =
   BitStringBuilderState (writeRestBytes bldr 0)
                         emptyBitStringBuilderChunk
+                        totalSize'
   where !off = bitStringBuilderChunkLength buff
+        !off_ = (fromIntegral off :: Word64)
+        !totalSize' = totalSize + signum (off_ `rem` 8) + (off_ `div` 8)
         !part = bitStringBuilderChunkContent buff
         -- write bytes from msb to lsb until the offset is reached
         -- >  63  ...  (63-off-1)(63-off)  ...  0
@@ -92,17 +112,18 @@ flushBitStringBuilder (BitStringBuilderState !bldr !buff) =
 appendBitString :: BitString -> BitStringBuilder
 appendBitString !x' =
   bitStringBuilder $
-  \(BitStringBuilderState !builder !buff) -> go x' builder buff
-  where go !x !builder !buff
-          | bitStringLength x == 0 = BitStringBuilderState builder buff
+  \(BitStringBuilderState !builder !buff !totalSizeIn) -> go x' builder buff totalSizeIn
+  where go !x !builder !buff !totalSize
+          | bitStringLength x == 0 = BitStringBuilderState builder buff totalSize
           | otherwise =
-            let (!rest,!buff') = bufferBits x buff
+            let (!rest, !buff') = bufferBits x buff
             in if bitStringBuilderChunkSpaceLeft buff' > 0
-                  then BitStringBuilderState builder buff'
+                  then BitStringBuilderState builder buff' totalSize
                   else let !nextBuilder =
                              builder <>
                              word64BE (bitStringBuilderChunkContent buff')
-                       in go rest nextBuilder emptyBitStringBuilderChunk
+                           !totalSize' = totalSize + bitStringMaxLengthBytes
+                       in go rest nextBuilder emptyBitStringBuilderChunk totalSize'
 
 -- | Write all the b*y*tes, into the 'BitStringBuilderState' this allows general
 -- purposes non-byte aligned builders.
@@ -142,11 +163,9 @@ instance
     ToBitStringBuilder (Proxy nested) a
   bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @nested)
 
-type family TaggedArg t f where
-  TaggedArg t (a -> b) = Tagged t a -> b
-
 -- **** Bool
 
+-- TODO make a single case for assign based on new BitField type??
 -- instance forall v (size::Nat) (t :: BitField rt v size) (f :: IsA (BitRecordField t)) r a .
 --   ( BitStringBuilderHoley (Proxy f) a
 --   , ToBitStringBuilder (Proxy f) a ~ (r -> a)) =>

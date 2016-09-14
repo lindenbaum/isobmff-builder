@@ -4,6 +4,7 @@ module Data.Type.BitRecords.Builder.BitBuffer
     ( type BitStringMaxLength
     , type ModuloBitStringMaxLength
     , bitStringMaxLength
+    , bitStringMaxLengthBytes
     , BitString()
     , bitStringContent
     , bitStringLength
@@ -20,14 +21,11 @@ module Data.Type.BitRecords.Builder.BitBuffer
     , bitStringBuilderChunk
     , emptyBitStringBuilderChunk
     , bufferBits
-    , type StaticBitStringSpaceLeft
-    , type AppendRestLen
-    , type AppendNewBuffOffset
     , type KnownChunkSize
     ) where
 
 import           Data.Proxy
-import           Data.Type.Bool
+
 import           Data.Type.BitRecords.Arithmetic
 import           Data.Bits
 import           Data.Word
@@ -44,6 +42,10 @@ type family ModuloBitStringMaxLength (len :: Nat) :: Nat where
 -- | The maximum number of bits a 'BitBuffer' can hold.
 bitStringMaxLength :: Num a => a
 bitStringMaxLength = 64
+
+-- | The maximum number of bytes a 'BitBuffer' can hold.
+bitStringMaxLengthBytes :: Word64
+bitStringMaxLengthBytes = 8
 
 -- | A string of bits with a given length (but always @<= 'bitStringMaxLength'@.
 -- The number of bits must be smaller that 'bitStringMaxLength'.
@@ -157,30 +159,5 @@ bufferBits (BitString !bits !len) (BitStringBuilderChunk !buff !offset) =
     in
         (BitString restBits restLen, BitStringBuilderChunk buff' (offset + writeLen))
 
-type family StaticBitStringSpaceLeft (sb :: Nat) :: Nat where
-        StaticBitStringSpaceLeft size = BitStringMaxLength - size
-
 type family KnownChunkSize (s :: Nat) :: Constraint where
-        KnownChunkSize size =
-                                (KnownNat size, size <= BitStringMaxLength,
-                                 KnownNat (StaticBitStringSpaceLeft size))
-
-type family AppendRestLen (argLen :: Nat) (buffLen :: Nat) :: Nat
-     where
-        AppendRestLen argLen buffLen =
-                                     argLen - AppendWriteLen_ argLen buffLen
-
-type family AppendNewBuffOffset (argLen :: Nat) (buffLen :: Nat) ::
-     Nat where
-        AppendNewBuffOffset argLen buffLen =
-                                           buffLen +
-                                             If (StaticBitStringSpaceLeft buffLen <=? argLen)
-                                               (StaticBitStringSpaceLeft buffLen)
-                                               argLen
-
-type family AppendWriteLen_ (argLen :: Nat) (buffLen :: Nat) :: Nat
-     where
-        AppendWriteLen_ argLen buffLen =
-                                       If (StaticBitStringSpaceLeft buffLen <=? argLen)
-                                         (StaticBitStringSpaceLeft buffLen)
-                                         argLen
+        KnownChunkSize size = (KnownNat size, size <= BitStringMaxLength)

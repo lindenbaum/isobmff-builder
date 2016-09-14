@@ -298,38 +298,3 @@ instance KnownSymbol str => FromTypeLit (U32Text label) (str :: Symbol) where
 
 instance Default (U32Text label) where
   def = U32Text 0x20202020
-
--- * BoxContent from 'BitRecord's
-
-newtype BitBox (record :: BitRecord) where
-  BitBox :: forall (record :: BitRecord) . Builder -> BitBox record
-  deriving (Monoid)
-
-bitBoxWithArgs :: forall (record :: BitRecord) . BitStringBuilderHoley (Proxy record) (BitBox record)
-       => Proxy record -> ToBitStringBuilder (Proxy record) (BitBox record)
-bitBoxWithArgs = runHoley . bitBoxHoley
-
-bitBox :: forall (record :: BitRecord)
-         . (BitStringBuilderHoley (Proxy record) (BitBox record),
-             ToBitStringBuilder (Proxy record) (BitBox record) ~ (BitBox record))
-       => Proxy record -> BitBox record
-bitBox = bitBoxWithArgs
-
-bitBoxHoley :: forall (record :: BitRecord) r . BitStringBuilderHoley (Proxy record) r
-       => Proxy record -> Holey (BitBox record) r (ToBitStringBuilder (Proxy record) r)
-bitBoxHoley px = hoistM ((BitBox :: Builder -> BitBox record) . runBitStringBuilder) (bitStringBuilderHoley px)
-
--- TODO why 'ToBitRecord' ????
-instance (KnownNat (BitRecordSize content))
-   => IsBoxContent (BitBox content) where
-  boxSize _ =
-    -- convert from bits to bytes
-    fromIntegral (getRecordSizeFromProxy (Proxy @content) `unsafeShiftR` 3)
-  boxBuilder (BitBox cnt) = cnt
-
-instance
-  (IsBoxContent (BitBox        content)
-  ,KnownSymbol  (BoxTypeSymbol content))
-  => IsBox (BitBox content)
-
-type instance BoxTypeSymbol (BitBox content) = BoxTypeSymbol content
