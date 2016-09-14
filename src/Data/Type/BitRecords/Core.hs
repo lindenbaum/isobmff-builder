@@ -5,7 +5,8 @@ import Data.Int
 import Data.Kind (Type, Constraint)
 import Data.Kind.Extra
 import Data.Proxy
-import Data.Tagged
+
+
 import Data.Type.Pretty
 import Data.Word
 import GHC.TypeLits
@@ -105,7 +106,7 @@ infixr 6 .>.
 type instance Eval (l .>. r) = BitRecordAppend ('BitRecordMember l) ('BitRecordMember r)
 
 -- | Set a field to either a static, compile time, value or a dynamic, runtime value.
-type family (:~) (field :: IsA (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat)))) (value :: IsA (FieldValue (label :: Symbol) st)) :: IsA (BitRecordField (t' :: BitField (Tagged Symbol rt) st size)) where
+type family (:~) (field :: IsA (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat)))) (value :: IsA (FieldValue (label :: Symbol) st)) :: IsA (BitRecordField t) where
   fld :~ StaticFieldValue l v  = (l @: fld) := v
   fld :~ RuntimeFieldValue l = l @: fld
 infixl 7 :~
@@ -174,17 +175,12 @@ data MkField t :: IsA (BitRecordField t)
 -- **** Setting a Label
 
 -- | A bit record field with a number of bits
-data LabelF (l :: Symbol) ::
-  forall rt stk (st :: stk) (size :: Nat)
-     (ft :: BitField (Tagged Symbol rt) st size)
-     (nft :: BitField rt st size)
-   . IsA (BitRecordField nft)
-  -> IsA (BitRecordField ft)
+data LabelF :: Symbol -> IsA (BitRecordField t) -> IsA (BitRecordField t)
 
 -- | A field with a label assigned to it.
 type
   (l :: Symbol) @:(f :: IsA (BitRecordField (t :: BitField rt (st :: stk) size)))
-  = (LabelF l f :: IsA (BitRecordField (t' :: BitField (Tagged Symbol rt) st size)))
+  = (LabelF l f :: IsA (BitRecordField t))
 infixr 8 @:
 
 -- **** Assignment

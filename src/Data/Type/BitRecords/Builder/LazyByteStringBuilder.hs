@@ -14,7 +14,7 @@ import Data.Proxy
 import GHC.TypeLits
 import Data.Monoid
 import Control.Category
-import Data.Tagged
+
 import Prelude hiding ((.), id)
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as B
@@ -156,31 +156,12 @@ type family UnsignedDemoteRep i where
 -- *** Labbeled Fields
 
 instance
-  forall r (l :: Symbol) a
-  rt stk (st :: stk) (size :: Nat)
-  (ft :: BitField (Tagged Symbol rt) st size)
-  (nft :: BitField rt st size)
-  (nested :: IsA (BitRecordField nft))
-  . ( BitStringBuilderHoley (Proxy nested) a
-    , ToBitStringBuilder (Proxy nested) a ~ (r -> a) )
-  => BitStringBuilderHoley (Proxy ((LabelF l nested) :: IsA (BitRecordField ft))) a where
-  type ToBitStringBuilder (Proxy ((LabelF l nested) :: IsA (BitRecordField ft))) a =
-    TaggedArg l (ToBitStringBuilder (Proxy nested) a)
-  bitStringBuilderHoley _ = taggedHoley (bitStringBuilderHoley (Proxy @nested))
-
-
-instance
-  forall r (l :: Symbol) a
-  rt stk (st :: stk) (size :: Nat)
-  (ft :: BitField (Tagged Symbol rt) st size)
-  (nft :: BitField rt st size)
-  (nested :: IsA (BitRecordField nft))
-  . ( BitStringBuilderHoley (Proxy nested) a
-    , ToBitStringBuilder (Proxy nested) a ~ a)
-  => BitStringBuilderHoley (Proxy ((LabelF l nested) :: IsA (BitRecordField ft))) a where
-  type ToBitStringBuilder (Proxy ((LabelF l nested) :: IsA (BitRecordField ft))) a = a
+  forall nested l a .
+   ( BitStringBuilderHoley (Proxy nested) a )
+  => BitStringBuilderHoley (Proxy (LabelF l nested)) a where
+  type ToBitStringBuilder (Proxy (LabelF l nested)) a =
+    ToBitStringBuilder (Proxy nested) a
   bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @nested)
-
 
 -- **** Bool
 
