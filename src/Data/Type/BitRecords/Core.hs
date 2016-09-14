@@ -5,8 +5,6 @@ import Data.Int
 import Data.Kind (Type, Constraint)
 import Data.Kind.Extra
 import Data.Proxy
-
-
 import Data.Type.Pretty
 import Data.Word
 import GHC.TypeLits
@@ -194,7 +192,7 @@ infixl 7 :=
 
 -- | Types of this kind define the basic type of a 'BitRecordField'. Sure, this
 -- could have been an open type, but really, how many actual useful field types
--- exist? Well, from a global perspective, uncountably infinite, but the focus
+-- exist? Well, from a global perspective, uncountable infinite, but the focus
 -- of this library is to blast out bits over the network, using usual Haskell
 -- libraries, and hence, there is actually only very little reason to
 -- differentiate types of record fields, other than what low-level library
@@ -236,7 +234,6 @@ data SignedNat where
   PositiveNat :: Nat -> SignedNat
   NegativeNat :: Nat -> SignedNat
 
-
 -- *** Composed Fields
 
 -- | A Flag (1-bit) that is true if the type level maybe is 'Just'.
@@ -248,10 +245,6 @@ type family FlagJust (a :: Maybe (v :: Type)) :: IsA (BitRecordField 'MkFieldFla
 type family FlagNothing  (a :: Maybe (v :: Type)) :: IsA (BitRecordField 'MkFieldFlag) where
   FlagNothing ('Just x) = Flag := 'False
   FlagNothing 'Nothing  = Flag := 'True
-
--- | A field that renders to the length of a 'SizedString' using the given
--- word type for the size.
-data ToStringLength :: Type -> Type -> Type -- TODO move
 
 -- | An optional field in a bit record
 data MaybeField :: Maybe (IsA (BitRecordField t)) -> IsA BitRecord
@@ -336,62 +329,3 @@ type family PrettyFieldValue (t :: BitField (rt :: Type) (st :: Type) (size :: N
   PrettyFieldValue ('MkFieldCustom :: BitField rt ct size) v = PrettyCustomFieldValue rt ct size v
 
 type family PrettyCustomFieldValue (rt :: Type) (st :: Type) (size :: Nat) (v :: st) :: PrettyType
-
-
--- * Constraint Utilities
-
--- | A wrapper around 'Constraint' that propagates 'TypeError'.
-type ConstraintE = Either Constraint Constraint
-
--- | Unwrap a 'ConstraintE', this is where 'TypeError's might be /thrown/.
-type family
-  RunConstraintE t :: Constraint where
-  RunConstraintE ('Left t) = t
-  RunConstraintE ('Right t) = t
-
-
-
-
-
-
-
-
-
-
-
--- -- | A setter for 'f', that assigns a value.
--- --
--- -- An alias for 'SetWith' using the 'StdSetter' 'Assign'.
--- type SetTo f v = SetWith f (OverwriteWith v)
-
--- -- | Alternative version of 'SetTo'
--- type SetToAlt f v = SetWith f (AltSetter (OverwriteWith v))
-
--- -- | A setter for 'f', that creates a named parameter for runtime
--- -- values to set the field.
--- --
--- -- An alias for 'SetWith' using the 'StdSetter' 'Assign'.
--- type Defer label f = SetWith f (NamedRuntimeParameter label)
-
--- -- | Alternative version of 'Defer'
--- type DeferAlt label f = SetWith f (AltSetter (NamedRuntimeParameter label))
-
--- -- | Set something to a value in a specific way.
--- --
--- -- The way how a field is assigned to a value is controlled through the 'Eval'
--- -- instances, that can vary depending on @f@ and @setter v@.
--- data SetWith :: IsAn f -> IsA Setter -> IsAn f
-
--- -- | Abstract kind of 'SetWith' setter parameter
--- data Setter
-
--- -- | Assign to a value known at compile-time.
--- data OverwriteWith v :: IsA Setter
-
--- -- | Assign a value obtained from a named parameter, e.g. with a value
--- -- obtained at runtime.
--- data NamedRuntimeParameter :: Symbol -> IsA Setter
-
--- -- | Assign a value obtained from a named parameter, e.g. with a value
--- -- obtained at runtime.
--- data AltSetter :: IsA Setter -> IsA Setter

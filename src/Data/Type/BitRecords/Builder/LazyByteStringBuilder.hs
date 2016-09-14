@@ -165,13 +165,6 @@ instance
 
 -- **** Bool
 
--- TODO make a single case for assign based on new BitField type??
--- instance forall v (size::Nat) (t :: BitField rt v size) (f :: IsA (BitRecordField t)) r a .
---   ( BitStringBuilderHoley (Proxy f) a
---   , ToBitStringBuilder (Proxy f) a ~ (r -> a)) =>
---   BitStringBuilderHoley (Proxy (f := v)) a where
---   bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 1))
-
 instance forall f a . (BitRecordFieldSize f ~ 1) =>
   BitStringBuilderHoley (Proxy (f := 'True)) a where
   bitStringBuilderHoley _ = immediate (appendBitString (bitString 1 1))
