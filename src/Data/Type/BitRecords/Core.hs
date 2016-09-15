@@ -17,11 +17,11 @@ import Text.Printf
 
 -- | 'BitRecordField's assembly
 data BitRecord where
-  BitRecordMember    :: IsA (BitRecordField t) -> BitRecord
-  (:>:)              :: BitRecord      -> BitRecord -> BitRecord
-  BitRecordDoc       :: PrettyType     -> BitRecord
-  BitRecordDocNested :: PrettyType     -> BitRecord -> BitRecord
   EmptyBitRecord     :: BitRecord
+  BitRecordDoc       :: PrettyType -> BitRecord
+  BitRecordMember    :: IsA (BitRecordField t) -> BitRecord
+  BitRecordDocNested :: PrettyType -> BitRecord -> BitRecord
+  BitRecordAppend    :: BitRecord -> BitRecord -> BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 infixl 3 :>:
 
@@ -34,19 +34,19 @@ type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
 
 -- | Eval the size in as a number of bits from a 'BitRecord'
 type family BitRecordSize (x :: BitRecord) :: Nat where
-  BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
-  BitRecordSize (l ':>: r)                = BitRecordSize l + BitRecordSize r
-  BitRecordSize ('BitRecordDoc d)         = 0
-  BitRecordSize ('BitRecordDocNested d r) = BitRecordSize r
   BitRecordSize 'EmptyBitRecord           = 0
+  BitRecordSize ('BitRecordDoc d)         = 0
+  BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
+  BitRecordSize ('BitRecordDocNested d r) = BitRecordSize r
+  BitRecordSize (l `BitRecordAppend` r)                = BitRecordSize l + BitRecordSize r
 
 -- | The total number of members in a record.
 type family BitRecordMemberCount (b :: BitRecord) :: Nat where
-  BitRecordMemberCount ('BitRecordMember f)      = 1
-  BitRecordMemberCount (l ':>: r)                = BitRecordMemberCount l + BitRecordMemberCount r
-  BitRecordMemberCount ('BitRecordDoc r)         = 0
-  BitRecordMemberCount ('BitRecordDocNested d r) = BitRecordMemberCount r
   BitRecordMemberCount 'EmptyBitRecord           = 0
+  BitRecordMemberCount ('BitRecordDoc r)         = 0
+  BitRecordMemberCount ('BitRecordMember f)      = 1
+  BitRecordMemberCount ('BitRecordDocNested d r) = BitRecordMemberCount r
+  BitRecordMemberCount (l `BitRecordAppend` r)                = BitRecordMemberCount l + BitRecordMemberCount r
 
 -- | Return the size of the record.
 getRecordSizeFromProxy
@@ -64,7 +64,7 @@ type OptionalRecordOf (f :: IsA (s :-> IsA BitRecord)) (x :: Maybe s) =
 -- | Augment the pretty printed output of a 'BitRecord'
 data (prettyTitle :: PrettyType) #: (r :: IsA BitRecord) :: IsA BitRecord
 infixr 4 #:
-type instance Eval (prettyTitle #: r)  = BitRecordAppend ('BitRecordDoc prettyTitle) (Eval r)
+type instance Eval (prettyTitle #: r)  = Append ('BitRecordDoc prettyTitle) (Eval r)
 
 -- | Augment the pretty printed output of a 'BitRecord'
 data (prettyTitle :: PrettyType) #$ (r :: IsA BitRecord) :: IsA BitRecord
@@ -76,26 +76,26 @@ type instance Eval (prettyTitle #$ r) = 'BitRecordDocNested prettyTitle (Eval r)
 -- | Combine two 'BitRecord's to form a new 'BitRecord'. If the parameters are
 -- not of type 'BitRecord' they will be converted.
 data (:>:) (l :: IsA BitRecord) (r :: IsA BitRecord) :: IsA BitRecord
-type instance Eval (l :>: r) = Eval l `BitRecordAppend` Eval r
+type instance Eval (l :>: r) = Eval l `Append` Eval r
 
-type family BitRecordAppend (l :: BitRecord) (r :: BitRecord) :: BitRecord where
-  BitRecordAppend l 'EmptyBitRecord = l
-  BitRecordAppend 'EmptyBitRecord r = r
-  BitRecordAppend l r = l ':>: r
+type family Append (l :: BitRecord) (r :: BitRecord) :: BitRecord where
+  Append l 'EmptyBitRecord = l
+  Append 'EmptyBitRecord r = r
+  Append l r = l `BitRecordAppend` r
 
 -- | Append a 'BitRecord' and a 'BitRecordField'
 data (:>.) :: IsA BitRecord
            -> IsA (BitRecordField t1)
            -> IsA BitRecord
 infixl 6 :>.
-type instance Eval (l :>. r) = BitRecordAppend (Eval l) ('BitRecordMember r)
+type instance Eval (l :>. r) = Append (Eval l) ('BitRecordMember r)
 
 -- | Append a 'BitRecordField' and a 'BitRecord'
 data (.>:) :: IsA (BitRecordField t1)
            -> IsA BitRecord
            -> IsA BitRecord
 infixr 6 .>:
-type instance Eval (l .>: r) = BitRecordAppend ('BitRecordMember l) (Eval r)
+type instance Eval (l .>: r) = Append ('BitRecordMember l) (Eval r)
 
 -- | Append a 'BitRecordField' and a 'BitRecordField' forming a 'BitRecord' with
 -- two members.
@@ -103,7 +103,7 @@ data (.>.) :: IsA (BitRecordField t1)
            -> IsA (BitRecordField t2)
            -> IsA BitRecord
 infixr 6 .>.
-type instance Eval (l .>. r) = BitRecordAppend ('BitRecordMember l) ('BitRecordMember r)
+type instance Eval (l .>. r) = Append ('BitRecordMember l) ('BitRecordMember r)
 
 -- | Set a field to either a static, compile time, value or a dynamic, runtime value.
 type family (:~) (field :: IsA (BitRecordField (t :: BitField (rt :: Type) (st :: k) (len :: Nat)))) (value :: IsA (FieldValue (label :: Symbol) st)) :: IsA (BitRecordField t) where
@@ -140,7 +140,7 @@ type instance Eval (RecArray (r :: IsA BitRecord) n ) = RecArrayToBitRecord (Eva
 type family RecArrayToBitRecord (r :: BitRecord) (n :: Nat) :: BitRecord where
   RecArrayToBitRecord r 0 = 'EmptyBitRecord
   RecArrayToBitRecord r 1 = r
-  RecArrayToBitRecord r n = BitRecordAppend r (RecArrayToBitRecord r (n - 1))
+  RecArrayToBitRecord r n = Append r (RecArrayToBitRecord r (n - 1))
 
 -- *** Lists of Records
 
@@ -258,7 +258,7 @@ type family FlagNothing  (a :: Maybe (v :: Type)) :: IsA (BitRecordField 'MkFiel
 -- | An optional field in a bit record
 data MaybeField :: Maybe (IsA (BitRecordField t)) -> IsA BitRecord
 type instance Eval (MaybeField ('Just  fld)) =
-   BitRecordAppend ('BitRecordDoc (PutStr "Just")) ('BitRecordMember fld)
+   Append ('BitRecordDoc (PutStr "Just")) ('BitRecordMember fld)
 type instance Eval (MaybeField 'Nothing) =
   'BitRecordDoc (PutStr "Nothing")
 
@@ -292,7 +292,7 @@ type instance ToPretty (rec :: BitRecord) = PrettyRecord rec
 type family PrettyRecord (rec :: BitRecord) :: PrettyType where
    PrettyRecord ('BitRecordMember m) = PrettyField m
    PrettyRecord ' EmptyBitRecord = 'PrettyNewline
-   PrettyRecord (l ':>: r) = PrettyRecord l <$$> PrettyRecord r
+   PrettyRecord (l `BitRecordAppend` r) = PrettyRecord l <$$> PrettyRecord r
    PrettyRecord ('BitRecordDoc p) = p
    PrettyRecord ('BitRecordDocNested p r) = p <$$--> PrettyRecord r
 
