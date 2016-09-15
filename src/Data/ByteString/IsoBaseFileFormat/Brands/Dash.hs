@@ -11,6 +11,8 @@ import Data.ByteString.IsoBaseFileFormat.MediaFile
 import Data.ByteString.IsoBaseFileFormat.Boxes
 import Data.ByteString.IsoBaseFileFormat.ReExports
 
+
+-- TODO rename dash to iso5
 -- | A phantom type to indicate this branding. Version can be 0 or 1 it is used
 -- in some boxes to switch between 32/64 bits.
 data Dash (version :: Nat)

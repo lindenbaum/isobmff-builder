@@ -10,7 +10,7 @@ import Data.Kind.Extra
 import GHC.TypeLits
 import Prelude hiding ((.), id)
 import Test.Hspec
-import Test.QuickCheck (property)
+import Test.QuickCheck (property, Arbitrary(..), choose)
 import Test.TypeSpecCrazy
 import Text.Printf
 
@@ -456,4 +456,11 @@ spec = do
                  (bitStringBuilderHoley
                      (bitString 64 0x01020304050607)))
             in actual `shouldBe` expected
--- * Bit Buffering
+
+
+instance (KnownNat n, n <= 64) => Arbitrary (B n) where
+  arbitrary = do
+    let h = 2^(n'-1) - 1
+        n' = fromIntegral (natVal (Proxy @n)) :: Int
+    x <- choose (0, h + h + 1)
+    return (B x)

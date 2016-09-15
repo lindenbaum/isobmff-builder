@@ -9,6 +9,7 @@ import Data.Type.Pretty
 import Data.Word
 import Data.Bits
 import GHC.TypeLits
+import Text.Printf
 
 -- * Bit-Records
 
@@ -232,6 +233,10 @@ type FieldI64 = MkField 'MkFieldI64
 -- It carries the number of relevant bits in its type.
 newtype B (size :: Nat) = B {unB :: Word64}
   deriving (Read,Show,Num,Integral,Bits,FiniteBits,Eq,Ord,Bounded,Enum,Real)
+
+instance (PrintfArg Word64, n <= 64) => PrintfArg (B n) where
+  formatArg (B x) = formatArg x
+  parseFormat (B x) = parseFormat x
 
 -- | A signed field value.
 data SignedNat where

@@ -235,7 +235,8 @@ instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Template o v) where
 class FromTypeLit o v  where
   fromTypeLit :: proxy o v -> o
 
-instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr) => FromTypeLit (ScalarArray label len o) (arr :: [Nat]) where
+instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr)
+  => FromTypeLit (ScalarArray label len o) (arr :: [Nat]) where
   fromTypeLit _ =
     let s = sing :: Sing arr
         vs :: [Integer]
@@ -262,15 +263,14 @@ instance IsTextSize len => IsBoxContent (FixSizeText len label) where
   boxSize    _               = fromIntegral (natVal (Proxy :: Proxy len))
   boxBuilder (FixSizeText t) =
     let
-      --                                         leave room for the size byte
+      -- leave room for the size byte
       maxSize             = fromIntegral (natVal (Proxy :: Proxy len) - 1)
       displayableText     = B.take maxSize (T.encodeUtf8 t)
       displayableTextSize = B.length displayableText
       paddingSize         = max 0 (maxSize - displayableTextSize)
-      in
-               word8      (fromIntegral displayableTextSize)
-            <> byteString displayableText
-            <> fold       (replicate paddingSize (word8 0))
+      in word8 (fromIntegral displayableTextSize)
+         <> byteString displayableText
+         <> fold (replicate paddingSize (word8 0))
 
 instance IsTextSize len => Default (FixSizeText len label) where
   def = FixSizeText ""

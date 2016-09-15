@@ -149,19 +149,56 @@ data SamplingFreqTable =
     | SFReserved2
     | SFCustom
 
-type instance FromEnum SamplingFreqTable 'SF96000     = 0
-type instance FromEnum SamplingFreqTable 'SF88200     = 1
-type instance FromEnum SamplingFreqTable 'SF64000     = 2
-type instance FromEnum SamplingFreqTable 'SF48000     = 3
-type instance FromEnum SamplingFreqTable 'SF44100     = 4
-type instance FromEnum SamplingFreqTable 'SF32000     = 5
-type instance FromEnum SamplingFreqTable 'SF24000     = 6
-type instance FromEnum SamplingFreqTable 'SF22050     = 7
-type instance FromEnum SamplingFreqTable 'SF16000     = 8
-type instance FromEnum SamplingFreqTable 'SF12000     = 9
-type instance FromEnum SamplingFreqTable 'SF11025     = 0xa
-type instance FromEnum SamplingFreqTable 'SF8000      = 0xb
-type instance FromEnum SamplingFreqTable 'SF7350      = 0xc
+type instance FromEnum SamplingFreqTable 'SF96000 = 0
+type instance FromEnum SamplingFreqTable 'SF88200 = 1
+type instance FromEnum SamplingFreqTable 'SF64000 = 2
+type instance FromEnum SamplingFreqTable 'SF48000 = 3
+type instance FromEnum SamplingFreqTable 'SF44100 = 4
+type instance FromEnum SamplingFreqTable 'SF32000 = 5
+type instance FromEnum SamplingFreqTable 'SF24000 = 6
+type instance FromEnum SamplingFreqTable 'SF22050 = 7
+type instance FromEnum SamplingFreqTable 'SF16000 = 8
+type instance FromEnum SamplingFreqTable 'SF12000 = 9
+type instance FromEnum SamplingFreqTable 'SF11025 = 0xa
+type instance FromEnum SamplingFreqTable 'SF8000  = 0xb
+type instance FromEnum SamplingFreqTable 'SF7350  = 0xc
+type instance FromEnum SamplingFreqTable 'SFReserved1 = 0xd
+type instance FromEnum SamplingFreqTable 'SFReserved2 = 0xe
+type instance FromEnum SamplingFreqTable 'SFCustom  = 0xf
+
+sampleRateToNumber :: Num a => SamplingFreqTable -> a
+sampleRateToNumber SF96000 = 96000
+sampleRateToNumber SF88200 = 88200
+sampleRateToNumber SF64000 = 64000
+sampleRateToNumber SF48000 = 48000
+sampleRateToNumber SF44100 = 44100
+sampleRateToNumber SF32000 = 32000
+sampleRateToNumber SF24000 = 24000
+sampleRateToNumber SF22050 = 22050
+sampleRateToNumber SF16000 = 16000
+sampleRateToNumber SF12000 = 12000
+sampleRateToNumber SF11025 = 11025
+sampleRateToNumber SF8000  =  8000
+sampleRateToNumber SF7350  =  7350
+sampleRateToNumber _  =  0
+
+sampleRateToEnum :: SamplingFreqTable -> EnumValue SamplingFreqTable
+sampleRateToEnum SF96000     = MkEnumValue (Proxy @'SF96000)
+sampleRateToEnum SF88200     = MkEnumValue (Proxy @'SF88200)
+sampleRateToEnum SF64000     = MkEnumValue (Proxy @'SF64000)
+sampleRateToEnum SF48000     = MkEnumValue (Proxy @'SF48000)
+sampleRateToEnum SF44100     = MkEnumValue (Proxy @'SF44100)
+sampleRateToEnum SF32000     = MkEnumValue (Proxy @'SF32000)
+sampleRateToEnum SF24000     = MkEnumValue (Proxy @'SF24000)
+sampleRateToEnum SF22050     = MkEnumValue (Proxy @'SF22050)
+sampleRateToEnum SF16000     = MkEnumValue (Proxy @'SF16000)
+sampleRateToEnum SF12000     = MkEnumValue (Proxy @'SF12000)
+sampleRateToEnum SF11025     = MkEnumValue (Proxy @'SF11025)
+sampleRateToEnum SF8000      = MkEnumValue (Proxy @'SF8000)
+sampleRateToEnum SF7350      = MkEnumValue (Proxy @'SF7350)
+sampleRateToEnum SFReserved1 = MkEnumValue (Proxy @'SFReserved1)
+sampleRateToEnum SFReserved2 = MkEnumValue (Proxy @'SFReserved2)
+sampleRateToEnum SFCustom    = MkEnumValue (Proxy @'SFCustom)
 
 -- *** Channel Config (Mono, Stereo, 7-1 Surround, ...)
 
@@ -177,15 +214,34 @@ data ChannelConfigTable =
   | SinglePairPairLfe
   | SinglePairPairPairLfe
 
-type instance FromEnum ChannelConfigTable 'GasChannelConfig = 1
-type instance FromEnum ChannelConfigTable 'SingleChannel = 2
-type instance FromEnum ChannelConfigTable 'ChannelPair = 3
-type instance FromEnum ChannelConfigTable 'SinglePair = 4
-type instance FromEnum ChannelConfigTable 'SinglePairSingle = 5
-type instance FromEnum ChannelConfigTable 'SinglePairPair = 6
-type instance FromEnum ChannelConfigTable 'SinglePairPairLfe = 7
+type instance FromEnum ChannelConfigTable 'GasChannelConfig      = 1
+type instance FromEnum ChannelConfigTable 'SingleChannel         = 2
+type instance FromEnum ChannelConfigTable 'ChannelPair           = 3
+type instance FromEnum ChannelConfigTable 'SinglePair            = 4
+type instance FromEnum ChannelConfigTable 'SinglePairSingle      = 5
+type instance FromEnum ChannelConfigTable 'SinglePairPair        = 6
+type instance FromEnum ChannelConfigTable 'SinglePairPairLfe     = 7
 type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
 
+channelConfigToNumber :: Num a => ChannelConfigTable -> a
+channelConfigToNumber GasChannelConfig      = 0
+channelConfigToNumber SingleChannel         = 1
+channelConfigToNumber ChannelPair           = 2
+channelConfigToNumber SinglePair            = 3
+channelConfigToNumber SinglePairSingle      = 4
+channelConfigToNumber SinglePairPair        = 5
+channelConfigToNumber SinglePairPairLfe     = 6
+channelConfigToNumber SinglePairPairPairLfe = 7
+
+channelConfigToEnum :: ChannelConfigTable -> EnumValue ChannelConfigTable
+channelConfigToEnum GasChannelConfig      = MkEnumValue (Proxy @'GasChannelConfig)
+channelConfigToEnum SingleChannel         = MkEnumValue (Proxy @'SingleChannel)
+channelConfigToEnum ChannelPair           = MkEnumValue (Proxy @'ChannelPair)
+channelConfigToEnum SinglePair            = MkEnumValue (Proxy @'SinglePair)
+channelConfigToEnum SinglePairSingle      = MkEnumValue (Proxy @'SinglePairSingle)
+channelConfigToEnum SinglePairPair        = MkEnumValue (Proxy @'SinglePairPair)
+channelConfigToEnum SinglePairPairLfe     = MkEnumValue (Proxy @'SinglePairPairLfe)
+channelConfigToEnum SinglePairPairPairLfe = MkEnumValue (Proxy @'SinglePairPairPairLfe)
 
 -- ** More Specific audio decoder config
 
