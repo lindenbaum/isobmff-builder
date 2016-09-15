@@ -2,16 +2,17 @@
 module Data.Type.BitRecords.Core where
 
 import Data.Int
-import Data.Kind (Type, Constraint)
+import Data.Kind (Type)
 import Data.Kind.Extra
 import Data.Proxy
 import Data.Type.Pretty
 import Data.Word
+import Data.Bits
 import GHC.TypeLits
 
--- * Records
+-- * Bit-Records
 
--- ** Record ADT
+-- ** Bit-Record Type
 
 -- | 'BitRecordField's assembly
 data BitRecord where
@@ -203,7 +204,7 @@ data BitField
      (bitCount :: Nat)
   where
     MkFieldFlag    :: BitField Bool Bool 1
-    MkFieldBits    :: forall (n :: Nat) . BitField Word64 Nat n
+    MkFieldBits    :: forall (n :: Nat) . BitField (B n) Nat n
     MkFieldBitsXXL :: forall (n :: Nat) . BitField Integer Nat n
     MkFieldU8      :: BitField Word8 Nat 8
     MkFieldU16     :: BitField Word16 Nat 16
@@ -216,10 +217,8 @@ data BitField
     -- TODO refactor this MkFieldCustom, it caused a lot of trouble!
     MkFieldCustom  :: BitField rt st n
 
--- *** Primitive Records and Field Types
-
 type Flag     = MkField 'MkFieldFlag
-type Field n  = MkField ('MkFieldBits :: BitField Word64 Nat n)
+type Field n  = MkField ('MkFieldBits :: BitField (B n) Nat n)
 type FieldU8  = MkField 'MkFieldU8
 type FieldU16 = MkField 'MkFieldU16
 type FieldU32 = MkField 'MkFieldU32
@@ -228,6 +227,11 @@ type FieldI8  = MkField 'MkFieldI8
 type FieldI16 = MkField 'MkFieldI16
 type FieldI32 = MkField 'MkFieldI32
 type FieldI64 = MkField 'MkFieldI64
+
+-- | A data type for 'Field' and 'MkFieldBits', that is internally a 'Word64'.
+-- It carries the number of relevant bits in its type.
+newtype B (size :: Nat) = B {unB :: Word64}
+  deriving (Read,Show,Num,Integral,Bits,FiniteBits,Eq,Ord,Bounded,Enum,Real)
 
 -- | A signed field value.
 data SignedNat where
@@ -297,7 +301,7 @@ type family PrettyField (f :: IsA (BitRecordField (t :: BitField (rt :: Type) (s
 
 type family PrettyFieldType (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)) :: PrettyType where
   PrettyFieldType ('MkFieldFlag) = PutStr "boolean"
-  PrettyFieldType ('MkFieldBits :: BitField Word64 Nat (s :: Nat)) = PutStr "bits" <++> PrettyParens (PutNat s)
+  PrettyFieldType ('MkFieldBits :: BitField (B (s :: Nat)) Nat s) = PutStr "bits" <++> PrettyParens (PutNat s)
   PrettyFieldType ('MkFieldBitsXXL :: BitField Integer Nat (s :: Nat)) = PutStr "bits-XXL" <++> PrettyParens (PutNat s)
   PrettyFieldType ('MkFieldU64) = PutStr "U64"
   PrettyFieldType ('MkFieldU32) = PutStr "U32"
@@ -312,7 +316,7 @@ type family PrettyFieldType (t :: BitField (rt :: Type) (st :: Type) (size :: Na
 type family PrettyFieldValue (t :: BitField (rt :: Type) (st :: Type) (size :: Nat)) (v :: st) :: PrettyType where
   PrettyFieldValue ('MkFieldFlag) 'True = PutStr "yes"
   PrettyFieldValue ('MkFieldFlag) 'False = PutStr "no"
-  PrettyFieldValue ('MkFieldBits :: BitField Word64 Nat (s::Nat)) v =
+  PrettyFieldValue ('MkFieldBits :: BitField (B (s :: Nat)) Nat s) v =
     'PrettyNat 'PrettyUnpadded ('PrettyPrecision s) 'PrettyBit v  <+> PrettyParens (("hex" <:> PutHex v) <+> ("dec" <:> PutNat v))
   PrettyFieldValue ('MkFieldU8)  v = ("hex" <:> PutHex8 v) <+> PrettyParens ("dec" <:> PutNat v)
   PrettyFieldValue ('MkFieldU16) v = ("hex" <:> PutHex16 v) <+> PrettyParens ("dec" <:> PutNat v)

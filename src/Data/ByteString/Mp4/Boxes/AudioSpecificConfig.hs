@@ -119,7 +119,7 @@ type AudioObjectTypeRec n =
     .>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
 type family AudioObjectTypeField1 (n :: Nat)
-  :: IsA (BitRecordField ('MkFieldBits :: BitField Word64 Nat 5)) where
+  :: IsA (BitRecordField ('MkFieldBits :: BitField (B 5) Nat 5)) where
   AudioObjectTypeField1 n =
     If (n <=? 30) (Field 5 := n) (Field 5 := 31)
 

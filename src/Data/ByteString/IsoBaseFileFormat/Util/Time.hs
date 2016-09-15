@@ -1,7 +1,7 @@
 -- | Time and timing utilities.
 module Data.ByteString.IsoBaseFileFormat.Util.Time
        (referenceTime, utcToMp4, mp4CurrentTime, durationFromSeconds,
-        TimeScale, Timing)
+        TimeScale, Timing, type TS, type TS32, type TS64)
        where
 
 import Data.Time.Clock
@@ -61,6 +61,13 @@ durationFromSeconds timeScale seconds =
 -- by e.g. the duration field, which by the way contains the duration of the
 -- longest track, if known, or simply the equivalent of 1s.
 type Timing (version :: Nat) = Versioned TimingV0 TimingV1 version
+
+type TS32 = Scalar Word32
+type TS64 = Scalar Word64
+
+type family TS (version :: Nat) (label :: Symbol) :: Type where
+  TS 0 s = TS32 s
+  TS 1 s = TS64 s
 
 type TimingV0 = TimingImpl (Scalar Word32)
 

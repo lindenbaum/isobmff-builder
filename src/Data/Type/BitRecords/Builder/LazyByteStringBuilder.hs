@@ -14,30 +14,42 @@ import Data.Proxy
 import GHC.TypeLits
 import Data.Monoid
 import Control.Category
-
 import Prelude hiding ((.), id)
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString as SB
 import Text.Printf
 
--- * A wrapper around a builder derived from a 'BitStringBuilderState'
+-- | A wrapper around a builder derived from a 'BitStringBuilderState'
+data BuilderBox where
+  MkBuilderBox :: !Word64 -> !Builder -> BuilderBox
 
-data BuilderBox tag where
-  MkBuilderBox :: !Word64 -> !Builder -> BuilderBox tag
-
+-- | Create a 'Builder' from a 'BitRecord' and store it in a 'BuilderBox';
+-- return a 'Holey' monoid that does that on 'runHoley'
 bitBuilderBox ::
-  forall tag (record :: BitRecord) r .
+  forall (record :: BitRecord) r .
   BitStringBuilderHoley (Proxy record) r
-  => Proxy tag -> Proxy record -> Holey (BuilderBox tag) r (ToBitStringBuilder (Proxy record) r)
-bitBuilderBox _ !p =
+  =>  Proxy record
+  -> Holey BuilderBox r (ToBitStringBuilder (Proxy record) r)
+bitBuilderBox !p =
   let fromBitStringBuilder !h =
         let (BitStringBuilderState !builder _ !wsize) =
-              flushBitStringBuilder $ appBitStringBuilder h initialBitStringBuilderState
+              flushBitStringBuilder
+              $ appBitStringBuilder h initialBitStringBuilderState
             !out = MkBuilderBox wsize builder
         in out
   in hoistM fromBitStringBuilder (bitStringBuilderHoley p)
 
+-- | Like 'bitBuilderBox', accept as an additional parameter a wrapper function
+-- to wrap the final result (the 'BuilderBox') and 'runHoley' the whole
+-- machiner.
+wrapBitBuilderBox ::
+  forall (record :: BitRecord) wrapped .
+    BitStringBuilderHoley (Proxy record) wrapped
+  => (BuilderBox -> wrapped)
+  -> Proxy record
+  -> ToBitStringBuilder (Proxy record) wrapped
+wrapBitBuilderBox !f !p = runHoley (hoistM f (bitBuilderBox p))
 
 -- * Low-level interface to building 'BitRecord's and other things
 
@@ -182,9 +194,9 @@ instance forall a .
 -- **** Bits
 
 instance forall (s :: Nat) a . (KnownChunkSize s) =>
-  BitStringBuilderHoley (Proxy (MkField ('MkFieldBits :: BitField Word64 Nat s))) a where
-  type ToBitStringBuilder (Proxy (MkField ('MkFieldBits :: BitField Word64 Nat s))) a = Word64 -> a
-  bitStringBuilderHoley _ = indirect (appendBitString . bitStringProxyLength (Proxy @s))
+  BitStringBuilderHoley (Proxy (MkField ('MkFieldBits :: BitField (B s) Nat s))) a where
+  type ToBitStringBuilder (Proxy (MkField ('MkFieldBits :: BitField (B s) Nat s))) a = B s -> a
+  bitStringBuilderHoley _ = indirect (appendBitString . bitStringProxyLength (Proxy @s) . unB)
 
 -- **** Naturals
 

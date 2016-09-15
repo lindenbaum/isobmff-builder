@@ -20,12 +20,12 @@ spec = do
       (MkEnumValue (Proxy @'A))
      `shouldBe` "<< 40 >>"
 
-type TestEnumExt = ExtEnum TestEnum 2 'B FieldU16
+type TestEnumExt = ExtEnum TestEnum 2 'Be FieldU16
 
 
 data TestEnum =
-  A | B | C
+  A | Be | C
 
 type instance FromEnum TestEnum 'A = 1
-type instance FromEnum TestEnum 'B = 2
+type instance FromEnum TestEnum 'Be = 2
 type instance FromEnum TestEnum 'C = 4

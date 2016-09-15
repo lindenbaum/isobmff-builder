@@ -4,7 +4,6 @@ module Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry where
 
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Boxes
-import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.ElementaryStreamDescriptor
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
@@ -25,8 +24,15 @@ audioSampleEntry
 audioSampleEntry ase eds = const (Box eds) <$> ase
 
 -- | Create an mp4 audio elementary stream descriptor full box
-aacLcMono16kEsd :: EnumValue SamplingFreqTable -> EnumValue ChannelConfigTable -> AudioEsd
-aacLcMono16kEsd sf cc = AudioEsd (esdBox (Proxy @Mp4AacLcEsDescriptor) False 0 0 0 sf cc)
+aacLcMono16kEsd :: AudioEsd
+aacLcMono16kEsd = AudioEsd (esdBox
+                             (Proxy @Mp4AacLcEsDescriptor)
+                             False
+                             0
+                             0
+                             0
+                             (MkEnumValue (Proxy @'SF16000))
+                             (MkEnumValue (Proxy @'SingleChannel)))
 
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
 newtype AudioEsd =

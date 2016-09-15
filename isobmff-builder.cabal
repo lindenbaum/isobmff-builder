@@ -49,6 +49,8 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MediaInformation
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MetaDataSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Movie
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.MovieExtends
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.MovieExtendsHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.NullMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation
@@ -63,6 +65,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TimeToSample
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Track
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.TrackExtends
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry

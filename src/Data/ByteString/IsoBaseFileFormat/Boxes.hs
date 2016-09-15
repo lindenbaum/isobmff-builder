@@ -20,6 +20,8 @@ import           Data.ByteString.IsoBaseFileFormat.Boxes.MediaHeader            
 import           Data.ByteString.IsoBaseFileFormat.Boxes.MediaInformation               as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.MetaDataSampleEntry            as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.Movie                          as X
+import           Data.ByteString.IsoBaseFileFormat.Boxes.MovieExtends                   as X
+import           Data.ByteString.IsoBaseFileFormat.Boxes.MovieExtendsHeader             as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader                    as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.NullMediaHeader                as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation as X
@@ -33,6 +35,7 @@ import           Data.ByteString.IsoBaseFileFormat.Boxes.SoundMediaHeader       
 import           Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader            as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.TimeToSample                   as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.Track                          as X
+import           Data.ByteString.IsoBaseFileFormat.Boxes.TrackExtends                   as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader                    as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader               as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry              as X

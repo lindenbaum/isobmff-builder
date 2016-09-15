@@ -335,13 +335,9 @@ instance IsBoxContent Int64 where
 
 -- * Boxes of Bits
 
-instance IsBoxContent (BuilderBox tag) where
+instance IsBoxContent BuilderBox where
   boxSize (MkBuilderBox !s _) = fromIntegral s
   boxBuilder (MkBuilderBox _ !b) = b
-
-instance (KnownSymbol (BoxTypeSymbol tag)) => IsBox (BuilderBox tag) where
-
-type instance BoxTypeSymbol (BuilderBox tag) = BoxTypeSymbol tag
 
 -- * Type Layout Rule Matchers
 

@@ -33,6 +33,9 @@ instance IsMediaFileFormat (Dash v) where
                        , TrackLayout v 'HintTrack
                        , TrackLayout v 'TimedMetaDataTrack
                        , TrackLayout v 'AuxilliaryVideoTrack])
+            , OO  MovieExtends
+                 '[ OO_ (MovieExtendsHeader v)
+                  , OM_ TrackExtends ]
             ]
      , SO_ Skip
      ]
@@ -66,9 +69,6 @@ type TrackLayout version handlerType =
 
 
 -- Missing Boxes
---  esds
---  mvex
---  trex
 -- For media
 -- styp
 -- moof

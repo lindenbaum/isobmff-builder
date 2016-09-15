@@ -10,9 +10,11 @@ import           Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor
 
 -- * Esd Box
 
-type EsdBox = Box (FullBox (BuilderBox ESD) 0)
-data ESD
-type instance BoxTypeSymbol ESD = "esds"
+type EsdBox = Box (FullBox Esd 0)
+newtype Esd = Esd BuilderBox deriving (IsBoxContent)
+instance IsBox Esd
+
+type instance BoxTypeSymbol Esd = "esds"
 
 esdBox :: forall (record :: IsA (Descriptor 'ES_Descr)) (rendered :: BitRecord) .
          ( BitStringBuilderHoley (Proxy rendered) EsdBox
@@ -28,8 +30,8 @@ esdBoxHoley :: forall (record :: IsA (Descriptor 'ES_Descr)) r (rendered :: BitR
                )
              => Proxy record -> Holey EsdBox r (ToBitStringBuilder (Proxy rendered) r)
 esdBoxHoley _p =
-  hoistM (fullBox 0 :: BuilderBox ESD -> EsdBox) $
-  bitBuilderBox (Proxy @ESD) (Proxy @rendered)
+  hoistM (fullBox 0 . Esd) $
+  bitBuilderBox (Proxy @rendered)
 
 type RenderEsDescr (d :: IsA (Descriptor 'ES_Descr)) =
   (Eval (BitRecordOfDescriptor $~ (Eval d)) :: BitRecord)
