@@ -25,16 +25,16 @@ type instance
         channels) =
    ('MkDecoderSpecificInfo
     (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
-     #$ (AudioConfigBeginning
+     #+$ (AudioConfigBeginning
              aoId
              (BitRecordOfEnum freq)
              (BitRecordOfEnum channels)
-         :>: (BitRecordOfAudioSubConfig subCfg))))
+         :+: (BitRecordOfAudioSubConfig subCfg))))
 
 type AudioConfigBeginning audioObjId freq channels =
       AudioObjectTypeRec audioObjId
-  :>: freq
-  :>: channels
+  :+: freq
+  :+: channels
 
 -- ** Audio Object Type
 
@@ -115,17 +115,17 @@ type AudioObjectTypeRec n =
     (If ((FromEnum AudioObjectTypeId n) <=? 30)
             "AudioObjectType"
             "ExtAudioObjectType") <:> PutHex8 (FromEnum AudioObjectTypeId n)
-    #$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
-    .>: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
+    #+$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
+    .+: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
 type family AudioObjectTypeField1 (n :: Nat)
   :: IsA (BitRecordField ('MkFieldBits :: BitField (B 5) Nat 5)) where
   AudioObjectTypeField1 n =
     If (n <=? 30) (Field 5 := n) (Field 5 := 31)
 
-type family AudioObjectTypeField2 (n :: Nat) :: IsA BitRecord where
+type family AudioObjectTypeField2 (n :: Nat) :: BitRecord where
   AudioObjectTypeField2 n =
-    If (n <=? 30) (Return 'EmptyBitRecord) (RecordField (Field 6 := (n - 31)))
+    If (n <=? 30) 'EmptyBitRecord ('BitRecordMember (Field 6 := (n - 31)))
 
 -- *** Sampling Frequency
 
@@ -247,7 +247,7 @@ channelConfigToEnum SinglePairPairPairLfe = MkEnumValue (Proxy @'SinglePairPairP
 
 data AudioSubConfig :: Type
 
-type family BitRecordOfAudioSubConfig (x :: IsA AudioSubConfig) :: IsA BitRecord
+type family BitRecordOfAudioSubConfig (x :: IsA AudioSubConfig) :: BitRecord
 
 data GASpecificConfig
   (frameLenFlag   :: IsA (FieldValue "frameLenFlag" Bool))
@@ -265,9 +265,9 @@ type instance Eval (GASpecificConfig fl cd ext)
 type instance
   BitRecordOfAudioSubConfig (GASpecificConfig fl cd ext) =
      (    Flag :~ fl
-      .>: FlagJust cd
-      .>: Field 14 :~? cd
-      :>: BitRecordOfGASExtension ext
+      .+: FlagJust cd
+      .+: Field 14 :+? cd
+      :+: BitRecordOfGASExtension ext
      )
 
 -- | TODO implment that GAS extensions
@@ -275,4 +275,4 @@ data GASExtension
 data MkGASExtension :: IsA GASExtension
 
 type BitRecordOfGASExtension (x :: IsA GASExtension) =
-  RecordField ("has-gas-extension" @: Flag := 'False)
+  'BitRecordMember ("has-gas-extension" @: Flag := 'False)

@@ -34,7 +34,7 @@ esdBoxHoley _p =
   bitBuilderBox (Proxy @rendered)
 
 type RenderEsDescr (d :: IsA (Descriptor 'ES_Descr)) =
-  (Eval (BitRecordOfDescriptor $~ (Eval d)) :: BitRecord)
+  BitRecordOfDescriptor $~ (Eval d)
 
 -- * Esd Record
 
@@ -65,16 +65,16 @@ type instance
   Eval (ESDescriptor esId depEsId url ocrEsId streamPrio decConfig slConfig) =
   'MkDescriptor
      (PutStr "elementary-stream-descriptor"
-      #$  "esId" @: FieldU16 :~ esId
-      .>: "depEsIdFlag" @: FlagJust depEsId
-      .>: "urlFlag" @: FlagJust url
-      .>: "ocrEsIdFlag" @: FlagJust ocrEsId
-      .>: "streamPriority" @: Field 5 :~ streamPrio
-      .>: "depEsId" @: FieldU16 :~? depEsId
-      :>: (PutStr "url" #: OptionalRecordOf (Fun1 RecordField) url)
-      :>: "ocrEsId" @: FieldU16 :~? ocrEsId
-      :>: (decConfig :>>=: BitRecordOfDescriptor)
-      :>: (slConfig :>>=: BitRecordOfDescriptor)
+      #+$  "esId" @: FieldU16 :~ esId
+      .+: "depEsIdFlag" @: FlagJust depEsId
+      .+: "urlFlag" @: FlagJust url
+      .+: "ocrEsIdFlag" @: FlagJust ocrEsId
+      .+: "streamPriority" @: Field 5 :~ streamPrio
+      .+: ("depEsId" @: FieldU16 :+? depEsId)
+      :+: (PutStr "url" #+: (Eval (OptionalRecordOf (Fun1 RecordField) url)))
+      :+: ("ocrEsId" @: FieldU16 :+? ocrEsId)
+      :+: (BitRecordOfDescriptor $~ Eval decConfig)
+      :+: (BitRecordOfDescriptor $~ Eval slConfig)
 
       -- TODO add the rest of the ESDescriptor
      )

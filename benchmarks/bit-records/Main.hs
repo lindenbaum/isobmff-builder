@@ -21,41 +21,41 @@ import           Test.TypeSpecCrazy
 
 type Static64 =
       Field 3 := 2
-  :>: Field 5 := 4
-  :>: Field 9 := 333
-  :>: Field 7 := 35
-  :>: Field 30 := 458329
-  :>: Field 2 := 1
-  :>: Field 2 := 0
-  :>: Field 2 := 1
-  :>: Field 4 := 9
+  .+. Field 5 := 4
+  .+. Field 9 := 333
+  .+. Field 7 := 35
+  .+. Field 30 := 458329
+  .+. Field 2 := 1
+  .+. Field 2 := 0
+  .+. Field 2 := 1
+  .+. Field 4 := 9
 
 
 type Static64WithParams =
       Field 3 := 0
-  :>: Field 5 := 0
-  :>: Field 9 := 0
-  :>: "x" @: Field 7
-  :>: Field 30 := 0
-  :>: "y" @: Field 2
-  :>: Field 2 := 0
-  :>: Field 2 := 0
-  :>: Field 4 := 0
+  .+. Field 5 := 0
+  .+. Field 9 := 0
+  .+. "x" @: Field 7
+  .+. Field 30 := 0
+  .+. "y" @: Field 2
+  .+. Field 2 := 0
+  .+. Field 2 := 0
+  .+. Field 4 := 0
 
-type Static128 = Field 64 := 3735928559 :>: Field 64 := 3405688830
+type Static128 = Field 64 := 3735928559 .+. Field 64 := 3405688830
 
-type Static256 = Static64 :>: Static128 :>: Static64
+type Static256 = Static64 :+: Static128 :+: Static64
 
-type Static517 = Static256 :>: Static256 :>: Field 5 := 0
+type Static517 = Static256 :+: Static256 :+. Field 5 := 0
 
 #else
 
-type Static64 = ToBitRecord (Field 64 := 0)
+type Static64 = 'BitRecordMember (Field 64 := 0)
 
 
 type Static64WithParams =
       "x" @: Field 32
-  :>: "y" @: Field 32
+  .+. "y" @: Field 32
 
 #endif
 
@@ -83,8 +83,8 @@ static64 m = lumpUp m $
 
 static64WithParam m = lumpUp m $
     runBitStringBuilderHoley (bitStringBuilderHoley (Proxy :: Proxy Static64WithParams))
-                        (Tagged m)
-                        (Tagged m)
+                        (B m)
+                        (B m)
 
 #ifdef FULLBENCHMARKS
 
@@ -100,8 +100,8 @@ static517 m =
 staticPlain512bitBaseline m =
   lumpUp m $ runBitStringBuilderHoley $ bitStringBuilderHoley
     (Proxy :: Proxy (
-      Field 64 :>: Field 64 :>: Field 64 :>: Field 64 :>:
-      Field 64 :>: Field 64 :>: Field 64 :>: Field 64
+      Field 64 .+. Field 64 .+. Field 64 .+. Field 64 .+.
+      Field 64 .+. Field 64 .+. Field 64 .+. Field 64
     ))
 
 

@@ -8,33 +8,35 @@ import           Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * Static Expandable
 
-data StaticExpandableContent :: IsA BitRecord -> IsA BitRecord
+data StaticExpandableContent :: BitRecord -> IsA BitRecord
 
 type StaticExpandableContentMaxBits = 32
 
 type instance Eval (StaticExpandableContent record) =
-  Eval (("expandable-content-size" <:>
-         PutHex32 (ShiftR StaticExpandableContentMaxBits (BitRecordSize (Eval record)) 3)
-      #$ ExpandableSize (ShiftR StaticExpandableContentMaxBits (BitRecordSize (Eval record)) 3))
-        :>: record)
+  (("expandable-content-size" <:>
+         PutHex32 (ShiftR StaticExpandableContentMaxBits (BitRecordSize record) 3)
+      #+$ ExpandableSize (ShiftR StaticExpandableContentMaxBits (BitRecordSize record) 3))
+        :+: record)
 
-type family ExpandableSize (s :: Nat) :: IsA BitRecord where
-  ExpandableSize 0 = Return 'EmptyBitRecord
+type family ExpandableSize (s :: Nat) :: BitRecord where
+  ExpandableSize 0 = 'EmptyBitRecord
   ExpandableSize s =
     If (s <=? 127)
-      (                                       ExpandableSizeLastChunk s)
-      (ExpandableSizeNext (ShiftR StaticExpandableContentMaxBits s 7) :>: ExpandableSizeLastChunk s)
+      (ExpandableSizeLastChunk s)
+      (ExpandableSizeNext (ShiftR StaticExpandableContentMaxBits s 7)
+       :+: ExpandableSizeLastChunk s)
 
-type ExpandableSizeLastChunk (s :: Nat) = Field 1 := 0 .>. Field 7 := s
+type ExpandableSizeLastChunk (s :: Nat) = Field 1 := 0 .+. Field 7 := s
 
-type family ExpandableSizeNext (s :: Nat) :: IsA BitRecord where
-  ExpandableSizeNext 0 = Return 'EmptyBitRecord
+type family ExpandableSizeNext (s :: Nat) :: BitRecord where
+  ExpandableSizeNext 0 = 'EmptyBitRecord
   ExpandableSizeNext s =
     If (s <=? 127)
-      (                                        ExpandableSizeNextChunk s)
-      (ExpandableSizeNext (ShiftR StaticExpandableContentMaxBits s 7) :>:  ExpandableSizeNextChunk s)
+      (ExpandableSizeNextChunk s)
+      (ExpandableSizeNext (ShiftR StaticExpandableContentMaxBits s 7)
+       :+: ExpandableSizeNextChunk s)
 
-type ExpandableSizeNextChunk (s :: Nat) = Field 1 := 1 .>. Field 7 := s
+type ExpandableSizeNextChunk (s :: Nat) = Field 1 := 1 .+. Field 7 := s
 
 
 -- * Runtime-value Expandable

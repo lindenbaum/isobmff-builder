@@ -25,25 +25,24 @@ type family
       ot st
       (di :: [IsA (DecoderSpecificInfo ot st)])
       (ps :: [IsA (Descriptor 'ProfileLevelIndicationIndexDescr)])
-        :: IsA BitRecord
+        :: BitRecord
   where
     DecoderConfigDescriptorBody ot st di ps =
       PutStr "decoder-config-descriptor"
-        #$ (BitRecordOfEnum (SetEnum "objectTypeIndication" ObjectTypeIndicationEnum ot)
-           :>: BitRecordOfEnum (SetEnum "objectTypeIndication" StreamTypeEnum st)
-           :>: "upstream" @: Flag
-           .>: "reserved" @: Field 1        :=  1
-           .>: "bufferSizeDB" @: Field 24
-           .>: "maxBitrate"   @: FieldU32
-           .>: "avgBitrate"   @: FieldU32
-           .>: (BitRecordOfList
-                (DescriptorOfDecoderSpecificInfo
-                 :^>>>: BitRecordOfDescriptor)
-                (di ?:: LengthIn 0 1))
-           :>: (BitRecordOfList
-                (Extract :>>>: BitRecordOfDescriptor)
-                (ps ?:: LengthIn 0 255))
-         )
+        #+$ (BitRecordOfEnum (SetEnum "objectTypeIndication" ObjectTypeIndicationEnum ot)
+              :+: BitRecordOfEnum (SetEnum "objectTypeIndication" StreamTypeEnum st)
+              :+: "upstream" @: Flag
+              .+: "reserved" @: Field 1        :=  1
+              .+: "bufferSizeDB" @: Field 24
+              .+: "maxBitrate"   @: FieldU32
+              .+: "avgBitrate"   @: FieldU32
+              .+: Eval (BitRecordOfList
+                        (DescriptorOfDecoderSpecificInfo
+                         :^>>>: BitRecordOfDescriptor)
+                        (di ?:: LengthIn 0 1))
+              :+: Eval (BitRecordOfList
+                        (Extract :>>>: BitRecordOfDescriptor)
+                        (ps ?:: LengthIn 0 255)))
 
 -- ** 'ProfileLevelIndicationIndexDescriptor'
 
@@ -53,4 +52,4 @@ data ProfileLevelIndicationIndexDescriptor
 
 type instance Eval (ProfileLevelIndicationIndexDescriptor val) =
   'MkDescriptor
-  (RecordField (FieldU8 :~ val))
+  ('BitRecordMember (FieldU8 :~ val))

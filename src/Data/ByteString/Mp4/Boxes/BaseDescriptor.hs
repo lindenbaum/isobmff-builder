@@ -9,17 +9,17 @@ import           Data.ByteString.Mp4.Boxes.Expandable
 -- | Abstract class of /descriptors/ as recognized by ISO/IEC 14496-1 (Systems).
 -- A specifc descriptor is identified by the 'ClassTag'.
 data Descriptor :: ClassTag n -> Type where
-  MkDescriptor :: IsA BitRecord -> Descriptor tag
+  MkDescriptor :: BitRecord -> Descriptor tag
 
 -- TODO ok... this fixed the current problem in DecoderSpecificInfo .. but remove this instances ... or the above ... or ... I dunno
 
-data BitRecordOfDescriptor :: IsA (Descriptor c :-> IsA BitRecord)
+data BitRecordOfDescriptor :: IsA (Descriptor c :-> BitRecord)
 
 type instance
   BitRecordOfDescriptor $~ ('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) =
    ("base-descriptor" <:> PutHex8 tagInd)
-   #$ FieldU8 := tagInd
-   .>: StaticExpandableContent body
+   #+$ FieldU8 := tagInd
+   .+: Eval (StaticExpandableContent body)
 
 type family GetClassTag (c :: ClassTag n) :: Nat where
   GetClassTag (c :: ClassTag n) = n

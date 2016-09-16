@@ -10,7 +10,7 @@ module Data.Kind.Extra
   , type (:->)
   , type Id
   , type Apply
-  , type (^$^)
+  , type (^*^)
   , type ($~)
   , type (:>>=:)
   , type (:>>>:)
@@ -84,10 +84,8 @@ data Id :: IsA (foo :-> foo)
 type instance Id $~ x = x
 
 -- | Symbolic function application
-data (^$^) :: IsA (foo :-> bar) -> IsA foo -> IsA bar
-infixl 0 ^$^
-type instance Eval ((f :: IsA (foo :-> bar)) ^$^ (x :: IsA foo)) =
-  f $~ (Eval x)
+type (^*^) (f :: IsA (foo :-> bar)) (x :: IsA foo) = f $~ (Eval x)
+infixl 0 ^*^
 
 -- | Compose functions
 data (:>>>:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (good :-> best)
@@ -107,7 +105,7 @@ type instance (f :>>>^: g) $~ x = Return (g $~ (f $~ x))
 -- | Eval compose and return
 data (:^>>>^:) :: IsA (good :-> better) -> IsA (better :-> best) -> IsA (IsA good :-> IsA best)
 infixl 1 :^>>>^:
-type instance (f :^>>>^: g) $~ x = f :>>>: g ^$^ x
+type instance (f :^>>>^: g) $~ x = Return (g $~ (f $~ Eval x))
 
 -- | A function that applies 'Eval'
 data Extract :: IsA (IsA x :-> x)
@@ -124,7 +122,7 @@ data Optional :: IsA t -> IsA (s :-> IsA t) -> IsA (Maybe s :-> IsA t)
 type instance (Optional fallback f) $~ ('Just s) = f $~ s
 type instance (Optional fallback f) $~ 'Nothing = fallback
 
--- | Coerce the elements of a list all to a @bar@.
+-- | Map over the elements of a list and fold the result.
 type family
   FoldMap
           (append :: IsA (bar :-> IsA (bar :-> bar)))
@@ -133,7 +131,6 @@ type family
           (xs :: [(foo :: Type)]) :: (bar :: Type) where
   FoldMap append zero f '[]       = zero
   FoldMap append zero f (x ': xs) = append $~ (f $~ x) $~ FoldMap append zero f xs
-
 
 --  TODONT safe coercions (with undecidable instances) could be done only with a
 --  type-level equivilant of a type class dictionary, A good place for that

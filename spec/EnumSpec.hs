@@ -4,19 +4,17 @@ module EnumSpec (spec) where
 import Data.Proxy
 import Data.Type.BitRecords
 import Data.Type.Equality ()
-import Data.Kind.Extra
 import Prelude hiding ((.), id)
 import Test.Hspec
 
 spec = do
   describe "ToPretty" $ do
     it "renders as a record using showRecord" $
-      showRecord (Proxy @(Eval (BitRecordOfEnum (EnumParam "test" TestEnumExt))))
+      showRecord (Proxy @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
       `shouldBe` "test: <<enum>>(2)"
   describe "BitStringBuilder" $ do
     it "produces binary output" $
-     bitStringPrinter (Proxy  @(Eval
-                                (BitRecordOfEnum (EnumParam "test" TestEnumExt))))
+     bitStringPrinter (Proxy  @(BitRecordOfEnum (EnumParam "test" TestEnumExt)))
       (MkEnumValue (Proxy @'A))
      `shouldBe` "<< 40 >>"
 

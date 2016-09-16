@@ -44,20 +44,19 @@ type instance BoxTypeSymbol TrackExtends = "trex"
 
 -- | Defaults for movie fragment - the content
 type TrackExtendsBody =
-  Eval (
      "track_ID"                         @: FieldU32
- .>: "default_sample_description_index" @: FieldU32
- .>: "default_sample_duration"          @: FieldU32
- .>: "default_sample_size"              @: FieldU32
- .>: TrackExtendsDefaultSampleFlags)
+ .+: "default_sample_description_index" @: FieldU32
+ .+: "default_sample_duration"          @: FieldU32
+ .+: "default_sample_size"              @: FieldU32
+ .+: TrackExtendsDefaultSampleFlags
 
 type TrackExtendsDefaultSampleFlags =
       "reserved"                    @: Field 4 := 0
-  .>: "is_leading"                  @: Field 2
-  .>: "sample_depends_on"           @: Field 2
-  .>: "sample_is_depended_on"       @: Field 2
-  .>: "sample_has_redundancy"       @: Field 2
-  .>: "sample_padding_value"        @: Field 3
-  .>: "sample_is_non_sync_sample"   @: Flag
-  .>: "sample_degradation_priority" @: FieldU16
-  .>: Return 'EmptyBitRecord
+  .+: "is_leading"                  @: Field 2
+  .+: "sample_depends_on"           @: Field 2
+  .+: "sample_is_depended_on"       @: Field 2
+  .+: "sample_has_redundancy"       @: Field 2
+  .+: "sample_padding_value"        @: Field 3
+  .+: "sample_is_non_sync_sample"   @: Flag
+  .+: "sample_degradation_priority" @: FieldU16
+  .+: 'EmptyBitRecord

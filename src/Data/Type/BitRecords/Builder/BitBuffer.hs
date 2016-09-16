@@ -78,7 +78,7 @@ emptyBitString = BitString 0 0
 
 -- | A buffer for 64 bits, such that the bits are written MSB to LSB.
 --
--- > type TwoFields = "f0" @: Field m :>: "f1" @: Field n
+-- > type TwoFields = "f0" @: Field m .+. "f1" @: Field n
 --
 -- Writes:
 -- @       MSB                                             LSB
