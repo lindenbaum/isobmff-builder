@@ -28,7 +28,7 @@ type TestConfigDescriptor  =
   DecoderConfigDescriptor
   'AudioIso14496_3
   'AudioStream
-  '[NonSbrAudioConfig
+  '[AudioConfigAacMinimal
      'AacLc
      DefaultGASpecificConfig
      (SetEnum "samplingFreq" SamplingFreq 'SF48000)

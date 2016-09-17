@@ -9,7 +9,7 @@ import Data.ByteString.IsoBaseFileFormat.ReExports
 import Data.Singletons
 
 import Data.Singletons.Prelude.List
-import qualified Data.Vector.Sized as Vec
+import qualified Data.Vector as Vec
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as B
@@ -161,13 +161,15 @@ i8Arr = fromList
 -- above. Use the smart constructors, e.g.
 -- 'u8Arr','i8Arr','u16Arr','i16Arr','u32Arr','i32Arr','u64Arr','i64Arr' .
 newtype ScalarArray (label :: k) (len :: Nat) o where
-        ScalarArray :: Vec.Vector n o -> ScalarArray label n o
+        ScalarArray :: Vec.Vector o -> ScalarArray label n o
         deriving (Show,Eq)
 
-instance (Default o,KnownNat (len :: Nat)) => Default (ScalarArray label len o) where
-  def = ScalarArray $ Vec.replicate def
+instance (Default o,KnownNat (len :: Nat))
+  => Default (ScalarArray label len o) where
+  def = ScalarArray $ Vec.replicate (fromIntegral (natVal (Proxy @len))) def
 
-instance (Num o,IsBoxContent (Scalar o label),KnownNat (len :: Nat)) => IsBoxContent (ScalarArray label len o) where
+instance (Num o,IsBoxContent (Scalar o label))
+  => IsBoxContent (ScalarArray label len o) where
   boxSize (ScalarArray vec) =
     fromIntegral (Vec.length vec) * boxSize (Scalar 0 :: Scalar o label)
   boxBuilder (ScalarArray vec) =
@@ -183,14 +185,14 @@ fromList :: forall label n o.
          => [o] -> ScalarArray label n o
 fromList l =
   ScalarArray $
-  case Vec.fromList l of
-    Nothing ->
-      error $
-      printf "Invalid number of array elements for array %s. Got length: %d elments, expected %d."
+  if natVal (Proxy @n) /= toInteger (length l)
+  then
+    error $ printf "Invalid number of array elements for array %s. Got length: %d elments, expected %d."
              (show (symbolVal (Proxy :: Proxy label)))
              (length l)
              (natVal (Proxy :: Proxy n))
-    Just v -> v
+    else
+      Vec.fromList l
 
 -- * Constant fields
 
@@ -235,7 +237,8 @@ instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Template o v) where
 class FromTypeLit o v  where
   fromTypeLit :: proxy o v -> o
 
-instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr)
+instance forall arr o len (label :: Symbol) .
+  (KnownSymbol label,SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr)
   => FromTypeLit (ScalarArray label len o) (arr :: [Nat]) where
   fromTypeLit _ =
     let s = sing :: Sing arr
@@ -243,7 +246,7 @@ instance (SingI arr,Num o,SingKind [Nat],KnownNat len,len ~ Length arr)
         vs = fromSing s
         vs' :: [o]
         vs' = fromIntegral <$> vs
-    in ScalarArray (fromJust (Vec.fromList vs'))
+    in (fromList vs' :: ScalarArray label len o)
 
 instance KnownSymbol str => FromTypeLit T.Text (str :: Symbol) where
   fromTypeLit = T.pack . symbolVal

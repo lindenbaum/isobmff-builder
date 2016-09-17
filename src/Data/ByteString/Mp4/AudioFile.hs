@@ -13,17 +13,18 @@ import Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import qualified Data.Text as T
 
 -- | Initialisation segment parameters of an aac audio stream mp4 file.
-data AacStreamInitSegment =
-  AacStreamInitSegment { creationTime :: (TS32 "creation_time")
-                       , trackName :: String
-                       , duration :: Integer
-                       , sampleRate :: SamplingFreqTable
-                       , channelConfig :: ChannelConfigTable}
+data AacMp4StreamConfig =
+  AacMp4StreamConfig { creationTime :: (TS32 "creation_time")
+                     , trackName :: String
+                     , duration :: Integer
+                     , useHeAac :: Bool
+                     , sampleRate :: SamplingFreqTable
+                     , channelConfig :: ChannelConfigTable}
 
 -- | Convert a 'SingleAudioTrackInit' record to a generic 'Boxes' collection.
-buildAacStreamInitSegment
-  :: AacStreamInitSegment -> Builder
-buildAacStreamInitSegment AacStreamInitSegment{..} =
+buildAacMp4StreamInit
+  :: AacMp4StreamConfig -> Builder
+buildAacMp4StreamInit AacMp4StreamConfig{..} =
   mediaBuilder dash $
   -- TODO must be iso5 for the way we use elementary stream descriptors
   fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
@@ -48,7 +49,8 @@ buildAacStreamInitSegment AacStreamInitSegment{..} =
                 :. (dataInformation $: localMediaDataReference)
                 :| sampleTable
                 ((sampleDescription
-                   $: audioSampleEntry 0 (aacLcAudioSampleEntry
+                   $: audioSampleEntry 0 (aacAudioSampleEntrySimple
+                                          useHeAac
                                           sampleRate
                                           channelConfig
                                           (Scalar 16))

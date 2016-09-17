@@ -28,12 +28,13 @@ audioSampleEntry drefIndex ase =
 type instance BoxTypeSymbol AudioEsd = "mp4a"
 
 -- | Create an mp4 audio elementary stream descriptor full box
-aacLcAudioSampleEntry
-  :: SamplingFreqTable
-  ->ChannelConfigTable
+aacAudioSampleEntrySimple
+  :: Bool
+  -> SamplingFreqTable
+  -> ChannelConfigTable
   -> U16 "samplesize"
   -> AudioSampleEntry AudioEsd
-aacLcAudioSampleEntry sf cc sampleSize =
+aacAudioSampleEntrySimple sbr sf cc sampleSize =
   AudioSampleEntry
     (Constant
     :+ Custom (Scalar (channelConfigToNumber cc))
@@ -41,10 +42,28 @@ aacLcAudioSampleEntry sf cc sampleSize =
     :+ 0
     :+ Constant
     :+ Custom (Scalar (sampleRateToNumber sf * 65536))
-    :+ (AudioEsd
-         (esdBox
-          (Proxy @Mp4AacLcEsDescriptor) False 0 0 0
-          (sampleRateToEnum sf) (channelConfigToEnum cc))))
+    :+ mkAudioEsdAacLcOrHeAac sbr sf cc)
+
+mkAudioEsdAacLcOrHeAac
+  :: Bool
+  -> SamplingFreqTable
+  -> ChannelConfigTable
+  -> AudioEsd
+mkAudioEsdAacLcOrHeAac False sf cc =
+    AudioEsd
+      (esdBox
+        (Proxy @Mp4AacLcEsDescriptor)
+        False 0 0 0
+        (sampleRateToEnum sf)
+        (channelConfigToEnum cc))
+mkAudioEsdAacLcOrHeAac True sf cc =
+    AudioEsd
+      (esdBox
+        (Proxy @Mp4HeAacEsDescriptor)
+        False 0 0 0
+        (sampleRateToEnum sf)
+        (channelConfigToEnum cc)
+        (sampleRateToEnum sf))
 
 -- | Consists of an 'ElementaryStreamDescriptor' derived from a 'DecoderSpecificInfo'.
 newtype AudioEsd =
@@ -52,15 +71,22 @@ newtype AudioEsd =
   deriving (IsBoxContent)
 
 type Mp4AacLcEsDescriptor  =
-  ESDescriptorMp4File DefaultEsId Mp4AacLcAudioDecoderConfigDescriptor
+  ESDescriptorMp4File DefaultEsId
+  (Mp4AacAudioDecoderConfigDescriptor
+    (AudioConfigAacLc
+      (EnumParam "samplingFreq" SamplingFreq)
+      (EnumParam "channelConfig" ChannelConfig)))
 
-type Mp4AacLcAudioDecoderConfigDescriptor  =
+type Mp4HeAacEsDescriptor  =
+  ESDescriptorMp4File DefaultEsId
+  (Mp4AacAudioDecoderConfigDescriptor
+    (AudioConfigHeAac
+      (EnumParam "samplingFreq" SamplingFreq)
+      (EnumParam "channelConfig" ChannelConfig)))
+
+type Mp4AacAudioDecoderConfigDescriptor cfg =
   DecoderConfigDescriptor
   'AudioIso14496_3
   'AudioStream
-  '[NonSbrAudioConfig
-     'AacLc
-     DefaultGASpecificConfig
-     (EnumParam "samplingFreq" SamplingFreq)
-     (EnumParam "channelConfig" ChannelConfig)]
+  '[cfg]
   '[]

@@ -5,12 +5,20 @@ module Data.ByteString.Mp4.Boxes.AudioSpecificConfig where
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 
--- * Interface from ISO 14496-3 (Audio)
+-- * Decoder Configuration for ISO 14496-3 (Audio)
 
--- | A minimalistic audio config without SBR
--- TODO add error protection specific config
--- TODO add sbr support
-data NonSbrAudioConfig
+-- | A audio config using 'AudioConfigAacMinimal' for AAC-LC.
+type AudioConfigAacLc freq channels =
+  AudioConfigAacMinimal 'AacLc DefaultGASpecificConfig freq channels
+
+-- | A audio config using 'AudioConfigSbrExplicitHierachical' for HE-AAC (v1) in
+-- dual rate mode.
+type AudioConfigHeAac freq channels =
+  AudioConfigSbrExplicitHierachical
+  'AacLc DefaultGASpecificConfig freq channels freq
+
+-- | A minimalistic audio config without sync and error protection
+data AudioConfigAacMinimal
   :: AudioObjectTypeId
   -> IsAn AudioSubConfig
   -> IsAn (EnumOf SamplingFreqTable)
@@ -18,23 +26,45 @@ data NonSbrAudioConfig
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance
-  Eval (NonSbrAudioConfig
+  Eval (AudioConfigAacMinimal
         aoId
         subCfg
         freq
         channels) =
    ('MkDecoderSpecificInfo
-    (("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
-     #+$ (AudioConfigBeginning
-             aoId
-             (BitRecordOfEnum freq)
-             (BitRecordOfEnum channels)
-         :+: (BitRecordOfAudioSubConfig subCfg))))
+    (AudioConfigCommon aoId freq channels (BitRecordOfAudioSubConfig subCfg)))
 
-type AudioConfigBeginning audioObjId freq channels =
-      AudioObjectTypeRec audioObjId
-  :+: freq
-  :+: channels
+-- | A audio config with SBR signalled explicit and hierachical
+data AudioConfigSbrExplicitHierachical
+  :: AudioObjectTypeId
+  -> IsAn AudioSubConfig
+  -> IsAn (EnumOf SamplingFreqTable)
+  -> IsAn (EnumOf ChannelConfigTable)
+  -> IsAn (EnumOf SamplingFreqTable) -- extension SamplingFrequency
+  -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
+
+type instance
+  Eval (AudioConfigSbrExplicitHierachical
+        aoId
+        subCfg
+        freq
+        channels
+        extFreq
+       ) =
+   ('MkDecoderSpecificInfo
+    (AudioConfigCommon 'Sbr freq channels
+     ("SBR audio object type" <:> PutHex8 (FromEnum AudioObjectTypeId aoId)
+      #+: BitRecordOfEnum extFreq
+      :+: AudioObjectTypeRec aoId
+      :+: BitRecordOfAudioSubConfig subCfg)))
+
+-- | Common header for audio specific config
+type AudioConfigCommon aoId samplingFrequencyIndex channels rest =
+  ("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
+  #+$ (AudioObjectTypeRec aoId
+       :+: BitRecordOfEnum samplingFrequencyIndex
+       :+: BitRecordOfEnum channels
+       :+: rest)
 
 -- ** Audio Object Type
 
@@ -74,7 +104,9 @@ data AudioObjectTypeId =
   | AoLayer2                       -- ^ ISO 14496-4 subpart 9
   | AoLayer3                       -- ^ ISO 14496-4 subpart 9
   | AoDst                          -- ^ ISO 14496-4 subpart 10
+  | AotInvalid
 
+type instance FromEnum AudioObjectTypeId 'AotInvalid                     = 0
 type instance FromEnum AudioObjectTypeId 'AacMain                        = 1
 type instance FromEnum AudioObjectTypeId 'AacLc                          = 2
 type instance FromEnum AudioObjectTypeId 'AacSsr                         = 3
