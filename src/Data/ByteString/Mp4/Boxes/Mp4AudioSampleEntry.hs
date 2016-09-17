@@ -16,8 +16,6 @@ import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 -- specific info.
 
 -- | Create an 'AudioSampleEntry' with an 'AudioEsd'
---
--- TODO generalize this, allow all parameters,e.g. also for SBR though the
 audioSampleEntry
   :: U16 "data_reference_index"
   -> AudioSampleEntry AudioEsd
