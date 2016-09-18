@@ -124,6 +124,7 @@ library
                      , DeriveDataTypeable
                      , DeriveFunctor
                      , DeriveGeneric
+                     , DuplicateRecordFields
                      , FlexibleInstances
                      , FlexibleContexts
                      , FunctionalDependencies

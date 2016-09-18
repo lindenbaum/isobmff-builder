@@ -1,7 +1,10 @@
-module Data.ByteString.Mp4.AudioFile where
+module Data.ByteString.Mp4.AudioFile
+ (module Data.ByteString.Mp4.AudioFile,
+  module X)
+where
 
-import Data.ByteString.Mp4.Boxes.AudioSpecificConfig
-import Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
+import Data.ByteString.Mp4.Boxes.AudioSpecificConfig as X
+import Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry as X
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Boxes
 import Data.ByteString.IsoBaseFileFormat.Brands.Dash
@@ -14,11 +17,11 @@ import qualified Data.Text as T
 
 -- | Initialisation segment parameters of an aac audio stream mp4 file.
 data AacMp4StreamConfig =
-  AacMp4StreamConfig { creationTime :: (TS32 "creation_time")
-                     , trackName :: String
-                     , duration :: Integer
-                     , useHeAac :: Bool
-                     , sampleRate :: SamplingFreqTable
+  AacMp4StreamConfig { creationTime  :: (TS32 "creation_time")
+                     , trackName     :: String
+                     , duration      :: Integer
+                     , useHeAac      :: Bool
+                     , sampleRate    :: SamplingFreqTable
                      , channelConfig :: ChannelConfigTable}
 
 -- | Convert a 'SingleAudioTrackInit' record to a generic 'Boxes' collection.
