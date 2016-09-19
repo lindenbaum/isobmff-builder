@@ -24,14 +24,33 @@ import Text.Printf
 data BuilderBox where
   MkBuilderBox :: !Word64 -> !Builder -> BuilderBox
 
+-- | Create a 'Builder' from a 'BitRecord' and store it in a 'BuilderBox'
+bitBuilderBox ::
+  forall (record :: BitRecord) .
+  BitStringBuilderHoley (Proxy record) BuilderBox
+  =>  Proxy record
+  -> ToBitStringBuilder (Proxy record) BuilderBox
+bitBuilderBox = runHoley . bitBuilderBoxHoley
+
+-- | Like 'bitBuilderBox', but 'runHoley' the result and accept as an additional
+-- parameter a wrapper function to wrap the final result (the 'BuilderBox') and
+-- 'runHoley' the whole machiner.
+wrapBitBuilderBox ::
+  forall (record :: BitRecord) wrapped .
+    BitStringBuilderHoley (Proxy record) wrapped
+  => (BuilderBox -> wrapped)
+  -> Proxy record
+  -> ToBitStringBuilder (Proxy record) wrapped
+wrapBitBuilderBox !f !p = runHoley (hoistM f (bitBuilderBoxHoley p))
+
 -- | Create a 'Builder' from a 'BitRecord' and store it in a 'BuilderBox';
 -- return a 'Holey' monoid that does that on 'runHoley'
-bitBuilderBox ::
+bitBuilderBoxHoley ::
   forall (record :: BitRecord) r .
   BitStringBuilderHoley (Proxy record) r
   =>  Proxy record
   -> Holey BuilderBox r (ToBitStringBuilder (Proxy record) r)
-bitBuilderBox !p =
+bitBuilderBoxHoley !p =
   let fromBitStringBuilder !h =
         let (BitStringBuilderState !builder _ !wsize) =
               flushBitStringBuilder
@@ -39,17 +58,6 @@ bitBuilderBox !p =
             !out = MkBuilderBox wsize builder
         in out
   in hoistM fromBitStringBuilder (bitStringBuilderHoley p)
-
--- | Like 'bitBuilderBox', accept as an additional parameter a wrapper function
--- to wrap the final result (the 'BuilderBox') and 'runHoley' the whole
--- machiner.
-wrapBitBuilderBox ::
-  forall (record :: BitRecord) wrapped .
-    BitStringBuilderHoley (Proxy record) wrapped
-  => (BuilderBox -> wrapped)
-  -> Proxy record
-  -> ToBitStringBuilder (Proxy record) wrapped
-wrapBitBuilderBox !f !p = runHoley (hoistM f (bitBuilderBox p))
 
 -- * Low-level interface to building 'BitRecord's and other things
 

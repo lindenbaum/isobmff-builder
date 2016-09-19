@@ -80,18 +80,8 @@ type SegmentLayout =
                , OM  TrackFragment
                     '[ OM_ TrackFragmentHeader
                      , OO_ TrackFragBaseMediaDecodeTime
-                     -- TODO data offset calculation relies on the precise order of these boxes
+                     , SO_ TrackRun
                      ]
                ]
+         , SM_ MediaData
          ]
-
-
-
--- Missing Boxes
--- For media
--- styp
--- moof
--- mfhd
--- traf
--- tfhd
--- trun

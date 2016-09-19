@@ -31,7 +31,7 @@ esdBoxHoley :: forall (record :: IsA (Descriptor 'ES_Descr)) r (rendered :: BitR
              => Proxy record -> Holey EsdBox r (ToBitStringBuilder (Proxy rendered) r)
 esdBoxHoley _p =
   hoistM (fullBox 0 . Esd) $
-  bitBuilderBox (Proxy @rendered)
+  bitBuilderBoxHoley (Proxy @rendered)
 
 type RenderEsDescr (d :: IsA (Descriptor 'ES_Descr)) =
   BitRecordOfDescriptor $~ (Eval d)

@@ -31,18 +31,18 @@ newtype TrackHeader (version :: Nat) where
   deriving (IsBoxContent)
 
 -- | Time and timing information about a track (32bit version).
-type TrackHeaderTimesV0 = TrackHeaderTimes (Scalar Word32)
+type TrackHeaderTimesV0 = TrackHeaderTimes (Scalar Word32) (Template (Scalar Word32 "duration") 0xffffffff)
 
 -- | Time and timing information about a track (64bit version).
-type TrackHeaderTimesV1 = TrackHeaderTimes (Scalar Word64)
+type TrackHeaderTimesV1 = TrackHeaderTimes (Scalar Word64) (Template (Scalar Word64 "duration") 0xffffffffffffffff)
 
 -- | Time and timing information about a track.
-type TrackHeaderTimes uint =
+type TrackHeaderTimes uint dur =
      uint "creation_time"
   :+ uint "modification_time"
   :+ U32 "track_ID"
   :+ Constant (U32 "reserved") 0
-  :+ uint "duration"
+  :+ dur
 
 instance IsBox (TrackHeader version)
 

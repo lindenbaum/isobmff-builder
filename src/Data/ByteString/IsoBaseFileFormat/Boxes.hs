@@ -43,5 +43,6 @@ import           Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragBaseMediaDecod
 import           Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragment                  as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragmentHeader            as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader                    as X
+import           Data.ByteString.IsoBaseFileFormat.Boxes.TrackRun                       as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader               as X
 import           Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry              as X

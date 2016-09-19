@@ -6,8 +6,8 @@ homepage:            https://github.com/sheyll/isobmff-builder#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Sven Heyll
-maintainer:          sven.heyll@gmail.com
-copyright:           2016 Sven Heyll
+maintainer:          sven.heyll@lindenbaum.eu
+copyright:           2016 Sven Heyll, Lindenbaum GmbH
 category:            Codec
 build-type:          Simple
 extra-source-files:   README.md
@@ -73,6 +73,7 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragment
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragmentHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.TrackRun
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry
                      , Data.ByteString.IsoBaseFileFormat.Brands.Dash
