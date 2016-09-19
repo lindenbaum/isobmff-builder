@@ -51,6 +51,8 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Movie
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MovieExtends
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MovieExtendsHeader
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.MovieFragment
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.MovieFragmentHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.MovieHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.NullMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.ProgressiveDownloadInformation
@@ -60,12 +62,16 @@ library
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SampleSize
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SampleTable
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SampleToChunk
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.SegmentType
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Skip
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SoundMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.SpecificMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TimeToSample
                      , Data.ByteString.IsoBaseFileFormat.Boxes.Track
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackExtends
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragBaseMediaDecodeTime
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragment
+                     , Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragmentHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VideoMediaHeader
                      , Data.ByteString.IsoBaseFileFormat.Boxes.VisualSampleEntry
@@ -162,6 +168,7 @@ test-suite spec
                      , Mp4AudioSampleEntry
                      , MediaFileSpec
                      , Mp4AudioFileSpec
+                     , Mp4AudioSegmentSpec
                      , TypeLayoutSpec
   build-depends:       base >= 4.9 && < 5
                      , bytestring >= 0.10.8.1

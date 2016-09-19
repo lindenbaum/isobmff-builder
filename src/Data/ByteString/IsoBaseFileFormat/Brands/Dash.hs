@@ -25,6 +25,10 @@ dash = Proxy
 -- TODO add iso1 iso2 iso3 iso5 isom formats
 instance IsMediaFileFormat (Dash v) where
   type BoxLayout (Dash v) =
+    OneOf '[ MovieLayout v
+           , SegmentLayout]
+
+type MovieLayout v =
     Boxes
      '[ OM_ FileType
       , OM  Movie
@@ -68,6 +72,19 @@ type TrackLayout version handlerType =
                 ]
          ]
     ])
+
+type SegmentLayout =
+  Boxes '[ OM_ SegmentType
+         , OM  MovieFragment
+              '[ OM_ MovieFragmentHeader
+               , OM  TrackFragment
+                    '[ OM_ TrackFragmentHeader
+                     , OO_ TrackFragBaseMediaDecodeTime
+                     -- TODO data offset calculation relies on the precise order of these boxes
+                     ]
+               ]
+         ]
+
 
 
 -- Missing Boxes
