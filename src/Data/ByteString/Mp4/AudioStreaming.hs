@@ -1,46 +1,50 @@
 -- | A single-track AAC audio streaming utility wrapping 'AudioFile' for
 -- streaming via e.g. DASH.
 module Data.ByteString.Mp4.AudioStreaming
-  (AacStreamingContext, aacStreamingBegin, aacStreamNextSample, aacStreamFlush, module X)
+  ( StreamingContext
+  , getStreamConfig, getStreamBaseTime, getStreamSequence
+  , streamInit, streamNextSample, streamFlush, module X)
 
 where
 
 import Data.ByteString.Mp4.AudioFile as X
 import qualified Data.ByteString as BS
 
--- | Contains the configuration and state for the creation of a DASH audio
--- stream.
-data AacStreamingContext =
-  AacStreamingContext { acConfig          :: !AacMp4StreamConfig
-                      , acSequence        :: !Word32
-                      , acBaseTime        :: !Word32
-                      , acSegmentDuration :: !Word32
-                      , acSegments        :: ![(Word32, BS.ByteString)]
-                      }
-
--- | Initiate the 'AacStreamingContext' and create the /MP4 init segment/.
+-- | Initiate the 'StreamingContext' and create the /MP4 init segment/.
 -- This lives in 'IO' because it read the current time from the real world.
-aacStreamingBegin
+streamInit
   :: String
   -> Word32
   -> Bool
   -> SamplingFreqTable
   -> ChannelConfigTable
-  -> IO (Builder, AacStreamingContext)
-aacStreamingBegin !trackTitle !segmentDurationMillis !sbr !rate !channels = do
+  -> IO (Builder, StreamingContext)
+streamInit !trackTitle !segmentDurationMillis !sbr !rate !channels = do
   t <- mp4CurrentTime
   let !cfg = AacMp4StreamConfig t trackTitle sbr rate channels
       !dur = sampleRateToNumber rate * segmentDurationMillis `div` 1000
-  return (buildAacMp4StreamInit cfg, AacStreamingContext cfg 0 0 dur [])
+  return (buildAacMp4StreamInit cfg, StreamingContext cfg 0 0 dur [])
+
+-- | Return the 'AacMp4StreamConfig' from an 'StreamingContext'
+getStreamConfig :: StreamingContext -> AacMp4StreamConfig
+getStreamConfig StreamingContext{..} = acConfig
+
+-- | Return the current base decoding time
+getStreamBaseTime :: StreamingContext -> Word32
+getStreamBaseTime StreamingContext{..} = acBaseTime
+
+-- | Return the current sequence number
+getStreamSequence :: StreamingContext -> Word32
+getStreamSequence StreamingContext{..} = acSequence
 
 -- | Enqueue a sample, if enough samples are accumulated, generate the next segment
-aacStreamNextSample
+streamNextSample
   :: Word32
   -> BS.ByteString
-  -> AacStreamingContext
-  -> (Maybe Builder, AacStreamingContext)
-aacStreamNextSample !duration !sample !ctx@AacStreamingContext{..} =
-  let !segments = (duration, sample) : acSegments
+  -> StreamingContext
+  -> (Maybe Builder, StreamingContext)
+streamNextSample !sampleCount !sample !ctx@StreamingContext{..} =
+  let !segments = (sampleCount, sample) : acSegments
       !currentDuration = sum $ fst <$> segments
   in
     if currentDuration >= acSegmentDuration then
@@ -54,10 +58,10 @@ aacStreamNextSample !duration !sample !ctx@AacStreamingContext{..} =
       (Nothing, ctx{ acSegments = segments })
 
 -- | Enqueue a sample, if enough samples are accumulated, generate the next segment
-aacStreamFlush
-  ::  AacStreamingContext
-  -> (Maybe Builder, AacStreamingContext)
-aacStreamFlush !ctx@AacStreamingContext{..} =
+streamFlush
+  ::  StreamingContext
+  -> (Maybe Builder, StreamingContext)
+streamFlush !ctx@StreamingContext{..} =
   let !currentDuration = sum $ fst <$> acSegments
   in
     if currentDuration > 0 then
@@ -68,3 +72,14 @@ aacStreamFlush !ctx@AacStreamingContext{..} =
                        , acSegments = []}
       in (Just tf, ctx')
     else (Nothing, ctx)
+
+
+-- | Contains the configuration and state for the creation of a DASH audio
+-- stream.
+data StreamingContext =
+  StreamingContext { acConfig          :: !AacMp4StreamConfig
+                   , acSequence        :: !Word32
+                   , acBaseTime        :: !Word32
+                   , acSegmentDuration :: !Word32
+                   , acSegments        :: ![(Word32, BS.ByteString)]
+                   }
