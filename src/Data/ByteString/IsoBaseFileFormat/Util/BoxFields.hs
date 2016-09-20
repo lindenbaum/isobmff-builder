@@ -68,39 +68,39 @@ newtype Scalar scalartype (label :: k) =
 -- | Relabel a scalar value, e.g. convert a @Scalar U32 "foo"@ to a @Scalar U32
 -- "bar"@.
 relabelScalar :: Scalar t l -> Scalar t l'
-relabelScalar (Scalar x) = Scalar x
+relabelScalar (Scalar !x) = Scalar x
 
 instance IsBoxContent (Scalar Word8 label) where
   boxSize _ = 1
-  boxBuilder (Scalar v) = word8 v
+  boxBuilder (Scalar !v) = word8 v
 
 instance IsBoxContent (Scalar Word16 label) where
   boxSize _ = 2
-  boxBuilder (Scalar v) = word16BE v
+  boxBuilder (Scalar !v) = word16BE v
 
 instance IsBoxContent (Scalar Word32 label) where
   boxSize _ = 4
-  boxBuilder (Scalar v) = word32BE v
+  boxBuilder (Scalar !v) = word32BE v
 
 instance IsBoxContent (Scalar Word64 label) where
   boxSize _ = 8
-  boxBuilder (Scalar v) = word64BE v
+  boxBuilder (Scalar !v) = word64BE v
 
 instance IsBoxContent (Scalar Int8 label) where
   boxSize _ = 1
-  boxBuilder (Scalar v) = int8 v
+  boxBuilder (Scalar !v) = int8 v
 
 instance IsBoxContent (Scalar Int16 label) where
   boxSize _ = 2
-  boxBuilder (Scalar v) = int16BE v
+  boxBuilder (Scalar !v) = int16BE v
 
 instance IsBoxContent (Scalar Int32 label) where
   boxSize _ = 4
-  boxBuilder (Scalar v) = int32BE v
+  boxBuilder (Scalar !v) = int32BE v
 
 instance IsBoxContent (Scalar Int64 label) where
   boxSize _ = 8
-  boxBuilder (Scalar v) = int64BE v
+  boxBuilder (Scalar !v) = int64BE v
 
 instance (KnownNat scalar,Num o) => FromTypeLit (Scalar o label) scalar where
   fromTypeLit _ = Scalar $ fromIntegral $ natVal (Proxy :: Proxy scalar)
@@ -170,14 +170,14 @@ instance (Default o,KnownNat (len :: Nat))
 
 instance (Num o,IsBoxContent (Scalar o label))
   => IsBoxContent (ScalarArray label len o) where
-  boxSize (ScalarArray vec) =
+  boxSize (ScalarArray !vec) =
     fromIntegral (Vec.length vec) * boxSize (Scalar 0 :: Scalar o label)
-  boxBuilder (ScalarArray vec) =
+  boxBuilder (ScalarArray !vec) =
     Vec.foldl' mappend
                mempty
                (Vec.map (boxBuilder . mkScalar) vec)
     where mkScalar :: o -> Scalar o label
-          mkScalar = Scalar
+          !mkScalar = Scalar
 
 -- | Internal function
 fromList :: forall label n o.
@@ -215,7 +215,8 @@ instance Default (Constant o v) where
 -- 'Constant' this is a wrapper around a field, e.g. a 'Scalar' or
 -- 'ScalarArray', with a type level default value. The wrapped content must
 -- implement 'FromTypeLit'.
-data Template o v where
+data Template o v where -- TODO replace with newtype and replace the 'Template'
+                        -- case with the 'Default' instance.
         Template :: Template o v
         Custom :: !o -> Template o v
 
@@ -225,7 +226,7 @@ instance Default (Template o v) where
 -- | Get a value from a 'Template'.
 templateValue :: FromTypeLit o v => Template o v -> o
 templateValue d@Template = fromTypeLit d
-templateValue (Custom v) = v
+templateValue (Custom !v) = v
 
 instance (IsBoxContent o,FromTypeLit o v) => IsBoxContent (Template o v) where
   boxSize = boxSize . templateValue
@@ -243,9 +244,9 @@ instance forall arr o len (label :: Symbol) .
   fromTypeLit _ =
     let s = sing :: Sing arr
         vs :: [Integer]
-        vs = fromSing s
+        !vs = fromSing s
         vs' :: [o]
-        vs' = fromIntegral <$> vs
+        !vs' = fromIntegral <$> vs
     in (fromList vs' :: ScalarArray label len o)
 
 instance KnownSymbol str => FromTypeLit T.Text (str :: Symbol) where
@@ -264,13 +265,13 @@ type IsTextSize len = (KnownNat len, 1 <= len, len <= 255)
 
 instance IsTextSize len => IsBoxContent (FixSizeText len label) where
   boxSize    _               = fromIntegral (natVal (Proxy :: Proxy len))
-  boxBuilder (FixSizeText t) =
+  boxBuilder (FixSizeText !t) =
     let
       -- leave room for the size byte
-      maxSize             = fromIntegral (natVal (Proxy :: Proxy len) - 1)
-      displayableText     = B.take maxSize (T.encodeUtf8 t)
-      displayableTextSize = B.length displayableText
-      paddingSize         = max 0 (maxSize - displayableTextSize)
+      !maxSize             = fromIntegral (natVal (Proxy :: Proxy len) - 1)
+      !displayableText     = B.take maxSize (T.encodeUtf8 t)
+      !displayableTextSize = B.length displayableText
+      !paddingSize         = max 0 (maxSize - displayableTextSize)
       in word8 (fromIntegral displayableTextSize)
          <> byteString displayableText
          <> fold (replicate paddingSize (word8 0))
@@ -283,18 +284,18 @@ newtype U32Text (label :: Symbol) where
   U32Text :: Word32 -> U32Text label
 
 instance IsString (U32Text label) where
-  fromString str = U32Text $
-    let cw s c = (0xFF .&. fromIntegral (fromEnum c)) `shiftL` s
+  fromString !str = U32Text $
+    let cw !s !c = (0xFF .&. fromIntegral (fromEnum c)) `shiftL` s
         in case str of
-             []          -> 0x20202020
-             [a]         -> cw 24 a .|. 0x00202020
-             [a,b]       -> cw 24 a .|. cw 16 b  .|. 0x00002020
-             [a,b,c]     -> cw 24 a .|. cw 16 b  .|. cw 8 c  .|. 0x20
-             (a:b:c:d:_) -> cw 24 a .|. cw 16 b  .|. cw 8 c  .|. cw 0 d
+             []                           -> 0x20202020
+             [!a]                         -> cw 24 a .|. 0x00202020
+             [!a,!b]                      -> cw 24 a .|. cw 16 b  .|. 0x00002020
+             [!a,!b,!c]                   -> cw 24 a .|. cw 16 b  .|. cw 8 c  .|. 0x20
+             (!a : (!b) : (!c) : (!d) :_) -> cw 24 a .|. cw 16 b  .|. cw 8 c  .|. cw 0 d
 
 instance IsBoxContent (U32Text label) where
   boxSize _ = 4
-  boxBuilder (U32Text t) = word32BE t
+  boxBuilder (U32Text !t) = word32BE t
 
 instance KnownSymbol str => FromTypeLit (U32Text label) (str :: Symbol) where
   fromTypeLit = fromString . symbolVal

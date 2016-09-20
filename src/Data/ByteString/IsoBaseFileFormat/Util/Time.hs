@@ -1,7 +1,8 @@
 -- | Time and timing utilities.
 module Data.ByteString.IsoBaseFileFormat.Util.Time
        (referenceTime, utcToMp4, mp4CurrentTime, durationFromSeconds,
-        TimeScale, Timing, type TS, type TS32, type TS64)
+        oneSecond32, oneSecond64,
+        TimeScale(..), Timing, type TS, type TS32, type TS64, type Ticks(..))
        where
 
 import Data.Time.Clock
@@ -11,6 +12,8 @@ import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import Data.ByteString.IsoBaseFileFormat.ReExports
+import Data.Typeable
+import Foreign.Storable
 
 -- * Absolute Dates
 -- | According to the standard, fields with absolute dates and times are in
@@ -42,7 +45,15 @@ mp4CurrentTime = utcToMp4 <$> getCurrentTime
 --   Based on history and tradition this value is @90000@.
 --   MPEG-2 TS defines a single clock for each program, running at 27MHz. The
 --   timescale of MPEG-2 TS Hint Tracks should be divisable by 90000.
-type TimeScale = Template (U32 "timescale") 90000
+newtype TimeScale = TimeScale {fromTimeScale :: Word32}
+  deriving (Show,Eq,Num,Bounded,Ord,Bits,Integral,Typeable,Storable,Enum,Real)
+
+instance Default TimeScale where
+  def = TimeScale 90000
+
+instance IsBoxContent TimeScale where
+  boxSize = boxSize . fromTimeScale
+  boxBuilder = boxBuilder . fromTimeScale
 
 -- | Utility function to convert seconds (Integers) to any 'Num' using a
 -- 'TimeScale', Since 'Scalar' has a 'Num' instance this can be used to generate
@@ -50,8 +61,28 @@ type TimeScale = Template (U32 "timescale") 90000
 durationFromSeconds :: Num t
                     => TimeScale -> Integer -> t
 durationFromSeconds timeScale seconds =
-  let timeScaleI = fromIntegral $ fromScalar $ templateValue timeScale
+  let timeScaleI = fromIntegral timeScale
   in timeScaleI * fromInteger seconds
+
+-- | Utility function to generate the equivalent of one second (@1 s@)
+oneSecond32 = Scalar . flip durationFromSeconds 1
+oneSecond32 :: TimeScale -> TS32 label
+
+-- | Utility function to generate the equivalent of one second (@1 s@)
+oneSecond64 :: TimeScale -> TS64 label
+oneSecond64 = Scalar . flip durationFromSeconds 1
+
+-- | A type that denotes a time relative to a 'TimeScale' which is included in
+-- its type. 'Ticks' is the number of time units passed, where each time unit
+-- has a physical duration of @timescale * 1/s@ i.e. @timescale@ 'Ticks' last
+-- about @1 s@.
+-- TODO use this instead of raw Word32s
+newtype Ticks (perSecond :: Nat) = Ticks {fromTicks :: Word32}
+  deriving (Show,Eq,Num,Bounded,Ord,Bits,Integral,Typeable,Storable,Enum,Real)
+
+instance IsBoxContent (Ticks n) where
+  boxSize = boxSize . fromTicks
+  boxBuilder = boxBuilder . fromTicks
 
 -- | Time and timing information about a movie.
 --
@@ -69,12 +100,12 @@ type family TS (version :: Nat) (label :: Symbol) :: Type where
   TS 0 s = TS32 s
   TS 1 s = TS64 s
 
-type TimingV0 = TimingImpl (Scalar Word32)
+type TimingV0 = TimingImpl (Scalar Word32) (TS 0 "duration")
 
-type TimingV1 = TimingImpl (Scalar Word64)
+type TimingV1 = TimingImpl (Scalar Word64) (TS 1 "duration")
 
-type TimingImpl uint =
+type TimingImpl uint dur =
      uint "creation_time"
   :+ uint "modification_time"
   :+ TimeScale
-  :+ uint "duration"
+  :+ dur

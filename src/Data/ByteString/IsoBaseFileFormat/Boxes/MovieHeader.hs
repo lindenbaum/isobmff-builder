@@ -39,10 +39,14 @@ newtype MovieHeader (version :: Nat) where
     deriving (IsBoxContent)
 
 -- | Time and timing information about a movie (32bit version).
-type MovieHeaderTimesV0 = MovieHeaderTimes (Scalar Word32)
+type MovieHeaderTimesV0 = MovieHeaderTimes
+                             (Scalar Word32)
+                             (Template (U32 "duration") 0xffffffff)
 
 -- | Time and timing information about a movie (64bit version).
-type MovieHeaderTimesV1 = MovieHeaderTimes (Scalar Word64)
+type MovieHeaderTimesV1 = MovieHeaderTimes
+                             (Scalar Word64)
+                             (Template (U64 "duration") 0xffffffffffffffff)
 
 -- | Time and timing information about a movie.
 --
@@ -51,11 +55,11 @@ type MovieHeaderTimesV1 = MovieHeaderTimes (Scalar Word64)
 -- number of time units that pass one second. The time coordinate system is used
 -- by e.g. the duration field, which by the way contains the duration of the
 -- longest track, if known, or simply the equivalent of 1s.
-type MovieHeaderTimes uint =
+type MovieHeaderTimes uint dur =
       uint "creation_time"
    :+ uint "modification_time"
    :+ TimeScale
-   :+ uint "duration"
+   :+ dur
 
 instance IsBox (MovieHeader version)
 

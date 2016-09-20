@@ -1,25 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Mp4AudioSegmentSpec (spec) where
 
+import qualified Data.ByteString                             as BS
 import           Data.ByteString.IsoBaseFileFormat.ReExports
-import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields
-import           Data.ByteString.IsoBaseFileFormat.Util.Time
-import qualified Data.ByteString.Lazy                             as BL
+import qualified Data.ByteString.Lazy                        as BL
 import           Data.ByteString.Mp4.AudioFile
-import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig
-import           Data.ByteString.Mp4.Boxes.BaseDescriptor
-import           Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
-import           Data.Text                                        ()
+import           Data.Text                                   ()
 import           Test.Hspec
 
 spec :: Spec
 spec =
-  do describe "AacMp4StreamFragment" $
-       do it "renders some output at all" $
-            do let args = moof
-                   doc = buildAacMp4StreamFragment args
-                   rendered = BL.unpack $ toLazyByteString $ doc
-                   expected =
+  describe "AacMp4TrackFragment" $
+   do let args = moof
+          doc = buildAacMp4TrackFragment args
+          rendered = BL.unpack $ toLazyByteString $ doc
+          expected =
                      [
                       -- styp box
                        0,0,0,32
@@ -29,15 +24,15 @@ spec =
                      ,105,115,111,53
                      ,100,97,115,104
                      ,109,112,52,50
-                     -- moov box
-                     ,0,0,0,64
+                     -- moov box [offset here: 32]
+                     ,0,0,0,107
                      ,109,111,111,102
                      -- mfhd box
                      ,0,0,0,16
                      ,109,102,104,100
-                     ,0,0,0,0,0,0,5,57
+                     ,0,0,0,0,0,0,0,13
                      -- traf
-                     ,0,0,0,40
+                     ,0,0,0,83
                      ,116,114,97,102
                      -- tfhd
                      ,0,0,0,16
@@ -46,12 +41,33 @@ spec =
                      -- tfdt
                      ,0,0,0,16
                      ,116,102,100,116
-                     ,0,0,0,0,0,1,17,42]
+                     ,0,0,0,0,0,0,0,37
+                     -- trun [offset here: 100]
+                     ,0,0,0,43
+                     ,116,114,117,110
+                     ,0,7,1
+                     ,0,0,0,2
+                     ,0,0,0,107
+                     -- sample 1
+                     ,0,0,0,23 -- duration
+                     ,0,0,0,192 -- length
+                     ,0,32,0,0 -- flags
+                     -- sample 1
+                     ,0,0,0,23
+                     ,0,0,0,192
+                     ,0,32,0,0
+                     -- mdat
+                     ,0,0,1,136
+                     ,109,100,97,116]
+                     -- sample 1
+                     ++ [0..191]
+                     -- sample 2
+                     ++ [0..191]
+      it "renders the exact expectected output" $ do
+        BL.writeFile "/tmp/isobmff-test-case-dash-spec.m4s" (BL.pack rendered)
+        rendered `shouldBe` expected
+      it "calculates the data-offset correctly" $
+        drop (107 + 8 + 12 * 2 + 8) rendered `shouldBe` ([0..191] ++ [0..191])
 
-               BL.writeFile "/tmp/isobmff-test-case-dash-spec.m4s" (BL.pack rendered)
-               rendered `shouldBe`
-                 expected
-
-moof :: AacMp4StreamFragment
-moof =
-  AacMp4StreamFragment 1337 777
+moof :: AacMp4TrackFragment
+moof = AacMp4TrackFragment 13 37 (replicate 2 (23, BS.pack [0..191]))

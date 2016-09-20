@@ -1,18 +1,36 @@
 -- | Track header box
-module Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader where
+module Data.ByteString.IsoBaseFileFormat.Boxes.TrackHeader
+  (trackHeader, TrackHeader(..), TrackHeaderFlags(..)
+  , type TrackHeaderTimes , type TrackHeaderTimesV0 , type TrackHeaderTimesV1 ) where
 
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
 import Data.ByteString.IsoBaseFileFormat.Util.Versioned
+import Data.ByteString.IsoBaseFileFormat.Util.Time
 import Data.ByteString.IsoBaseFileFormat.ReExports
 
 -- * @tkhd@ Box
 -- | Create a 'TrackHeader' box.
 trackHeader
-  :: KnownNat version
-  => TrackHeader version -> Box (FullBox (TrackHeader version) version)
-trackHeader = fullBox 0
+  :: forall version . ( KnownNat version )
+  => TrackHeaderFlags
+  -> TrackHeader version
+  -> Box (FullBox (TrackHeader version) version)
+trackHeader flags = fullBox flags'
+  where
+    flags' = case flags of
+      TrackDisabled -> 0
+      TrackEnabled -> 1
+      TrackInMovie -> 3
+      TrackInMovieAndPreview -> 7
+
+data TrackHeaderFlags =
+    TrackDisabled
+  | TrackEnabled
+  | TrackInMovie
+  | TrackInMovieAndPreview
+
 
 -- | Track meta data, indexed by a version.
 newtype TrackHeader (version :: Nat) where
@@ -31,10 +49,14 @@ newtype TrackHeader (version :: Nat) where
   deriving (IsBoxContent)
 
 -- | Time and timing information about a track (32bit version).
-type TrackHeaderTimesV0 = TrackHeaderTimes (Scalar Word32) (Template (Scalar Word32 "duration") 0xffffffff)
+type TrackHeaderTimesV0 = TrackHeaderTimes
+                          (Scalar Word32)
+                          (TS32 "duration")
 
 -- | Time and timing information about a track (64bit version).
-type TrackHeaderTimesV1 = TrackHeaderTimes (Scalar Word64) (Template (Scalar Word64 "duration") 0xffffffffffffffff)
+type TrackHeaderTimesV1 = TrackHeaderTimes
+                          (Scalar Word64)
+                          (TS64 "duration")
 
 -- | Time and timing information about a track.
 type TrackHeaderTimes uint dur =
@@ -44,6 +66,6 @@ type TrackHeaderTimes uint dur =
   :+ Constant (U32 "reserved") 0
   :+ dur
 
-instance IsBox (TrackHeader version)
+instance IsBox (TrackHeader v)
 
-type instance BoxTypeSymbol (TrackHeader version) = "tkhd"
+type instance BoxTypeSymbol (TrackHeader v) = "tkhd"

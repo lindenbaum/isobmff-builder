@@ -24,6 +24,11 @@ import Text.Printf
 data BuilderBox where
   MkBuilderBox :: !Word64 -> !Builder -> BuilderBox
 
+instance Monoid BuilderBox where
+  mempty = MkBuilderBox 0 mempty
+  mappend (MkBuilderBox !ls !lb) (MkBuilderBox !rs !rb) =
+    MkBuilderBox (ls + rs) (lb <> rb)
+
 -- | Create a 'Builder' from a 'BitRecord' and store it in a 'BuilderBox'
 bitBuilderBox ::
   forall (record :: BitRecord) .

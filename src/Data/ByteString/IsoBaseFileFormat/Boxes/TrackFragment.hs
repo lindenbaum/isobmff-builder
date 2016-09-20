@@ -17,3 +17,7 @@ instance IsBox TrackFragment where
   type BoxContent TrackFragment = ()
 
 type instance BoxTypeSymbol TrackFragment = "traf"
+
+-- | Return the static size of the empty box
+trackFragmentStaticSize :: Num a => a
+trackFragmentStaticSize = fromBoxSize 0 (boxSize (trackFragment NoBoxes))

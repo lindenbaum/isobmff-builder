@@ -135,6 +135,10 @@ data BoxSize
   | BoxSize !Word64
   deriving (Show,Eq)
 
+fromBoxSize :: Num a => a -> BoxSize -> a
+fromBoxSize !fallback UnlimitedSize = fallback
+fromBoxSize _fallback (BoxSize !s) = fromIntegral s
+
 instance IsBoxContent BoxSize where
   boxSize _ = BoxSize 4
   boxBuilder UnlimitedSize = word32BE 0

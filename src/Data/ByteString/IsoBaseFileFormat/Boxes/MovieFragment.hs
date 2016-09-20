@@ -14,3 +14,7 @@ instance IsBox MovieFragment where
   type BoxContent MovieFragment = ()
 
 type instance BoxTypeSymbol MovieFragment = "moof"
+
+-- | Return the static size of the empty box
+movieFragmentStaticSize :: Num a => a
+movieFragmentStaticSize = fromBoxSize 0 (boxSize (movieFragment NoBoxes))

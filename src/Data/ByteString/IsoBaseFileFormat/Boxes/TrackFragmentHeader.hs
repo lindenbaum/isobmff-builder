@@ -27,3 +27,7 @@ newtype TrackFragmentHeader where
 instance IsBox TrackFragmentHeader
 
 type instance BoxTypeSymbol TrackFragmentHeader = "tfhd"
+
+-- | Return the static size of the empty box
+trackFragmentHeaderStaticSize :: Num a => a
+trackFragmentHeaderStaticSize = fromBoxSize 0 (boxSize (trackFragmentHeader def))
