@@ -58,7 +58,7 @@ data TrackRunFlagsIso5
 
 type Header (t :: IsA (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
       "version"                   @: FieldU8  := 0 -- TODO allow version 1
-  .+:                                Field  4 := 0
+  .+:                                Field 12 := 0
   .+: "sample-scto-present"       @: Flag     := sctop
   .+: "sample-flags-present"      @: Flag     := sfp
   .+: "sample-size-present"       @: Flag     := ssp

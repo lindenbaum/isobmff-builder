@@ -25,14 +25,14 @@ spec =
                      ,100,97,115,104
                      ,109,112,52,50
                      -- moov box [offset here: 32]
-                     ,0,0,0,107
+                     ,0,0,0,108
                      ,109,111,111,102
                      -- mfhd box
                      ,0,0,0,16
                      ,109,102,104,100
                      ,0,0,0,0,0,0,0,13
                      -- traf
-                     ,0,0,0,83
+                     ,0,0,0,84
                      ,116,114,97,102
                      -- tfhd
                      ,0,0,0,16
@@ -43,11 +43,11 @@ spec =
                      ,116,102,100,116
                      ,0,0,0,0,0,0,0,37
                      -- trun [offset here: 100]
-                     ,0,0,0,43
+                     ,0,0,0,44
                      ,116,114,117,110
-                     ,0,7,1
+                     ,0,0,7,1
                      ,0,0,0,2
-                     ,0,0,0,107
+                     ,0,0,0,108
                      -- sample 1
                      ,0,0,0,23 -- duration
                      ,0,0,0,192 -- length
@@ -67,7 +67,7 @@ spec =
         BL.writeFile "/tmp/isobmff-test-case-dash-spec.m4s" (BL.pack rendered)
         rendered `shouldBe` expected
       it "calculates the data-offset correctly" $
-        drop (107 + 8 + 12 * 2 + 8) rendered `shouldBe` ([0..191] ++ [0..191])
+        drop (108 + 8 + 12 * 2 + 8) rendered `shouldBe` ([0..191] ++ [0..191])
 
 moof :: AacMp4TrackFragment
 moof = AacMp4TrackFragment 13 37 (replicate 2 (23, BS.pack [0..191]))
