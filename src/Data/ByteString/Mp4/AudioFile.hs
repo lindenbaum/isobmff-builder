@@ -1,3 +1,4 @@
+-- | A single-track AAC audio file
 module Data.ByteString.Mp4.AudioFile
  (module Data.ByteString.Mp4.AudioFile,
   module X)
@@ -15,6 +16,7 @@ import Data.ByteString.IsoBaseFileFormat.Util.Time  as X
 import Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
+
 
 -- | Initialisation segment parameters of an aac audio stream mp4 file.
 data AacMp4StreamConfig =

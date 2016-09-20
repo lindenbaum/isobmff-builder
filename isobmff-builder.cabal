@@ -93,6 +93,7 @@ library
                      , Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
                      , Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor
                      , Data.ByteString.Mp4.AudioFile
+                     , Data.ByteString.Mp4.AudioStreaming
                      , Data.Kind.Extra
                      , Data.Type.BitRecords
                      , Data.Type.BitRecords.Arithmetic
