@@ -3,10 +3,11 @@
 module Data.ByteString.Mp4.AudioStreaming
   ( StreamingContext
   , getStreamConfig, getStreamBaseTime, getStreamSequence
-  , streamInit, streamNextSample, streamFlush, module X)
+  , streamInit, streamInitUtc, streamNextSample, streamFlush, module X)
 
 where
 
+import Data.Time.Clock (UTCTime)
 import Data.ByteString.Mp4.AudioFile as X
 import qualified Data.ByteString as BS
 
@@ -24,6 +25,22 @@ streamInit !trackTitle !segmentDurationMillis !sbr !rate !channels = do
   let !cfg = AacMp4StreamConfig t trackTitle sbr rate channels
       !dur = sampleRateToNumber rate * segmentDurationMillis `div` 1000
   return (buildAacMp4StreamInit cfg, StreamingContext cfg 0 0 dur [])
+
+-- | Initiate the 'StreamingContext' and create the /MP4 init segment/.
+-- This lives in 'IO' because it read the current time from the real world.
+streamInitUtc -- TODO remove 'streamInit' in favor of this ??
+  :: String
+  -> UTCTime
+  -> Word32
+  -> Bool
+  -> SamplingFreqTable
+  -> ChannelConfigTable
+  -> (Builder, StreamingContext)
+streamInitUtc !trackTitle !availabilityStartTime !segmentDurationMillis !sbr !rate !channels =
+  let !cfg = AacMp4StreamConfig t0 trackTitle sbr rate channels
+      !t0  = utcToMp4 availabilityStartTime
+      !dur = sampleRateToNumber rate * segmentDurationMillis `div` 1000
+  in (buildAacMp4StreamInit cfg, StreamingContext cfg 0 0 dur [])
 
 -- | Return the 'AacMp4StreamConfig' from an 'StreamingContext'
 getStreamConfig :: StreamingContext -> AacMp4StreamConfig
@@ -50,7 +67,7 @@ streamNextSample !sampleCount !sample !ctx@StreamingContext{..} =
     if currentDuration >= acSegmentDuration then
       let !tf = buildAacMp4TrackFragment $
                 AacMp4TrackFragment acSequence acBaseTime (reverse segments)
-          !ctx' = ctx { acSequence = acSequence + fromIntegral (length segments)
+          !ctx' = ctx { acSequence = acSequence + 1
                        , acBaseTime = acBaseTime + currentDuration
                        , acSegments = []}
       in (Just tf, ctx')
@@ -67,7 +84,7 @@ streamFlush !ctx@StreamingContext{..} =
     if currentDuration > 0 then
       let !tf = buildAacMp4TrackFragment $
                 AacMp4TrackFragment acSequence acBaseTime (reverse acSegments)
-          !ctx' = ctx { acSequence = acSequence + fromIntegral (length acSegments)
+          !ctx' = ctx { acSequence = acSequence + 1
                        , acBaseTime = acBaseTime + currentDuration
                        , acSegments = []}
       in (Just tf, ctx')
