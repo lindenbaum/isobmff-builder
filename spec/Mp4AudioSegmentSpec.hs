@@ -14,6 +14,7 @@ spec =
    do let args = moof
           doc = buildAacMp4TrackFragment args
           rendered = BL.unpack $ toLazyByteString $ doc
+          dataOffset = 116
           expected =
                      [
                       -- styp box
@@ -47,7 +48,7 @@ spec =
                      ,116,114,117,110
                      ,0,0,7,1
                      ,0,0,0,2
-                     ,0,0,0,108
+                     ,0,0,0,dataOffset
                      -- sample 1
                      ,0,0,0,23 -- duration
                      ,0,0,0,192 -- length
@@ -67,7 +68,8 @@ spec =
         BL.writeFile "/tmp/isobmff-test-case-dash-spec.m4s" (BL.pack rendered)
         rendered `shouldBe` expected
       it "calculates the data-offset correctly" $
-        drop (108 + 8 + 12 * 2 + 8) rendered `shouldBe` ([0..191] ++ [0..191])
+        drop ((fromIntegral dataOffset) + 8 + 12 * 2) rendered
+        `shouldBe` ([0..191] ++ [0..191])
 
 moof :: AacMp4TrackFragment
 moof = AacMp4TrackFragment 13 37 (replicate 2 (23, BS.pack [0..191]))
