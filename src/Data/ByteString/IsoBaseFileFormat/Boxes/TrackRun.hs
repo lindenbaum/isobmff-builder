@@ -19,8 +19,8 @@ trackRunIso5 !mdatOffset !samples = Box c
       where
         !header = h (fromIntegral sampleCount) dataOffset
           where
-            !dataOffset       = 8 -- box size field + fourcc code
-                                  + mdatOffset
+            !dataOffset       = 8 -- box size field + fourcc code of this very box
+                                  + mdatOffset + 8  -- +8 because we want to skip the box header od the mdat box
                                   + fromIntegral
                                   ((headerStaticSize `div` 8)
                                    + sampleCount * (sampleStaticSize `div` 8))
