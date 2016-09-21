@@ -1,7 +1,7 @@
 -- | Time and timing utilities.
 module Data.ByteString.IsoBaseFileFormat.Util.Time
        (referenceTime, utcToMp4, mp4CurrentTime, durationFromSeconds,
-        oneSecond32, oneSecond64,
+        oneSecond32, oneSecond64, diffTimeToTicks,ticksToDiffTime,
         TimeScale(..), Timing, type TS, type TS32, type TS64, type Ticks(..))
        where
 
@@ -34,6 +34,22 @@ utcToMp4 u =
       secondsSinceReferenceTime =
         div picoSecondsDiffNumerator picoSecondsDiffDenominator
   in fromIntegral secondsSinceReferenceTime
+
+
+-- | Convert a 'NominalDiffTime' to the number of 'Ticks' with respect
+-- to a given 'TimeScale'.
+diffTimeToTicks :: Integral t
+                => NominalDiffTime -> TimeScale -> t
+diffTimeToTicks !diff (TimeScale !scale) =
+  round (diff * (fromIntegral scale))
+
+-- | Convert a 'NominalDiffTime' to the number of 'Ticks' with respect
+-- to a given 'TimeScale'.
+ticksToDiffTime :: Integral t
+                => t -> TimeScale -> NominalDiffTime
+ticksToDiffTime !t (TimeScale !scale) =
+  fromRational (toInteger t % toInteger scale)
+
 
 -- | Get the current time as number of seconds since 'referenceTime'
 mp4CurrentTime :: Num t

@@ -26,6 +26,10 @@ data AacMp4StreamConfig =
                      , sampleRate    :: !SamplingFreqTable
                      , channelConfig :: !ChannelConfigTable}
 
+getAacMp4StreamConfigTimeScale :: AacMp4StreamConfig -> TimeScale
+getAacMp4StreamConfigTimeScale AacMp4StreamConfig{..} =
+  TimeScale (sampleRateToNumber sampleRate)
+
 -- | Convert a 'AacMp4StreamConfig' record to a generic 'Boxes' collection.
 buildAacMp4StreamInit
   :: AacMp4StreamConfig -> Builder

@@ -3,11 +3,12 @@
 module Data.ByteString.Mp4.AudioStreaming
   ( StreamingContext
   , getStreamConfig, getStreamBaseTime, getStreamSequence
+  , addToBaseTime, getSegmentDuration
   , streamInit, streamInitUtc, streamNextSample, streamFlush, module X)
 
 where
 
-import Data.Time.Clock (UTCTime)
+import Data.Time.Clock
 import Data.ByteString.Mp4.AudioFile as X
 import qualified Data.ByteString as BS
 
@@ -90,6 +91,14 @@ streamFlush !ctx@StreamingContext{..} =
       in (Just tf, ctx')
     else (Nothing, ctx)
 
+-- | Contains a sample in the ISO14496 style interpretation, i.e.
+-- a smallish buffer of e.g. 20ms audio data or a single video frame.
+-- A sample has some kind of time or at least order associated to it.
+-- TODO not right now, add it
+--
+-- Also a sample has a duration measured as the sampleCount. TODO make this a
+-- real data type, and possible refactor this to be a seperate issue from
+-- filling stream gaps and determining the offsets and the decoding time stamp.
 
 -- | Contains the configuration and state for the creation of a DASH audio
 -- stream.
@@ -100,3 +109,19 @@ data StreamingContext =
                    , acSegmentDuration :: !Word32
                    , acSegments        :: ![(Word32, BS.ByteString)]
                    }
+
+addToBaseTime :: StreamingContext -> NominalDiffTime -> StreamingContext
+addToBaseTime !sc !dt =
+  sc { acSequence = acSequence sc + deltaSegments
+     , acBaseTime = acBaseTime sc + deltaBaseTime }
+  where
+    !deltaSegments = round (dt / segmentDuration)
+    !deltaBaseTime = diffTimeToTicks dt timeScale
+    !segmentDuration = ticksToDiffTime (acSegmentDuration sc) timeScale
+    !timeScale = getAacMp4StreamConfigTimeScale (acConfig sc)
+
+getSegmentDuration :: StreamingContext -> NominalDiffTime
+getSegmentDuration !sc = segmentDuration
+  where
+    !segmentDuration = ticksToDiffTime (acSegmentDuration sc) timeScale
+    !timeScale = getAacMp4StreamConfigTimeScale (acConfig sc)
