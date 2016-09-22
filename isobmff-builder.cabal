@@ -92,7 +92,6 @@ library
                      , Data.ByteString.Mp4.Boxes.Expandable
                      , Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
                      , Data.ByteString.Mp4.Boxes.SyncLayerConfigDescriptor
-                     , Data.ByteString.Mp4.AudioFile
                      , Data.ByteString.Mp4.AudioStreaming
                      , Data.Kind.Extra
                      , Data.Type.BitRecords
@@ -119,7 +118,7 @@ library
                      , pretty-types >= 0.2.3 && < 0.3
                      , template-haskell >= 2.11 && < 3
   default-language:    Haskell2010
-  ghc-options:       -Wall -funbox-strict-fields -fno-warn-unused-do-bind -fprint-explicit-kinds
+  ghc-options:       -O2 -Wall -funbox-strict-fields -fno-warn-unused-do-bind -fprint-explicit-kinds
   if flag(tracing)
     cpp-options:      -DTRACING
   else

@@ -2,8 +2,6 @@ resolver: lts-7.0
 
 packages:
 - '.'
-- '../type-spec'
-- '../pretty-types'
 
 extra-deps:
 - pretty-types-0.2.3.1

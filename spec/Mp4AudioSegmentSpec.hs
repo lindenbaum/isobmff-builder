@@ -4,7 +4,7 @@ module Mp4AudioSegmentSpec (spec) where
 import qualified Data.ByteString                             as BS
 import           Data.ByteString.IsoBaseFileFormat.ReExports
 import qualified Data.ByteString.Lazy                        as BL
-import           Data.ByteString.Mp4.AudioFile
+import           Data.ByteString.Mp4.AudioStreaming
 import           Data.Text                                   ()
 import           Test.Hspec
 
