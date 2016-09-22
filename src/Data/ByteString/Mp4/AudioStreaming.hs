@@ -27,7 +27,7 @@ import           Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig    as X
 import           Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry    as X
 import qualified Data.Text                                        as T
-import Text.Printf
+
 
 -- | Initiate the 'StreamingContext' and create the /MP4 init segment/.
 -- This lives in 'IO' because it read the current time from the real world.
