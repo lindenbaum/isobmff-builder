@@ -9,7 +9,8 @@ module Data.ByteString.Mp4.AudioStreaming
     , buildAacMp4StreamInit
     , getStreamConfig, getStreamBaseTime, getStreamSequence
     , addToBaseTime, getSegmentDuration
-    , streamInit, streamInitUtc, streamNextSample, streamFlush, module X)
+    , streamInitINTERNAL_TESTING, streamInitUtc, streamNextSample, streamFlush
+    , module X)
 
 where
 
@@ -31,17 +32,18 @@ import qualified Data.Text                                        as T
 
 -- | Initiate the 'StreamingContext' and create the /MP4 init segment/.
 -- This lives in 'IO' because it read the current time from the real world.
-streamInit
+streamInitINTERNAL_TESTING
   :: String
-  -> Word32
+  -> NominalDiffTime
   -> Bool
   -> SamplingFreqTable
   -> ChannelConfigTable
   -> IO (InitSegment, StreamingContext)
-streamInit !trackTitle !segmentDurationMillis !sbr !rate !channels = do
+streamInitINTERNAL_TESTING !trackTitle !segmentDuration !sbr !rate !channels = do
   t <- mp4CurrentTime
   let !cfg = AacMp4StreamConfig t trackTitle sbr rate channels
-      !dur = sampleRateToNumber rate * segmentDurationMillis `div` 1000
+      !dur = diffTimeToTicks segmentDuration timeScale
+      !timeScale = getAacMp4StreamConfigTimeScale cfg
   return (InitSegment
           (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
          , StreamingContext cfg 0 0 dur [])
@@ -59,15 +61,16 @@ instance Show InitSegment where
 streamInitUtc -- TODO remove 'streamInit' in favor of this ??
   :: String
   -> UTCTime
-  -> Word32
+  -> NominalDiffTime
   -> Bool
   -> SamplingFreqTable
   -> ChannelConfigTable
   -> (InitSegment, StreamingContext)
-streamInitUtc !trackTitle !availabilityStartTime !segmentDurationMillis !sbr !rate !channels =
+streamInitUtc !trackTitle !availabilityStartTime !segmentDuration !sbr !rate !channels =
   let !cfg = AacMp4StreamConfig t0 trackTitle sbr rate channels
       !t0  = utcToMp4 availabilityStartTime
-      !dur = sampleRateToNumber rate * segmentDurationMillis `div` 1000
+      !dur = diffTimeToTicks segmentDuration timeScale
+      !timeScale = getAacMp4StreamConfigTimeScale cfg
   in (InitSegment
       (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
      , StreamingContext cfg 0 0 dur [])
@@ -146,8 +149,8 @@ instance Show Segment where
 data StreamingContext =
   StreamingContext { acConfig          :: !AacMp4StreamConfig
                    , acSequence        :: !Word32
-                   , acBaseTime        :: !Word32
-                   , acSegmentDuration :: !Word32
+                   , acBaseTime        :: !Word32 -- (in mp4 utc time)
+                   , acSegmentDuration :: !Word32 -- (in ticks)
                    , acSegments        :: ![(Word32, BS.ByteString)]
                    }
 
