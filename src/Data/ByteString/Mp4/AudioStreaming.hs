@@ -46,7 +46,7 @@ streamInitINTERNAL_TESTING !trackTitle !segmentDuration !sbr !rate !channels = d
       !timeScale = getAacMp4StreamConfigTimeScale cfg
   return (InitSegment
           (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
-         , StreamingContext cfg 0 0 dur [])
+         , StreamingContext cfg dur 0 0 [])
 
 newtype InitSegment =
   InitSegment
@@ -73,7 +73,7 @@ streamInitUtc !trackTitle !availabilityStartTime !segmentDuration !sbr !rate !ch
       !timeScale = getAacMp4StreamConfigTimeScale cfg
   in (InitSegment
       (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
-     , StreamingContext cfg 0 0 dur [])
+     , StreamingContext cfg dur 0 0 [])
 
 -- | Return the 'AacMp4StreamConfig' from an 'StreamingContext'
 getStreamConfig :: StreamingContext -> AacMp4StreamConfig
@@ -94,15 +94,20 @@ streamNextSample
   -> StreamingContext
   -> (Maybe Segment, StreamingContext)
 streamNextSample !sampleCount !sample !ctx@StreamingContext{..} =
-  let !segments = (sampleCount, sample) : acSegments
-      !currentDuration = sum $ fst <$> segments
+  let !segments       = (sampleCount, sample) : acSegments
+      !currentEndTime = sum (fst <$> segments) + acBaseTime
+      !nextBaseTime   = (acSequence + 1) * acSegmentDuration
   in
-    if currentDuration >= acSegmentDuration then
-      let !tf = buildAacMp4TrackFragment $
+    if currentEndTime >= nextBaseTime then
+      let !ctx' =
+            ctx { acSequence              = currentEndTime `div` acSegmentDuration
+                , acBaseTime              = currentEndTime
+                , acSegments              = []
+                }
+          -- Output to write into fragment:
+          !tf = buildAacMp4TrackFragment $
                 AacMp4TrackFragment acSequence acBaseTime (reverse segments)
-          !ctx' = ctx { acSequence = acSequence + 1
-                       , acBaseTime = acBaseTime + currentDuration
-                       , acSegments = []}
+
       in (Just (Segment acSequence acBaseTime (BL.toStrict (toLazyByteString tf))), ctx')
     else
       (Nothing, ctx{ acSegments = segments })
@@ -112,14 +117,14 @@ streamFlush
   ::  StreamingContext
   -> (Maybe Segment, StreamingContext)
 streamFlush !ctx@StreamingContext{..} =
-  let !currentDuration = sum $ fst <$> acSegments
+  let currentEndTime = sum (fst <$> acSegments) + acBaseTime
   in
-    if currentDuration > 0 then
+    if not (null acSegments) then
       let !tf = buildAacMp4TrackFragment $
                 AacMp4TrackFragment acSequence acBaseTime (reverse acSegments)
-          !ctx' = ctx { acSequence = acSequence + 1
-                       , acBaseTime = acBaseTime + currentDuration
-                       , acSegments = []}
+          !ctx' = ctx { acSequence = currentEndTime `div` acSegmentDuration
+                      , acBaseTime = currentEndTime
+                      , acSegments = []}
       in (Just (Segment acSequence acBaseTime (BL.toStrict (toLazyByteString tf))), ctx')
     else (Nothing, ctx)
 
@@ -148,21 +153,24 @@ instance Show Segment where
 -- stream.
 data StreamingContext =
   StreamingContext { acConfig          :: !AacMp4StreamConfig
-                   , acSequence        :: !Word32
-                   , acBaseTime        :: !Word32 -- (in mp4 utc time)
                    , acSegmentDuration :: !Word32 -- (in ticks)
+                   , acSequence        :: !Word32
+                   , acBaseTime        :: !Word32
                    , acSegments        :: ![(Word32, BS.ByteString)]
                    }
 
 addToBaseTime :: StreamingContext -> NominalDiffTime -> StreamingContext
 addToBaseTime !sc !dt =
-  sc { acSequence = acSequence sc + deltaSegments
-     , acBaseTime = acBaseTime sc + deltaBaseTime }
+  sc { acSequence = newSequence
+     , acBaseTime = diffTimeToTicks newBaseTime timeScale}
   where
-    !deltaSegments = round (dt / segmentDuration)
-    !deltaBaseTime = diffTimeToTicks dt timeScale
-    !segmentDuration = ticksToDiffTime (acSegmentDuration sc) timeScale
     !timeScale = getAacMp4StreamConfigTimeScale (acConfig sc)
+    !newSequence = round (newBaseTime / segmentDuration)
+      where
+        !segmentDuration = ticksToDiffTime (acSegmentDuration sc) timeScale
+    !newBaseTime = dt + baseTime
+      where
+        !baseTime = ticksToDiffTime (acBaseTime sc) timeScale
 
 getSegmentDuration :: StreamingContext -> NominalDiffTime
 getSegmentDuration !sc = segmentDuration
