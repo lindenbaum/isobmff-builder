@@ -3,29 +3,30 @@ module Data.ByteString.IsoBaseFileFormat.Boxes.TrackFragBaseMediaDecodeTime wher
 
 import Data.ByteString.IsoBaseFileFormat.Box
 import Data.ByteString.IsoBaseFileFormat.Util.FullBox
-import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
-import Data.Word
-import Data.Default
+import Data.ByteString.IsoBaseFileFormat.Util.Time
+import GHC.TypeLits
 
 -- * @tfdt@ Box
 
 -- | Construct a 'TrackFragBaseMediaDecodeTime box.
 trackFragBaseMediaDecodeTime -- TODO allow 64 bit variant
-  :: Word32 -> Box (FullBox TrackFragBaseMediaDecodeTime 0)
-trackFragBaseMediaDecodeTime = fullBox 0 . TrackFragBaseMediaDecodeTime . Scalar
+  :: KnownNat version
+  => TS version "track-fragment-base-media-decode-time"
+  -> Box (FullBox (TrackFragBaseMediaDecodeTime version) version)
+trackFragBaseMediaDecodeTime = fullBox 0 . TrackFragBaseMediaDecodeTime
 
 -- | Track fragment media base decode time
-newtype TrackFragBaseMediaDecodeTime where
+newtype TrackFragBaseMediaDecodeTime (version :: Nat) where
   TrackFragBaseMediaDecodeTime
-    :: U32 "track-fragment-base-media-decode-time"
-    -> TrackFragBaseMediaDecodeTime
+    :: TS version "track-fragment-base-media-decode-time"
+    -> TrackFragBaseMediaDecodeTime version
   deriving (IsBoxContent)
 
-instance IsBox TrackFragBaseMediaDecodeTime
+instance IsBox (TrackFragBaseMediaDecodeTime v)
 
-type instance BoxTypeSymbol TrackFragBaseMediaDecodeTime = "tfdt"
+type instance BoxTypeSymbol (TrackFragBaseMediaDecodeTime v) = "tfdt"
 
 -- | Return the static size of the empty box
-trackFragBaseMediaDecodeTimeStaticSize :: Num a => a
-trackFragBaseMediaDecodeTimeStaticSize =
-  fromBoxSize 0 (boxSize (trackFragBaseMediaDecodeTime def))
+trackFragBaseMediaDecodeTimeStaticSize64 :: Num a => a
+trackFragBaseMediaDecodeTimeStaticSize64 =
+  fromBoxSize 0 (boxSize (trackFragBaseMediaDecodeTime (TSv1 0)))

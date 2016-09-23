@@ -14,7 +14,7 @@ spec =
    do let args = moof
           doc = buildAacMp4TrackFragment args
           rendered = BL.unpack $ toLazyByteString $ doc
-          dataOffset = 116
+          dataOffset = 120
           expected =
                      [
                       -- styp box
@@ -26,24 +26,24 @@ spec =
                      ,100,97,115,104
                      ,109,112,52,50
                      -- moov box [offset here: 32]
-                     ,0,0,0,108
+                     ,0,0,0,112
                      ,109,111,111,102
                      -- mfhd box
                      ,0,0,0,16
                      ,109,102,104,100
                      ,0,0,0,0,0,0,0,13
                      -- traf
-                     ,0,0,0,84
+                     ,0,0,0,88
                      ,116,114,97,102
                      -- tfhd
                      ,0,0,0,16
                      ,116,102,104,100
                      ,0,2,0,0,0,0,0,1
                      -- tfdt
-                     ,0,0,0,16
+                     ,0,0,0,20
                      ,116,102,100,116
-                     ,0,0,0,0,0,0,0,37
-                     -- trun [offset here: 100]
+                     ,1,0,0,0,0,0,0,0,0,0,0,37
+                     -- trun
                      ,0,0,0,44
                      ,116,114,117,110
                      ,0,0,7,1

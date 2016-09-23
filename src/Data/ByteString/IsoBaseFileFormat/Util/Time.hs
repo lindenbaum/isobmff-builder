@@ -2,7 +2,7 @@
 module Data.ByteString.IsoBaseFileFormat.Util.Time
        (referenceTime, utcToMp4, mp4CurrentTime, durationFromSeconds,
         oneSecond32, oneSecond64, diffTimeToTicks,ticksToDiffTime,
-        TimeScale(..), Timing, type TS, type TS32, type TS64, type Ticks(..))
+        TimeScale(..), Timing, TS(..), type TS32, type TS64, type Ticks(..))
        where
 
 import Data.Time.Clock
@@ -112,9 +112,15 @@ type Timing (version :: Nat) = Versioned TimingV0 TimingV1 version
 type TS32 = Scalar Word32
 type TS64 = Scalar Word64
 
-type family TS (version :: Nat) (label :: Symbol) :: Type where
-  TS 0 s = TS32 s
-  TS 1 s = TS64 s
+data TS (version :: Nat) (label :: Symbol) where
+  TSv0 :: !Word32 -> TS 0 label
+  TSv1 :: !Word64 -> TS 1 label
+
+instance IsBoxContent (TS v n) where
+  boxSize (TSv0 _t) = 4
+  boxSize (TSv1 _t) = 8
+  boxBuilder (TSv0 !t) = word32BE t
+  boxBuilder (TSv1 !t) = word64BE t
 
 type TimingV0 = TimingImpl (Scalar Word32) (TS 0 "duration")
 

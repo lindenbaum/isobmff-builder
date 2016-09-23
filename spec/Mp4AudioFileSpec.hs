@@ -6,9 +6,6 @@ import Data.ByteString.Mp4.Boxes.BaseDescriptor
 import Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 import Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
 import Data.ByteString.Mp4.AudioStreaming
-import Data.ByteString.IsoBaseFileFormat.ReExports
-import Data.ByteString.IsoBaseFileFormat.Util.BoxFields
-import Data.ByteString.IsoBaseFileFormat.Util.Time
 import qualified Data.ByteString.Lazy as BL
 import Data.Text ()
 

@@ -80,7 +80,7 @@ getStreamConfig :: StreamingContext -> AacMp4StreamConfig
 getStreamConfig StreamingContext{..} = acConfig
 
 -- | Return the current base decoding time
-getStreamBaseTime :: StreamingContext -> Word32
+getStreamBaseTime :: StreamingContext -> Word64
 getStreamBaseTime StreamingContext{..} = acBaseTime
 
 -- | Return the current sequence number
@@ -95,14 +95,15 @@ streamNextSample
   -> (Maybe Segment, StreamingContext)
 streamNextSample !sampleCount !sample !ctx@StreamingContext{..} =
   let !segments       = (sampleCount, sample) : acSegments
-      !currentEndTime = sum (fst <$> segments) + acBaseTime
-      !nextBaseTime   = (acSequence + 1) * acSegmentDuration
+      !currentEndTime = fromIntegral (sum (fst <$> segments)) + acBaseTime
+      !nextBaseTime   = (fromIntegral acSequence + 1) * acSegmentDuration64
+      !acSegmentDuration64 = fromIntegral acSegmentDuration
   in
     if currentEndTime >= nextBaseTime then
       let !ctx' =
-            ctx { acSequence              = currentEndTime `div` acSegmentDuration
-                , acBaseTime              = currentEndTime
-                , acSegments              = []
+            ctx { acSequence = fromIntegral (currentEndTime `div` acSegmentDuration64)
+                , acBaseTime = currentEndTime
+                , acSegments = []
                 }
           -- Output to write into fragment:
           !tf = buildAacMp4TrackFragment $
@@ -117,12 +118,13 @@ streamFlush
   ::  StreamingContext
   -> (Maybe Segment, StreamingContext)
 streamFlush !ctx@StreamingContext{..} =
-  let currentEndTime = sum (fst <$> acSegments) + acBaseTime
+  let currentEndTime = fromIntegral (sum (fst <$> acSegments)) + acBaseTime
   in
     if not (null acSegments) then
       let !tf = buildAacMp4TrackFragment $
                 AacMp4TrackFragment acSequence acBaseTime (reverse acSegments)
-          !ctx' = ctx { acSequence = currentEndTime `div` acSegmentDuration
+          !ctx' = ctx { acSequence = fromIntegral
+                        (currentEndTime `div` fromIntegral acSegmentDuration)
                       , acBaseTime = currentEndTime
                       , acSegments = []}
       in (Just (Segment acSequence acBaseTime (BL.toStrict (toLazyByteString tf))), ctx')
@@ -131,7 +133,7 @@ streamFlush !ctx@StreamingContext{..} =
 data Segment =
   Segment
   { segmentSequence :: !Word32
-  , segmentTime     :: !Word32
+  , segmentTime     :: !Word64
   , segmentData     :: !BS.ByteString
   }
 
@@ -153,9 +155,9 @@ instance Show Segment where
 -- stream.
 data StreamingContext =
   StreamingContext { acConfig          :: !AacMp4StreamConfig
-                   , acSegmentDuration :: !Word32 -- (in ticks)
+                   , acSegmentDuration :: !Word64 -- (in ticks)
                    , acSequence        :: !Word32
-                   , acBaseTime        :: !Word32
+                   , acBaseTime        :: !Word64
                    , acSegments        :: ![(Word32, BS.ByteString)]
                    }
 
@@ -207,7 +209,7 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
            V0 (creationTime
                 :+ relabelScalar creationTime
                 :+ def
-                :+ 0)
+                :+ TSv0 0)
             :+ def)
           :. track
             (trackHeader
@@ -224,7 +226,7 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
                              V0 (creationTime
                                   :+ relabelScalar creationTime
                                   :+ timeScaleForSampleRate
-                                  :+ 0)
+                                  :+ TSv0 0)
                              :+ def)
                 :. handler (namedAudioTrackHandler (T.pack trackName))
                 :| mediaInformation
@@ -246,7 +248,7 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
 -- | Media fragment segment parameters of an aac audio stream mp4 file.
 data AacMp4TrackFragment =
   AacMp4TrackFragment { fragmentSampleSequence      :: !Word32
-                      , fragmentBaseMediaDecodeTime :: !Word32
+                      , fragmentBaseMediaDecodeTime :: !Word64
                       , fragmentSamples             :: ![(Word32, BS.ByteString)]
                       }
 
@@ -267,12 +269,12 @@ buildAacMp4TrackFragment AacMp4TrackFragment{..} =
     !styp = segmentTypeBox               (SegmentType "iso5" 0 ["isom","iso5","dash","mp42"])
     !mfhd = movieFragmentHeader          (MovieFragmentHeader (Scalar fragmentSampleSequence))
     !tfhd = trackFragmentHeader          def
-    !tfdt = trackFragBaseMediaDecodeTime fragmentBaseMediaDecodeTime
+    !tfdt = trackFragBaseMediaDecodeTime (TSv1 fragmentBaseMediaDecodeTime)
     !trun = trackRunIso5                 mdatOffset fragmentSamples
       where
         !mdatOffset = movieFragmentStaticSize
                      + movieFragmentHeaderStaticSize
                      + trackFragmentStaticSize
                      + trackFragmentHeaderStaticSize
-                     + trackFragBaseMediaDecodeTimeStaticSize
+                     + trackFragBaseMediaDecodeTimeStaticSize64
     !mdat = mediaData (MediaData (BS.concat (snd <$> fragmentSamples)))

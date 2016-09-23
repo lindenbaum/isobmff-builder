@@ -79,7 +79,7 @@ type SegmentLayout =
               '[ OM_ MovieFragmentHeader
                , OM  TrackFragment
                     '[ OM_ TrackFragmentHeader
-                     , OO_ TrackFragBaseMediaDecodeTime
+                     , OO_ (TrackFragBaseMediaDecodeTime 1)
                      , SO_ TrackRun
                      ]
                ]
