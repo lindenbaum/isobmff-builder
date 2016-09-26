@@ -18,13 +18,11 @@ spec =
           expected =
                      [
                       -- styp box
-                       0,0,0,32
+                       0,0,0,24
                      ,115,116,121,112
-                     ,105,115,111,53,0,0,0,0
-                     ,105,115,111,109
-                     ,105,115,111,53
+                     ,109,115,100,104,0,0,0,0
+                     ,109,115,100,104
                      ,100,97,115,104
-                     ,109,112,52,50
                      -- moov box [offset here: 32]
                      ,0,0,0,112
                      ,109,111,111,102
@@ -68,7 +66,7 @@ spec =
         BL.writeFile "/tmp/isobmff-test-case-dash-spec.m4s" (BL.pack rendered)
         rendered `shouldBe` expected
       it "calculates the data-offset correctly" $
-        drop ((fromIntegral dataOffset) + 8 + 12 * 2) rendered
+        drop ((fromIntegral dataOffset) + 12 * 2) rendered
         `shouldBe` ([0..191] ++ [0..191])
 
 moof :: AacMp4TrackFragment

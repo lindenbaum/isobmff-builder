@@ -246,14 +246,14 @@ data ChannelConfigTable =
   | SinglePairPairLfe
   | SinglePairPairPairLfe
 
-type instance FromEnum ChannelConfigTable 'GasChannelConfig      = 1
-type instance FromEnum ChannelConfigTable 'SingleChannel         = 2
-type instance FromEnum ChannelConfigTable 'ChannelPair           = 3
-type instance FromEnum ChannelConfigTable 'SinglePair            = 4
-type instance FromEnum ChannelConfigTable 'SinglePairSingle      = 5
-type instance FromEnum ChannelConfigTable 'SinglePairPair        = 6
-type instance FromEnum ChannelConfigTable 'SinglePairPairLfe     = 7
-type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 8
+type instance FromEnum ChannelConfigTable 'GasChannelConfig      = 0
+type instance FromEnum ChannelConfigTable 'SingleChannel         = 1
+type instance FromEnum ChannelConfigTable 'ChannelPair           = 2
+type instance FromEnum ChannelConfigTable 'SinglePair            = 3
+type instance FromEnum ChannelConfigTable 'SinglePairSingle      = 4
+type instance FromEnum ChannelConfigTable 'SinglePairPair        = 5
+type instance FromEnum ChannelConfigTable 'SinglePairPairLfe     = 6
+type instance FromEnum ChannelConfigTable 'SinglePairPairPairLfe = 7
 
 channelConfigToNumber :: Num a => ChannelConfigTable -> a
 channelConfigToNumber GasChannelConfig      = 0

@@ -17,7 +17,7 @@ spec = do
       boxSize eb `shouldBe` 39
     it "generates the expected bits" $
       printBuilder (boxBuilder eb)
-      `shouldBe` "<< 00 00 00 27 65 73 64 73 00 00 00 00 03 19 00 01 00 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 a0 06 01 02 >>"
+      `shouldBe` "<< 00 00 00 27 65 73 64 73 00 00 00 00 03 19 00 01 00 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 98 06 01 02 >>"
 
 type TestEsDescriptor  =
   ESDescriptorMp4File

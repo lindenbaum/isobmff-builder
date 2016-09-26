@@ -95,7 +95,7 @@ streamNextSample
   -> (Maybe Segment, StreamingContext)
 streamNextSample !sampleCount !sample !ctx@StreamingContext{..} =
   let !segments       = (sampleCount, sample) : acSegments
-      !currentEndTime = fromIntegral (sum (fst <$> segments)) + acBaseTime
+      !currentEndTime = sampleCountDuration acConfig (sum (fst <$> segments)) + acBaseTime
       !nextBaseTime   = (fromIntegral acSequence + 1) * acSegmentDuration64
       !acSegmentDuration64 = fromIntegral acSegmentDuration
   in
@@ -118,7 +118,8 @@ streamFlush
   ::  StreamingContext
   -> (Maybe Segment, StreamingContext)
 streamFlush !ctx@StreamingContext{..} =
-  let currentEndTime = fromIntegral (sum (fst <$> acSegments)) + acBaseTime
+  let currentEndTime =
+        sampleCountDuration acConfig (sum (fst <$> acSegments)) + acBaseTime
   in
     if not (null acSegments) then
       let !tf = buildAacMp4TrackFragment $
@@ -188,6 +189,10 @@ data AacMp4StreamConfig =
                      , useHeAac      :: !Bool
                      , sampleRate    :: !SamplingFreqTable
                      , channelConfig :: !ChannelConfigTable}
+
+sampleCountDuration :: AacMp4StreamConfig -> Word32 -> Word64
+sampleCountDuration (AacMp4StreamConfig _ _ _ _ c) r =
+  fromIntegral r `div` channelConfigToNumber c
 
 getAacMp4StreamConfigTimeScale :: AacMp4StreamConfig -> TimeScale
 getAacMp4StreamConfigTimeScale AacMp4StreamConfig{..} =
@@ -266,7 +271,7 @@ buildAacMp4TrackFragment AacMp4TrackFragment{..} =
                 :| trun))
       :| mdat)
   where
-    !styp = segmentTypeBox               (SegmentType "iso5" 0 ["isom","iso5","dash","mp42"])
+    !styp = segmentTypeBox               (SegmentType "msdh" 0 ["msdh","dash"])
     !mfhd = movieFragmentHeader          (MovieFragmentHeader (Scalar fragmentSampleSequence))
     !tfhd = trackFragmentHeader          def
     !tfdt = trackFragBaseMediaDecodeTime (TSv1 fragmentBaseMediaDecodeTime)

@@ -35,7 +35,7 @@ spec =
                 3
                 (MkEnumValue (Proxy @'SF16000))
                 (MkEnumValue (Proxy @'SingleChannel))
-             expexted = "<< 04 11 40 17 00 00 01 00 00 00 02 00 00 00 03 05 02 14 10 >>"
+             expexted = "<< 04 11 40 17 00 00 01 00 00 00 02 00 00 00 03 05 02 14 08 >>"
          in actual `shouldBe` expexted
      describe "Mp4AacLcEsDescriptor" $
        do it "can be transformed to binary output" $
@@ -44,7 +44,7 @@ spec =
                              (MkEnumValue (Proxy @'SF48000))
                              (MkEnumValue (Proxy @'SingleChannel))
             `shouldBe`
-              "<< 03 19 00 01 00 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 90 06 01 02 >>"
+              "<< 03 19 00 01 00 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 88 06 01 02 >>"
           it "can be pretty printed" $
             showRecord (Proxy @(BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
             `shouldStartWith` "base-descriptor: 03\n"
@@ -56,7 +56,7 @@ spec =
                              (MkEnumValue (Proxy @'SingleChannel))
                              (MkEnumValue (Proxy @'SF24000))
             `shouldBe`
-              "<< 03 1a 00 01 00 04 12 40 15 00 00 00 00 00 00 00 00 00 00 00 05 03 29 93 08 03 00 81 00 >>"
+              "<< 03 1a 00 01 00 04 12 40 15 00 00 00 00 00 00 00 00 00 00 00 05 03 29 8b 08 03 00 81 00 >>"
           it "can be pretty printed" $
             showRecord (Proxy @(BitRecordOfDescriptor $~ Eval Mp4HeAacEsDescriptor))
             `shouldStartWith` "base-descriptor: 03\n"
@@ -159,7 +159,7 @@ spec =
                      ,0,0,0,41
                      ,101,115,100,115
                      ,0,0,0,0,3,26,0,1,0,4,18,64,21
-                     ,0,0,0,0,0,0,0,0,0,0,0,5,3,41,145,136,3,0,129,0
+                     ,0,0,0,0,0,0,0,0,0,0,0,5,3,41,137,136,3,0,129,0
                      -- stts box
                      ,0,0,0,16
                      ,115,116,116,115,0,0,0,0,0,0,0,0
