@@ -31,6 +31,7 @@ instance IsMediaFileFormat (Dash v) where
 type MovieLayout v =
     Boxes
      '[ OM_ FileType
+      , OM_ Skip
       , OM  Movie
            '[ OM_ (MovieHeader v)
             , SomeMandatoryX
@@ -43,7 +44,6 @@ type MovieLayout v =
                  '[ OO_ (MovieExtendsHeader v)
                   , OM_ TrackExtends ]
             ]
-     , SO_ Skip
      ]
 
 type TrackLayout version handlerType =
@@ -65,9 +65,9 @@ type TrackLayout version handlerType =
                             '[ SomeMandatoryX (MatchSampleEntry handlerType) ]
                        , OM_ TimeToSample
                        , OM_ SampleToChunk
+                       , OM_ SampleSize
                        , OneOf '[ OM_ ChunkOffset32
                                 , OM_ ChunkOffset64 ]
-                       , OM_ SampleSize
                        ]
                 ]
          ]

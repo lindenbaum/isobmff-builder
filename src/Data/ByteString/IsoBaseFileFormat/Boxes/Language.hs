@@ -32,7 +32,7 @@ instance IsString Language where
   fromString = mkLanguage
 
 instance Default Language where
-  def = mkLanguage "deu"
+  def = mkLanguage "und"
 
 instance IsBoxContent Language where
   boxSize _ = 2

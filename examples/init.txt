@@ -27,8 +27,11 @@ x                                                            1   1   9   0
 =b                                                        00010 - audioObjectType: 2 AAC LC
 =b                                                             0011 - (=3) samplingFrequencyIndex: 48k
 =b                                                                 0010 - channelConfiguration: channel pair
-=b                                                                     0 - frameLenflag           |
-=b                                                                      0 - dependsOnCoreCoder    | GASpecificconfig
-=b                                                                       0 - coreCoderDelay       |
-
-0601 02
+=b                                                                     0 - frameLenflag           \
+=b                                                                      0 - dependsOnCoreCoder     | GASpecificconfig
+=b                                                                       0 - coreCoderDelay       /
+                                                       SLConfigDescrTag
+                                                       | length: 1
+x                                                     06 | Predefined according to iso 14496-14 section 3.1.2
+x                                                       01 |
+x                                                         02
