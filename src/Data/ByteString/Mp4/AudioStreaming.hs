@@ -208,6 +208,7 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
     mediaBuilder dash $
     -- TODO must be iso5 for the way we use elementary stream descriptors
     fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
+    :. skipBox (Skip (BS.pack [0x00,0x00,0x00,0x1d,0x6d,0x6f,0x62,0x69,0x00,0x00,0x00,0x15,0x76,0x69,0x6e,0x66,0x31,0x2e,0x31,0x2e,0x30,0x2d,0x37,0x37,0x36,0x2e,0x65,0x6c,0x36]))
     :| movie
         ( movieHeader
           (MovieHeader $
@@ -215,7 +216,7 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
                 :+ relabelScalar creationTime
                 :+ def
                 :+ TSv0 0)
-            :+ def)
+            :+ def :+ def :+def :+ def :+ def :+ def :+ Custom (Scalar 2))
           :. track
             (trackHeader
               TrackInMovieAndPreview
@@ -246,8 +247,8 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
                                             (Scalar 16))
                      :. timeToSample []
                      :. sampleToChunk []
-                     :. chunkOffset32 []
-                     :| fixedSampleSize 0 0)))))
+                     :. fixedSampleSize 0 0
+                     :| chunkOffset32 [])))))
             :| (movieExtends $: trackExtendsUnknownDuration 1 1))
 
 -- | Media fragment segment parameters of an aac audio stream mp4 file.
