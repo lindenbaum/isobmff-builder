@@ -2,7 +2,7 @@
 module Data.ByteString.IsoBaseFileFormat.Util.Time
        (referenceTime, utcToMp4, mp4CurrentTime, durationFromSeconds,
         oneSecond32, oneSecond64, diffTimeToTicks,ticksToDiffTime,
-        TimeScale(..), Timing, TS(..), type TS32, type TS64, type Ticks(..))
+        TimeScale(..), Timing, TS(..), type TS32, type TS64, Ticks(..), Ticks32(..))
        where
 
 import Data.Time.Clock
@@ -93,12 +93,19 @@ oneSecond64 = Scalar . flip durationFromSeconds 1
 -- has a physical duration of @timescale * 1/s@ i.e. @timescale@ 'Ticks' last
 -- about @1 s@.
 -- TODO use this instead of raw Word32s
-newtype Ticks (perSecond :: Nat) = Ticks {fromTicks :: Word32}
+newtype Ticks (timeScale :: Nat) = MkTicks {fromTicks :: Word64}
   deriving (Show,Eq,Num,Bounded,Ord,Bits,Integral,Typeable,Storable,Enum,Real)
 
 instance IsBoxContent (Ticks n) where
   boxSize = boxSize . fromTicks
   boxBuilder = boxBuilder . fromTicks
+
+newtype Ticks32 (timeScale :: Nat) = MkTicks32 {fromTicks32 :: Word32}
+  deriving (Show,Eq,Num,Bounded,Ord,Bits,Integral,Typeable,Storable,Enum,Real)
+
+instance IsBoxContent (Ticks32 n) where
+  boxSize = boxSize . fromTicks32
+  boxBuilder = boxBuilder . fromTicks32
 
 -- | Time and timing information about a movie.
 --

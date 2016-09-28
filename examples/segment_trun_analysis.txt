@@ -17,12 +17,22 @@ test files:
 0x000701          flags
 0x0000005e        sample_count = 94
 0x000004c8        data_offset
-0x00000400        first sample flags
 -- array: 0
-0x00000095        sample duration
-0x02000000        sample size
-0x00000400        sample flags
+0x00000400        sample duration
+0x00000095        sample size
+0x02000000        sample flags
 
+0    2    0    0    0    0    0    0
+0000 0010 0000 0000 0000 0000 0000 0000
+
+0000 -> 4 bits reserved = 0
+     00 -> is_leading
+       10 -> sample_depends
+          00 -> sample_is_depended_on
+            00 -> sample has redundancy
+               000 -> padding
+                  0 -> non sync
+                    0000 0000 0000 0000  degradation priority
 -------------------------------------------
 my generated file:
 
@@ -40,8 +50,7 @@ my generated file:
 0x000701           flags
 0x0000000f         sample_count = 15
 0x00000114         data offset
-0x00000400         first sample flags
 -- array: 0
-0x00000065         sample duration
-0x00200000         sample size
-0x00000400         sample flags
+0x00000400         sample duration
+0x00000065         sample size
+0x00200000         sample flags

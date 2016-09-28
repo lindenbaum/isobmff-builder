@@ -77,4 +77,4 @@ type Header (t :: IsA (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
 type Sample (t :: IsA (TrackRunFlags dop fsp sdp ssp sfp sctop)) =
       WhenR sdp ('BitRecordMember ("sample-duration" @: FieldU32))
   :+: WhenR ssp ('BitRecordMember ("sample-size"     @: FieldU32))
-  :+: WhenR sfp ('BitRecordMember ("sample-flags"    @: FieldU32 := 0x00200000)) -- TODO allow flags as in TrackExtends
+  :+: WhenR sfp ('BitRecordMember ("sample-flags"    @: FieldU32 := 0x02000000)) -- TODO allow flags as in TrackExtends 
