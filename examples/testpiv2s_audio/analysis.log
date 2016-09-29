@@ -1,0 +1,67 @@
+λ ghci
+GHCi, version 8.0.1: http://www.haskell.org/ghc/  :? for help
+Loaded GHCi configuration from /home/sven/.ghc/ghci.conf
+λ 1024 / 48000
+2.1333333333333333e-2
+λ s40 = 0x000040658b2fcc00
+λ s41 = 0x000040658b314400
+λ s41 - s40
+96256
+λ s42 = 0x000040658b32bc00
+λ s42 - s41
+96256
+λ 256 / 48000
+5.333333333333333e-3
+λ 48000 / 256
+187.5
+λ 737552170 - 737550750
+1420
+λ 2 * (737552170 - 737550750_
+
+<interactive>:10:28: error:
+    parse error (possibly incorrect indentation or mismatched brackets)
+λ 2 * (737552170 - 737550750)
+2840
+λ s50 = 0x000040658b3e7400
+λ s50 - s40
+960512
+λ s49 = 0x000040658b3cfc00
+λ s50 - s49
+96256
+λ s48 =  0x000040658b3b8400
+λ s49 - s48
+96256
+λ s47 = 0x000040658b3a1000
+λ s48 - s47
+95232
+λ s46 = 0x000040658b389800
+λ s47 - s46
+96256
+λ s45 = 0x000040658b372000
+λ s46 - s45
+96256
+λ s44 = 0x000040658b35a800
+λ s45 - s44
+96256
+λ s43 = 0x000040658b343400
+λ s44 - s43
+95232
+λ import Data.Time.Clock
+λ import Data.Time.Calendar
+λ the70s = fromGregorian 1970 01 01
+λ let t0 = UTCTime the70s 0
+λ addUTCTime  (2 * 737550750) t0
+2016-09-28 22:25:00 UTC
+λ addUTCTime  (2 * 737550740) t0
+2016-09-28 22:24:40 UTC
+λ addUTCTime  (2 * 737550770) t0
+2016-09-28 22:25:40 UTC
+λ addUTCTime  (2 * 737552170) t0
+2016-09-28 23:12:20 UTC
+λ diffUTCTime  (addUTCTime  (2 * 737552170) t0) (addUTCTime (2 * 737550750) t0)
+2840s
+λ s50
+70804872000512
+λ t50 = 2 * 737550750
+λ t50 * 48000
+70804872000000
