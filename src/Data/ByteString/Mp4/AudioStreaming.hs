@@ -16,6 +16,7 @@ module Data.ByteString.Mp4.AudioStreaming
 where
 
 import Data.Time.Clock
+import Data.Time.Calendar(fromGregorian)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BL
@@ -118,7 +119,7 @@ getSegmentDuration !sc = segmentDuration
 
 sampleCountDuration :: AacMp4StreamConfig -> Word32 -> Word64
 sampleCountDuration (AacMp4StreamConfig _ _ _ _ c) r =
-  fromIntegral r -- `div` channelConfigToNumber c TODO clean this whole mess up and remove all Word32/Word64 
+  fromIntegral r -- `div` channelConfigToNumber c TODO clean this whole mess up and remove all Word32/Word64
 
 getAacMp4StreamConfigTimeScale :: AacMp4StreamConfig -> TimeScale
 getAacMp4StreamConfigTimeScale AacMp4StreamConfig{..} =
@@ -159,11 +160,15 @@ streamInitUtc -- TODO remove 'streamInit' in favor of this ??
 streamInitUtc !trackTitle !availabilityStartTime !segmentDuration !sbr !rate !channels =
   let !cfg = AacMp4StreamConfig t0 trackTitle sbr rate channels
       !t0  = utcToMp4 availabilityStartTime
+      !secondsSinceThe70s = diffUTCTime availabilityStartTime the70s
+        where
+          !the70s = UTCTime (fromGregorian 1970 01 01) 0
+
       !dur = diffTimeToTicks segmentDuration timeScale
       !timeScale = getAacMp4StreamConfigTimeScale cfg
   in (InitSegment
       (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
-     , StreamingContext cfg dur 0 0 [])
+     , addToBaseTime (StreamingContext cfg dur 0 0 []) secondsSinceThe70s)
 
 -- | Enqueue a sample, if enough samples are accumulated, generate the next segment
 streamNextSample
