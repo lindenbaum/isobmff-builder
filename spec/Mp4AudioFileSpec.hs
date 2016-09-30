@@ -12,7 +12,6 @@ import Data.Text ()
 spec :: Spec
 spec =
   do
-#ifdef COMPLEXTESTS
      describe "Mp4AacAudioDecoderConfigDescriptor" $ do
        it "can be pretty printed" $
          showRecord (Proxy @(BitRecordOfDescriptor
@@ -23,6 +22,7 @@ spec =
          `shouldEndWith`
          "has-gas-extension: boolean := no"
 
+#ifdef COMPLEXTESTS
        it "can be transformed to binary output" $
          let actual =
               bitStringPrinter
@@ -62,7 +62,6 @@ spec =
           it "can be pretty printed" $
             showRecord (Proxy @(BitRecordOfDescriptor $~ Eval Mp4HeAacEsDescriptor))
             `shouldStartWith` "base-descriptor: 03\n"
-#endif
      describe "SingleAudioTrackInit version 0" $
        do it "renders some output at all" $
             do creationTime <- mp4CurrentTime
@@ -186,12 +185,11 @@ spec =
                      -- trex box
                      ,0,0,0,32
                      ,116,114,101,120,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0]
-#ifdef COMPLEXTESTS
                BL.writeFile "/tmp/isobmff-test-case-dash-spec.mp4" (BL.pack rendered)
-#endif
                rendered `shouldBe`
                  expected
 
 exampleSingleTrackInit :: U32 "creation_time" -> AacMp4StreamConfig
 exampleSingleTrackInit creationTime =
   AacMp4StreamConfig creationTime "Hello world" True SF48000 SingleChannel
+#endif
