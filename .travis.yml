@@ -18,7 +18,6 @@ before_install:
 
 install:
   - stack -j 2 setup --no-terminal --resolver nightly
-  - stack -j 2 build --fast --only-snapshot --no-terminal
 
 script:
   - stack -j 2 test --fast --no-terminal
