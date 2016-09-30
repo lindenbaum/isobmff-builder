@@ -152,18 +152,16 @@ instance Show InitSegment where
 streamInitUtc -- TODO remove 'streamInit' in favor of this ??
   :: String
   -> UTCTime
+  -> UTCTime
   -> NominalDiffTime
   -> Bool
   -> SamplingFreqTable
   -> ChannelConfigTable
   -> (InitSegment, StreamingContext)
-streamInitUtc !trackTitle !availabilityStartTime !segmentDuration !sbr !rate !channels =
+streamInitUtc !trackTitle !availabilityStartTime !referenceTime !segmentDuration !sbr !rate !channels =
   let !cfg = AacMp4StreamConfig t0 trackTitle sbr rate channels
       !t0  = utcToMp4 availabilityStartTime
-      !secondsSinceThe70s = diffUTCTime availabilityStartTime the70s
-        where
-          !the70s = UTCTime (fromGregorian 1970 01 01) 0
-
+      !secondsSinceThe70s = diffUTCTime availabilityStartTime referenceTime        
       !dur = diffTimeToTicks segmentDuration timeScale
       !timeScale = getAacMp4StreamConfigTimeScale cfg
   in (InitSegment
