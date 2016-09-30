@@ -11,7 +11,9 @@ import Data.Text ()
 
 spec :: Spec
 spec =
-  do describe "Mp4AacAudioDecoderConfigDescriptor" $ do
+  do
+#ifdef COMPLEXTESTS
+     describe "Mp4AacAudioDecoderConfigDescriptor" $ do
        it "can be pretty printed" $
          showRecord (Proxy @(BitRecordOfDescriptor
                               $~ (Eval (Mp4AacAudioDecoderConfigDescriptor
@@ -60,6 +62,7 @@ spec =
           it "can be pretty printed" $
             showRecord (Proxy @(BitRecordOfDescriptor $~ Eval Mp4HeAacEsDescriptor))
             `shouldStartWith` "base-descriptor: 03\n"
+#endif
      describe "SingleAudioTrackInit version 0" $
        do it "renders some output at all" $
             do creationTime <- mp4CurrentTime
