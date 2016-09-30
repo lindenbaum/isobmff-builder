@@ -11,6 +11,9 @@ import Data.ByteString.IsoBaseFileFormat.Box
 
 spec :: Spec
 spec = do
+#ifndef COMPLEXTESTS
+  return ()
+#else
   describe "EsdBox" $ do
     let eb = esdBox (Proxy @TestEsDescriptor) False 0 0 0
     it "has the correct size" $
@@ -34,3 +37,4 @@ type TestConfigDescriptor  =
      (SetEnum "samplingFreq" SamplingFreq 'SF48000)
      (SetEnum "channelConfig" ChannelConfig 'SinglePair)]
   '[]
+#endif
