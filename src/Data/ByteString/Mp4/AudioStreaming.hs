@@ -16,9 +16,7 @@ module Data.ByteString.Mp4.AudioStreaming
 where
 
 import Data.Time.Clock
-import Data.Time.Calendar(fromGregorian)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BL
 import           Data.ByteString.IsoBaseFileFormat.Box
 import           Data.ByteString.IsoBaseFileFormat.Boxes
@@ -31,6 +29,7 @@ import           Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig    as X
 import           Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry    as X
 import qualified Data.Text                                        as T
+import qualified Data.Text.Encoding                               as TE
 
 -- | Contains a sample in the ISO14496 style interpretation, i.e.
 -- a smallish buffer of e.g. 20ms audio data or a single video frame.
@@ -118,7 +117,7 @@ getSegmentDuration !sc = segmentDuration
     !timeScale = getAacMp4StreamConfigTimeScale (acConfig sc)
 
 sampleCountDuration :: AacMp4StreamConfig -> Word32 -> Word64
-sampleCountDuration (AacMp4StreamConfig _ _ _ _ c) r =
+sampleCountDuration (AacMp4StreamConfig _ _ _ _ _c) r =
   fromIntegral r -- `div` channelConfigToNumber c TODO clean this whole mess up and remove all Word32/Word64
 
 getAacMp4StreamConfigTimeScale :: AacMp4StreamConfig -> TimeScale
@@ -158,15 +157,15 @@ streamInitUtc -- TODO remove 'streamInit' in favor of this ??
   -> SamplingFreqTable
   -> ChannelConfigTable
   -> (InitSegment, StreamingContext)
-streamInitUtc !trackTitle !availabilityStartTime !referenceTime !segmentDuration !sbr !rate !channels =
+streamInitUtc !trackTitle !availabilityStartTime !refTime !segmentDuration !sbr !rate !channels =
   let !cfg = AacMp4StreamConfig t0 trackTitle sbr rate channels
       !t0  = utcToMp4 availabilityStartTime
-      !secondsSinceThe70s = diffUTCTime availabilityStartTime referenceTime        
+      !secondsSinceRef = diffUTCTime availabilityStartTime refTime
       !dur = diffTimeToTicks segmentDuration timeScale
       !timeScale = getAacMp4StreamConfigTimeScale cfg
   in (InitSegment
       (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
-     , addToBaseTime (StreamingContext cfg dur 0 0 []) secondsSinceThe70s)
+     , addToBaseTime (StreamingContext cfg dur 0 0 []) secondsSinceRef)
 
 -- | Enqueue a sample, if enough samples are accumulated, generate the next segment
 streamNextSample
@@ -222,7 +221,7 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
     mediaBuilder dash $
     -- TODO must be iso5 for the way we use elementary stream descriptors
     fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
-    :. skipBox (Skip (BS.pack [0x00,0x00,0x00,0x1d,0x6d,0x6f,0x62,0x69,0x00,0x00,0x00,0x15,0x76,0x69,0x6e,0x66,0x31,0x2e,0x31,0x2e,0x30,0x2d,0x37,0x37,0x36,0x2e,0x65,0x6c,0x36]))
+    :. skipBox (Skip (TE.encodeUtf8 (T.pack "Lindenbaum GmbH isobmff-builder, Sven Heyll 2016")))
     :| movie
         ( movieHeader
           (MovieHeader $
@@ -248,7 +247,7 @@ buildAacMp4StreamInit AacMp4StreamConfig{..} =
                                   :+ timeScaleForSampleRate
                                   :+ TSv0 0)
                              :+ def)
-                :. handler (namedAudioTrackHandler (T.pack "MobiTV Sound Media handler"))
+                :. handler (namedAudioTrackHandler (T.pack trackName))
                 :| mediaInformation
                 ( soundMediaHeader (SoundMediaHeader def)
                   :. (dataInformation $: localMediaDataReference)
