@@ -183,8 +183,9 @@ spec =
                      -- trex box
                      ,0,0,0,32
                      ,116,114,101,120,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0]
-
+#ifdef COMPLEXTESTS
                BL.writeFile "/tmp/isobmff-test-case-dash-spec.mp4" (BL.pack rendered)
+#endif
                rendered `shouldBe`
                  expected
 

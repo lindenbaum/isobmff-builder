@@ -63,7 +63,9 @@ spec =
                      -- sample 2
                      ++ [0..191]
       it "renders the exact expectected output" $ do
+#ifdef COMPLEXTESTS
         BL.writeFile "/tmp/isobmff-test-case-dash-spec.m4s" (BL.pack rendered)
+#endif
         rendered `shouldBe` expected
       it "calculates the data-offset correctly" $
         drop ((fromIntegral dataOffset) + 12 * 2) rendered

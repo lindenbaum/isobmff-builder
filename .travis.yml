@@ -20,4 +20,5 @@ install:
   - stack -j 2 setup --no-terminal --resolver nightly
 
 script:
-  - stack -j 1 test --fast --no-terminal
+  - stack test --flag isobmff-builder:-complextests --flag isobmff-builder:-fullbenchmarks --fast --no-terminal
+  - stack bench --flag isobmff-builder:-complextests --flag isobmff-builder:-fullbenchmarks --fast --no-terminal

@@ -26,7 +26,11 @@ flag tracing
 
 flag fullbenchmarks
   description: Enable the compilation of all benchmarks, takes a long time to compile
-  default:     False
+  default:     True
+
+flag complextests
+  description: Enable the compilation of all unit tests, even those, that take a long time to compile
+  default:     True
 
 library
   hs-source-dirs:      src
@@ -122,6 +126,7 @@ library
     cpp-options:      -DTRACING
   else
     cpp-options:      -DNTRACING
+
   default-extensions:  BangPatterns
                      , ConstraintKinds
                      , CPP
@@ -213,6 +218,10 @@ test-suite spec
                      , UnicodeSyntax
   ghc-options:       -Wall -O0 -j +RTS -A256m -n2m -RTS
                      -fwarn-unused-binds -fno-warn-unused-do-bind -fno-warn-missing-signatures -fprint-explicit-kinds
+  if flag(complextests)
+    cpp-options:      -DCOMPLEXTESTS
+  else
+    cpp-options:      -DNCOMPLEXTESTS
 
 benchmark bit-records
   type:                exitcode-stdio-1.0
@@ -260,7 +269,6 @@ benchmark bit-records
                      -Wall -fwarn-unused-binds
                      -fno-warn-unused-do-bind -fprint-explicit-kinds
   if flag(fullbenchmarks)
-
     cpp-options:       -DFULLBENCHMARKS
   else
     cpp-options:       -DNFULLBENCHMARKS

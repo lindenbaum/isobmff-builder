@@ -25,6 +25,7 @@ spec =
       describe "SomeMandatory" $ do
         it "validates a singleton container" $ test5a `shouldBe` ()
         it "validates a multi-element container" $ test5b `shouldBe` ()
+#ifdef COMPLEXTESTS
       it "validates a Mix of SomeMandatory, OnceOptional, SomeOptional" $ do
         test6a `shouldBe` ()
         test6b `shouldBe` ()
@@ -34,6 +35,7 @@ spec =
         test7a `shouldBe` ()
         test7b `shouldBe` ()
         test7c `shouldBe` ()
+#endif
 
 ----
 data Foo
@@ -84,7 +86,10 @@ test5a = ()
 type TestType5b = Box (ContainerBox Foo '[Bar, Bar])
 test5b :: (IsRuleConform TestType5b TestRule5 ~ 'True) => ()
 test5b = ()
+
+
 ----
+#ifdef COMPLEXTESTS
 type TestRule6 =
            (ContainerBox Foo
            '[ OnceOptionalX (MatchSymbol "baz ")
@@ -106,6 +111,8 @@ test6c = ()
 type TestType6d = Box (ContainerBox Foo '[Bar,Foo])
 test6d :: (IsRuleConform TestType6d TestRule6 ~ 'True) => ()
 test6d = ()
+
+
 ----
 type TestRule7 =
   TopLevel (ContainerBox Foo
@@ -142,3 +149,4 @@ type TestType7c = Box (ContainerBox Foo
                        ])
 test7c :: (IsRuleConform TestType7c TestRule7 ~ 'True) => ()
 test7c = ()
+#endif
