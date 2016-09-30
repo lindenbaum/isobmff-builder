@@ -1,5 +1,5 @@
 name:                isobmff-builder
-version:             0.11.1.0
+version:             0.11.2.0
 synopsis:            A (bytestring-) builder for the ISO-14496-12 base media file format
 description:         Please see README.md
 homepage:            https://github.com/sheyll/isobmff-builder#readme
@@ -15,9 +15,8 @@ extra-source-files:   README.md
                     , .travis.yml
                     , doc/basic-structure.svg
                     , doc/data_reference_box.svg
-                    , examples/734397657.m4s
-                    , examples/init.mp4
-                    , examples/audio.mpd
+                    , doc/ES_Descriptor.markDown
+                    , doc/trun.markDown
                     , .gitignore
 cabal-version:       >=1.10
 
