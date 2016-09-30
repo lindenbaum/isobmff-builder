@@ -20,4 +20,4 @@ install:
   - stack -j 2 setup --no-terminal --resolver nightly
 
 script:
-  - stack -j 2 test --fast --no-terminal
+  - stack -j 1 test --fast --no-terminal
