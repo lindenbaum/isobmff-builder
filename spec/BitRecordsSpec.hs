@@ -94,6 +94,7 @@ basicsSpec = do
   --     it "prints a 'FlagNothing 'Nothing'" $
   --       showRecord (Proxy :: Proxy (ToBitRecord (FlagNothing 'Nothing))) `shouldBe` "Field:\n  Demote Rep: Bool\n  Bits: 1\n  Static Value: 'True"
 
+#ifdef COMPLEXTESTS
 arraySpec :: SpecWith ()
 arraySpec =
     describe "RecArray" $ do
@@ -396,11 +397,14 @@ testNatBits
         (ShouldBe 2 (ShiftR 64 512 8))
 
 testNatBits = Valid
+#endif
+
 
 spec :: Spec
 spec = do
-  sizedSpec
   basicsSpec
+#ifdef COMPLEXTESTS
+  sizedSpec
   arraySpec
   describe "The Set of Type Functions" $
     it "is sound" $ do
@@ -456,7 +460,7 @@ spec = do
                  (bitStringBuilderHoley
                      (bitString 64 0x01020304050607)))
             in actual `shouldBe` expected
-
+#endif
 
 instance (KnownNat n, n <= 64) => Arbitrary (B n) where
   arbitrary = do
