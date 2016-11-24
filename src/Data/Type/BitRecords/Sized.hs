@@ -20,7 +20,7 @@ data Sized
   (r :: BitRecord)
   :: IsA BitRecord
 type instance Eval (Sized sf r) =
-   PutStr "sized-record" #+$ ("size" @: sf := SizeFieldValue r .+: r)
+   "size" @: sf := SizeFieldValue r .+: r
 
 -- | A convenient alias for a 'Sized' with an 'FieldU8' size field.
 type Sized8 t = Sized FieldU8 t
@@ -41,7 +41,7 @@ data SizedField
   (r :: IsA (BitRecordField (u :: BitField (rt' :: Type) (st' :: k0) (len0 :: Nat))))
   :: IsA BitRecord
 type instance Eval (SizedField sf r) =
-   PutStr "sized-field" #+$ "size" @: sf := SizeFieldValue r .+. r
+   "size" @: sf := SizeFieldValue r .+. r
 
 -- | A convenient alias for a 'SizedField' with an 'FieldU8' size field.
 type SizedField8 t = SizedField FieldU8 t

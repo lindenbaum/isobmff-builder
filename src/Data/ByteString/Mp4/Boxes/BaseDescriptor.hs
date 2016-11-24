@@ -17,8 +17,7 @@ data BitRecordOfDescriptor :: IsA (Descriptor c :-> BitRecord)
 
 type instance
   BitRecordOfDescriptor $~ ('MkDescriptor body :: Descriptor (tag :: ClassTag tagInd)) =
-   ("base-descriptor" <:> PutHex8 tagInd)
-   #+$ FieldU8 := tagInd
+   FieldU8 := tagInd
    .+: Eval (StaticExpandableContent body)
 
 type family GetClassTag (c :: ClassTag n) :: Nat where

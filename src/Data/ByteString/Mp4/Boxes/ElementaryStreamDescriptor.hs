@@ -64,14 +64,13 @@ type DefaultStreamPrio = StaticFieldValue "streamPrio" 0
 type instance
   Eval (ESDescriptor esId depEsId url ocrEsId streamPrio decConfig slConfig) =
   'MkDescriptor
-     (PutStr "elementary-stream-descriptor"
-      #+$  "esId" @: FieldU16 :~ esId
+     ("esId" @: FieldU16 :~ esId
       .+: "depEsIdFlag" @: FlagJust depEsId
       .+: "urlFlag" @: FlagJust url
       .+: "ocrEsIdFlag" @: FlagJust ocrEsId
       .+: "streamPriority" @: Field 5 :~ streamPrio
       .+: ("depEsId" @: FieldU16 :+? depEsId)
-      :+: (PutStr "url" #+: (Eval (OptionalRecordOf (Fun1 RecordField) url)))
+      :+: (Eval (OptionalRecordOf (Fun1 RecordField) url))
       :+: ("ocrEsId" @: FieldU16 :+? ocrEsId)
       :+: (BitRecordOfDescriptor $~ Eval decConfig)
       :+: (BitRecordOfDescriptor $~ Eval slConfig)

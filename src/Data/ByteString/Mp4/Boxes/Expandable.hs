@@ -13,10 +13,9 @@ data StaticExpandableContent :: BitRecord -> IsA BitRecord
 type StaticExpandableContentMaxBits = 32
 
 type instance Eval (StaticExpandableContent record) =
-  (("expandable-content-size" <:>
-         PutHex32 (ShiftR StaticExpandableContentMaxBits (BitRecordSize record) 3)
-      #+$ ExpandableSize (ShiftR StaticExpandableContentMaxBits (BitRecordSize record) 3))
-        :+: record)
+     (ExpandableSize
+        (ShiftR StaticExpandableContentMaxBits (BitRecordSize record) 3))
+       :+: record
 
 type family ExpandableSize (s :: Nat) :: BitRecord where
   ExpandableSize 0 = 'EmptyBitRecord

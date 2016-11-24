@@ -49,7 +49,7 @@ spec =
               "<< 03 19 00 01 00 04 11 40 15 00 00 00 00 00 00 00 00 00 00 00 05 02 11 88 06 01 02 >>"
           it "can be pretty printed" $
             showRecord (Proxy @(BitRecordOfDescriptor $~ Eval Mp4AacLcEsDescriptor))
-            `shouldStartWith` "base-descriptor: 03\n"
+            `shouldStartWith` "U8 := hex: 03 (dec: 3)\n"
      describe "Mp4HeAacEsDescriptor" $
        do it "can be transformed to binary output" $
             bitStringPrinter (Proxy @(BitRecordOfDescriptor $~ Eval Mp4HeAacEsDescriptor))
@@ -59,9 +59,6 @@ spec =
                              (MkEnumValue (Proxy @'SF24000))
             `shouldBe`
               "<< 03 1a 00 01 00 04 12 40 15 00 00 00 00 00 00 00 00 00 00 00 05 03 29 8b 08 03 00 81 00 >>"
-          it "can be pretty printed" $
-            showRecord (Proxy @(BitRecordOfDescriptor $~ Eval Mp4HeAacEsDescriptor))
-            `shouldStartWith` "base-descriptor: 03\n"
      describe "SingleAudioTrackInit version 0" $
        do it "renders some output at all" $
             do creationTime <- mp4CurrentTime

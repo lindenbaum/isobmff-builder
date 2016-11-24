@@ -4,7 +4,6 @@ module Data.ByteString.Mp4.Boxes.DecoderConfigDescriptor where
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.ByteString.Mp4.Boxes.DecoderSpecificInfo
 import           Data.Type.BitRecords
-import           Data.Type.Pretty
 import           Data.Kind.Extra
 import           GHC.TypeLits
 
@@ -28,8 +27,7 @@ type family
         :: BitRecord
   where
     DecoderConfigDescriptorBody ot st di ps =
-      PutStr "decoder-config-descriptor"
-        #+$ (BitRecordOfEnum (SetEnum "objectTypeIndication" ObjectTypeIndicationEnum ot)
+      BitRecordOfEnum (SetEnum "objectTypeIndication" ObjectTypeIndicationEnum ot)
               :+: BitRecordOfEnum (SetEnum "objectTypeIndication" StreamTypeEnum st)
               :+: "upstream" @: Flag
               .+: "reserved" @: Field 1        :=  1
@@ -42,7 +40,7 @@ type family
                         (di ?:: LengthIn 0 1))
               :+: Eval (BitRecordOfList
                         (Extract :>>>: BitRecordOfDescriptor)
-                        (ps ?:: LengthIn 0 255)))
+                        (ps ?:: LengthIn 0 255))
 
 -- ** 'ProfileLevelIndicationIndexDescriptor'
 

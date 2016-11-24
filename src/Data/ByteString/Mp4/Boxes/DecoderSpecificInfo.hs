@@ -3,7 +3,6 @@ module Data.ByteString.Mp4.Boxes.DecoderSpecificInfo where
 
 import           Data.ByteString.Mp4.Boxes.BaseDescriptor
 import           Data.Type.BitRecords
-import           Data.Type.Pretty
 import           Data.Kind.Extra
 import           Data.Kind (type Type)
 
@@ -18,7 +17,7 @@ data DescriptorOfDecoderSpecificInfo
   :: IsA (DecoderSpecificInfo ot st :-> Descriptor 'DecSpecificInfo)
 
 type instance DescriptorOfDecoderSpecificInfo $~ 'MkDecoderSpecificInfo body =
-   'MkDescriptor (PutStr "decoder-specific-info" #+$ body)
+   'MkDescriptor body
 
 type ObjectTypeIndicationEnum = FixedEnum ObjectTypeIndication 8
 

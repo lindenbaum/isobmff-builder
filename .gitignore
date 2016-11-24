@@ -12,3 +12,4 @@ TAGS
 /.dir-locals.el
 *.refactored.hs
 /*.html
+*-build-timed.log

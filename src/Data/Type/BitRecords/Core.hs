@@ -18,9 +18,7 @@ import Text.Printf
 -- | 'BitRecordField's assembly
 data BitRecord where
   EmptyBitRecord     :: BitRecord
-  BitRecordDoc       :: PrettyType -> BitRecord
   BitRecordMember    :: IsA (BitRecordField t) -> BitRecord
-  BitRecordDocNested :: PrettyType -> BitRecord -> BitRecord
   BitRecordAppend    :: BitRecord -> BitRecord -> BitRecord
   -- TODO  MissingBitRecord          :: ErrorMessage     -> BitRecord
 
@@ -34,17 +32,13 @@ type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
 -- | Eval the size in as a number of bits from a 'BitRecord'
 type family BitRecordSize (x :: BitRecord) :: Nat where
   BitRecordSize 'EmptyBitRecord           = 0
-  BitRecordSize ('BitRecordDoc d)         = 0
   BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
-  BitRecordSize ('BitRecordDocNested d r) = BitRecordSize r
   BitRecordSize ('BitRecordAppend l r)    = BitRecordSize l + BitRecordSize r
 
 -- | The total number of members in a record.
 type family BitRecordMemberCount (b :: BitRecord) :: Nat where
   BitRecordMemberCount 'EmptyBitRecord           = 0
-  BitRecordMemberCount ('BitRecordDoc r)         = 0
   BitRecordMemberCount ('BitRecordMember f)      = 1
-  BitRecordMemberCount ('BitRecordDocNested d r) = BitRecordMemberCount r
   BitRecordMemberCount ('BitRecordAppend l r)    = BitRecordMemberCount l + BitRecordMemberCount r
 
 -- | Return the size of the record.
@@ -55,30 +49,6 @@ getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
 -- | Either use the value from @Just@ or return a 'EmptyBitRecord' value(types(kinds))
 type OptionalRecordOf (f :: IsA (s :-> IsA BitRecord)) (x :: Maybe s) =
   (Optional (Pure 'EmptyBitRecord) f $~ x :: IsA BitRecord)
-
--- TODO remove??
-
--- ** Record PrettyPrinting
-
--- | Augment the pretty printed output of a 'BitRecord'
-data (prettyTitle :: PrettyType) #: (r :: IsA BitRecord) :: IsA BitRecord
-infixr 4 #:
-type instance Eval (prettyTitle #: r)  = Append ('BitRecordDoc prettyTitle) (Eval r)
-
--- | Augment the pretty printed output of a 'BitRecord'
-type (prettyTitle :: PrettyType) #+: (r :: BitRecord) =
-  Append ('BitRecordDoc prettyTitle) r
-infixr 4 #+:
-
--- | Augment the pretty printed output of a 'BitRecord'
-data (prettyTitle :: PrettyType) #$ (r :: IsA BitRecord) :: IsA BitRecord
-infixr 2 #$
-type instance Eval (prettyTitle #$ r) = 'BitRecordDocNested prettyTitle (Eval r)
-
--- | Augment the pretty printed output of a 'BitRecord'
-type (prettyTitle :: PrettyType) #+$ (r :: BitRecord)
-  = 'BitRecordDocNested prettyTitle r
-infixr 2 #+$
 
 -- ** Record composition
 
@@ -296,10 +266,8 @@ type family FlagNothing  (a :: Maybe (v :: Type)) :: IsA (BitRecordField 'MkFiel
 
 -- | An optional field in a bit record
 data MaybeField :: Maybe (IsA (BitRecordField t)) -> IsA BitRecord
-type instance Eval (MaybeField ('Just  fld)) =
-   Append ('BitRecordDoc (PutStr "Just")) ('BitRecordMember fld)
-type instance Eval (MaybeField 'Nothing) =
-  'BitRecordDoc (PutStr "Nothing")
+type instance Eval (MaybeField ('Just  fld)) = 'BitRecordMember fld
+type instance Eval (MaybeField 'Nothing) = 'EmptyBitRecord
 
 -- | A 'BitRecordField' can be used as 'BitRecordMember'
 data RecordField :: IsA (BitRecordField t) -> IsA BitRecord
@@ -332,8 +300,6 @@ type family PrettyRecord (rec :: BitRecord) :: PrettyType where
    PrettyRecord ('BitRecordMember m) = PrettyField m
    PrettyRecord ' EmptyBitRecord = 'PrettyNewline
    PrettyRecord ('BitRecordAppend l r) = PrettyRecord l <$$> PrettyRecord r
-   PrettyRecord ('BitRecordDoc p) = p
-   PrettyRecord ('BitRecordDocNested p r) = p <$$--> PrettyRecord r
 
 type instance ToPretty (f :: IsA (BitRecordField t)) = PrettyField f
 

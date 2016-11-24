@@ -295,15 +295,6 @@ instance forall l r a .
 
 -- *** 'EmptyBitRecord' and '...Pretty'
 
-instance forall d r a . BitStringBuilderHoley (Proxy r) a =>
-  BitStringBuilderHoley (Proxy ('BitRecordDocNested d r)) a where
-  type ToBitStringBuilder (Proxy ('BitRecordDocNested d r)) a =
-    ToBitStringBuilder (Proxy r) a
-  bitStringBuilderHoley _ = bitStringBuilderHoley (Proxy @r)
-
-instance BitStringBuilderHoley (Proxy ('BitRecordDoc d)) a where
-  bitStringBuilderHoley _ = id
-
 instance BitStringBuilderHoley (Proxy 'EmptyBitRecord) a where
   bitStringBuilderHoley _ = id
 

@@ -44,27 +44,21 @@ data AudioConfigSbrExplicitHierachical
   -> IsA (DecoderSpecificInfo 'AudioIso14496_3 'AudioStream)
 
 type instance
-  Eval (AudioConfigSbrExplicitHierachical
-        aoId
-        subCfg
-        freq
-        channels
-        extFreq
-       ) =
-   ('MkDecoderSpecificInfo
-    (AudioConfigCommon 'Sbr freq channels
-     ("SBR audio object type" <:> PutHex8 (FromEnum AudioObjectTypeId aoId)
-      #+: BitRecordOfEnum extFreq
-      :+: AudioObjectTypeRec aoId
-      :+: BitRecordOfAudioSubConfig subCfg)))
+     Eval
+       (AudioConfigSbrExplicitHierachical aoId subCfg freq channels
+          extFreq)
+     =
+     'MkDecoderSpecificInfo
+       (AudioConfigCommon 'Sbr freq channels
+          (BitRecordOfEnum extFreq :+:
+             AudioObjectTypeRec aoId :+: BitRecordOfAudioSubConfig subCfg))
 
 -- | Common header for audio specific config
 type AudioConfigCommon aoId samplingFrequencyIndex channels rest =
-  ("audio-specific-config" <:> PutHex8 (FromEnum AudioObjectTypeId aoId))
-  #+$ (AudioObjectTypeRec aoId
-       :+: BitRecordOfEnum samplingFrequencyIndex
-       :+: BitRecordOfEnum channels
-       :+: rest)
+  AudioObjectTypeRec aoId
+        :+: BitRecordOfEnum samplingFrequencyIndex
+            :+: BitRecordOfEnum channels
+                :+: rest
 
 -- ** Audio Object Type
 
@@ -144,11 +138,8 @@ type instance FromEnum AudioObjectTypeId 'AoLayer3                       = 34
 type instance FromEnum AudioObjectTypeId 'AoDst                          = 35
 
 type AudioObjectTypeRec n =
-    (If ((FromEnum AudioObjectTypeId n) <=? 30)
-            "AudioObjectType"
-            "ExtAudioObjectType") <:> PutHex8 (FromEnum AudioObjectTypeId n)
-    #+$ AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
-    .+: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
+  AudioObjectTypeField1 (FromEnum AudioObjectTypeId n)
+  .+: AudioObjectTypeField2 (FromEnum AudioObjectTypeId n)
 
 type family AudioObjectTypeField1 (n :: Nat)
   :: IsA (BitRecordField ('MkFieldBits :: BitField (B 5) Nat 5)) where
