@@ -1,10 +1,7 @@
-module Mp4AudioSampleEntry ( spec ) where
+module Mp4AudioSampleEntrySpec ( spec ) where
 
-import           Data.ByteString.Builder
 import           Data.ByteString.IsoBaseFileFormat.ReExports
-import qualified Data.ByteString.Lazy                                 as B
-import           Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
-import           Data.Type.BitRecords
+import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 import           Test.Hspec
 
 spec :: Spec
@@ -20,8 +17,8 @@ testAudioObjectType ::
 
       "Small Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-         5 `ShouldBe` BitRecordSize (ToBitRecord (AudioObjectType 30))  -/-
+         5 `ShouldBe` BitRecordSize (AudioObjectTypeRec 'AoReserved5)  -/-
 
       "Big Audio Object Types"
       ~~~~~~~~~~~~~~~~~~~~~~~~
-        11 `ShouldBe` BitRecordSize (ToBitRecord (AudioObjectType 31))
+        11 `ShouldBe` BitRecordSize (AudioObjectTypeRec 'AoCustom)

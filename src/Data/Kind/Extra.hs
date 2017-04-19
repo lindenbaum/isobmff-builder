@@ -28,16 +28,14 @@ module Data.Kind.Extra
 
 import Data.Kind (type Type)
 
--- * Symbolic Types and Type Functions
+-- * Open Promoted Types
 
--- | A /symbolic/ type, i.e. a wrapper around a (poly kinded) type to be
--- produced by 'Eval' instances.
+-- | A group of types that all 'Eval' into the same type. This
+-- is an /open/ and /extensible/ alternative to defining an algebraic data type
+-- and using the promoted constructors. 'A' goes hand-in-hand with 'IsA' for
+-- better readability.
 --
--- All data types, e.g. @data Point2 x y :: Type@ can be made into /symbolic
--- representations/ of other types, by adding a /symbolic/ type parameter:
--- @data Point2 x y :: A Vec2 -> Type@.
---
--- Complete example:
+-- For example:
 --
 -- @
 -- data PrettyPrinter c where
@@ -46,9 +44,9 @@ import Data.Kind (type Type)
 --
 -- data Color = Black | White
 --
--- data ColoredText :: Color -> Symbol -> IsA (PrettyPrinter Symbol)
+-- data ColoredText :: Color -> Symbol -> 'IsA' (PrettyPrinter Symbol)
 --
--- type instance Eval (ColoredText c txt) = 'WithColor c ('RenderText txt)
+-- type instance 'Eval' (ColoredText c txt) = 'WithColor c ('RenderText txt)
 -- @
 data A :: forall foo . foo -> Type where
   MkA :: A foo

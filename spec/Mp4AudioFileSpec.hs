@@ -7,6 +7,7 @@ import Data.ByteString.Mp4.Boxes.AudioSpecificConfig
 import Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry
 import Data.ByteString.Mp4.AudioStreaming
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as BS
 import Data.Text ()
 
 spec :: Spec
@@ -71,8 +72,8 @@ spec =
                    cts :: [Word8]
                    cts = fromIntegral <$> [ct3,ct2,ct1,ct0]
                let args = exampleSingleTrackInit creationTime
-                   doc = buildAacMp4StreamInit args
-                   rendered = BL.unpack $ toLazyByteString $ doc
+                   doc = buildAacInitSegment args
+                   rendered = BS.unpack $ fromBinaryAacInitSegment doc
                    expected =
                      [
                       -- ftyp box
@@ -88,7 +89,7 @@ spec =
                      ,115,107,105,112
                      ,76,105,110,100,101,110,98,97,117,109,32,71,109,98,72,32,105
                      ,115,111,98,109,102,102,45,98,117,105,108,100,101,114,44,32
-                     ,83,118,101,110,32,72,101,121,108,108,32,50,48,49,54
+                     ,83,118,101,110,32,72,101,121,108,108,32,50,48,49,55
                      -- moov box
                      ,0,0,2,57,109 ,111 ,111 ,118
                       -- mvhd box
@@ -186,7 +187,7 @@ spec =
                rendered `shouldBe`
                  expected
 
-exampleSingleTrackInit :: U32 "creation_time" -> AacMp4StreamConfig
+exampleSingleTrackInit :: U32 "creation_time" -> AacInitSegment
 exampleSingleTrackInit creationTime =
-  AacMp4StreamConfig creationTime "Hello world" True SF48000 SingleChannel
+  AacInitSegment creationTime "Hello world" True SF48000 SingleChannel
 #endif

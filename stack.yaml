@@ -1,4 +1,4 @@
-resolver: lts-8.2
+resolver: lts-8.6
 
 packages:
 - '.'
@@ -10,3 +10,6 @@ extra-deps:
 flags: {}
 
 extra-package-dbs: []
+
+install-ghc: true
+pvp-bounds: upper

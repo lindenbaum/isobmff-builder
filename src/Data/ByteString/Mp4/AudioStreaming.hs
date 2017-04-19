@@ -2,12 +2,10 @@
 -- streaming via e.g. DASH.
 module Data.ByteString.Mp4.AudioStreaming
   (   Segment(..)
-    , InitSegment(..)
-    , StreamingContext, AacMp4StreamConfig(..)
+    , StreamingContext
     , AacMp4TrackFragment(..)
     , numberOfChannels
     , buildAacMp4TrackFragment
-    , buildAacMp4StreamInit
     , getStreamConfig, getStreamBaseTime, getStreamSequence
     , addToBaseTime, getSegmentDuration
     , streamInitINTERNAL_TESTING, streamInitUtc, streamNextSample, streamFlush
@@ -25,11 +23,19 @@ import           Data.ByteString.IsoBaseFileFormat.MediaFile      as X
 import           Data.ByteString.IsoBaseFileFormat.ReExports      as X
 import           Data.ByteString.IsoBaseFileFormat.Util.BoxFields as X
 import           Data.ByteString.IsoBaseFileFormat.Util.Time      as X
-import           Data.ByteString.IsoBaseFileFormat.Util.Versioned
 import           Data.ByteString.Mp4.Boxes.AudioSpecificConfig    as X
 import           Data.ByteString.Mp4.Boxes.Mp4AudioSampleEntry    as X
-import qualified Data.Text                                        as T
-import qualified Data.Text.Encoding                               as TE
+import           Data.ByteString.Mp4.AacInitSegment               as X
+
+-- | Contains the configuration and state for the creation of a DASH audio
+-- stream.
+data StreamingContext =
+  StreamingContext { acConfig          :: !AacInitSegment
+                   , acSegmentDuration :: !Word64 -- (in ticks)
+                   , acSequence        :: !Word32
+                   , acBaseTime        :: !Word64
+                   , acSegments        :: ![(Word32, BS.ByteString)]
+                   }
 
 -- | Contains a sample in the ISO14496 style interpretation, i.e.
 -- a smallish buffer of e.g. 20ms audio data or a single video frame.
@@ -39,35 +45,12 @@ import qualified Data.Text.Encoding                               as TE
 -- Also a sample has a duration measured as the sampleCount. TODO make this a
 -- real data type, and possible refactor this to be a seperate issue from
 -- filling stream gaps and determining the offsets and the decoding time stamp.
-
--- | Contains the configuration and state for the creation of a DASH audio
--- stream.
-data StreamingContext =
-  StreamingContext { acConfig          :: !AacMp4StreamConfig
-                   , acSegmentDuration :: !Word64 -- (in ticks)
-                   , acSequence        :: !Word32
-                   , acBaseTime        :: !Word64
-                   , acSegments        :: ![(Word32, BS.ByteString)]
-                   }
-
--- | Initialisation segment parameters of an aac audio stream mp4 file.
-data AacMp4StreamConfig =
-  AacMp4StreamConfig { creationTime  :: !(TS32 "creation_time")
-                     , trackName     :: !String
-                     , useHeAac      :: !Bool
-                     , sampleRate    :: !SamplingFreqTable
-                     , channelConfig :: !ChannelConfigTable}
-
 data Segment =
   Segment
   { segmentSequence :: !Word32
   , segmentTime     :: !Word64
   , segmentData     :: !BS.ByteString
   }
-
-newtype InitSegment =
-  InitSegment
-  { fromInitSegment :: BS.ByteString }
 
 -- | Media fragment segment parameters of an aac audio stream mp4 file.
 data AacMp4TrackFragment =
@@ -93,8 +76,8 @@ addToBaseTime !sc !dt =
         !baseTime = ticksToDiffTime (acBaseTime sc) timeScale
 
 
--- | Return the 'AacMp4StreamConfig' from an 'StreamingContext'
-getStreamConfig :: StreamingContext -> AacMp4StreamConfig
+-- | Return the 'AacInitSegment' from an 'StreamingContext'
+getStreamConfig :: StreamingContext -> AacInitSegment
 getStreamConfig StreamingContext{..} = acConfig
 
 -- | Return the current base decoding time
@@ -116,12 +99,12 @@ getSegmentDuration !sc = segmentDuration
     !segmentDuration = ticksToDiffTime (acSegmentDuration sc) timeScale
     !timeScale = getAacMp4StreamConfigTimeScale (acConfig sc)
 
-sampleCountDuration :: AacMp4StreamConfig -> Word32 -> Word64
-sampleCountDuration (AacMp4StreamConfig _ _ _ _ _c) r =
+sampleCountDuration :: AacInitSegment -> Word32 -> Word64
+sampleCountDuration (AacInitSegment _ _ _ _ _c) r =
   fromIntegral r -- `div` channelConfigToNumber c TODO clean this whole mess up and remove all Word32/Word64
 
-getAacMp4StreamConfigTimeScale :: AacMp4StreamConfig -> TimeScale
-getAacMp4StreamConfigTimeScale AacMp4StreamConfig{..} =
+getAacMp4StreamConfigTimeScale :: AacInitSegment -> TimeScale
+getAacMp4StreamConfigTimeScale AacInitSegment{..} =
   TimeScale (sampleRateToNumber sampleRate)
 
 -- | Initiate the 'StreamingContext' and create the /MP4 init segment/.
@@ -132,19 +115,14 @@ streamInitINTERNAL_TESTING
   -> Bool
   -> SamplingFreqTable
   -> ChannelConfigTable
-  -> IO (InitSegment, StreamingContext)
+  -> IO (BinaryAacInitSegment, StreamingContext)
 streamInitINTERNAL_TESTING !trackTitle !segmentDuration !sbr !rate !channels = do
   t <- mp4CurrentTime
-  let !cfg = AacMp4StreamConfig t trackTitle sbr rate channels
+  let !cfg = AacInitSegment t trackTitle sbr rate channels
       !dur = diffTimeToTicks segmentDuration timeScale
       !timeScale = getAacMp4StreamConfigTimeScale cfg
-  return (InitSegment
-          (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
+  return ( buildAacInitSegment cfg
          , StreamingContext cfg dur 0 0 [])
-
-instance Show InitSegment where
-  show (InitSegment !d) =
-    printf "INIT SEGMENT - size: %14d" (BS.length d)
 
 -- | Initiate the 'StreamingContext' and create the /MP4 init segment/.
 -- This lives in 'IO' because it read the current time from the real world.
@@ -156,15 +134,14 @@ streamInitUtc -- TODO remove 'streamInit' in favor of this ??
   -> Bool
   -> SamplingFreqTable
   -> ChannelConfigTable
-  -> (InitSegment, StreamingContext)
+  -> (BinaryAacInitSegment, StreamingContext)
 streamInitUtc !trackTitle !availabilityStartTime !refTime !segmentDuration !sbr !rate !channels =
-  let !cfg = AacMp4StreamConfig t0 trackTitle sbr rate channels
+  let !cfg = AacInitSegment t0 trackTitle sbr rate channels
       !t0  = utcToMp4 availabilityStartTime
       !secondsSinceRef = diffUTCTime availabilityStartTime refTime
       !dur = diffTimeToTicks segmentDuration timeScale
       !timeScale = getAacMp4StreamConfigTimeScale cfg
-  in (InitSegment
-      (BL.toStrict (toLazyByteString (buildAacMp4StreamInit cfg)))
+  in ( buildAacInitSegment cfg
      , addToBaseTime (StreamingContext cfg dur 0 0 []) secondsSinceRef)
 
 -- | Enqueue a sample, if enough samples are accumulated, generate the next segment
@@ -210,59 +187,6 @@ streamFlush !ctx@StreamingContext{..} =
                       , acSegments = []}
       in (Just (Segment acSequence acBaseTime (BL.toStrict (toLazyByteString tf))), ctx')
     else (Nothing, ctx)
-
--- | Convert a 'AacMp4StreamConfig' record to a generic 'Boxes' collection.
-buildAacMp4StreamInit
-  :: AacMp4StreamConfig -> Builder
-buildAacMp4StreamInit AacMp4StreamConfig{..} =
-  let
-    timeScaleForSampleRate = TimeScale (sampleRateToNumber sampleRate)
-  in
-    mediaBuilder dash $
-    -- TODO must be iso5 for the way we use elementary stream descriptors
-    fileTypeBox (FileType "iso5" 0 ["isom","iso5","dash","mp42"])
-    :. skipBox (Skip (TE.encodeUtf8 (T.pack "Lindenbaum GmbH isobmff-builder, Sven Heyll 2016")))
-    :| movie
-        ( movieHeader
-          (MovieHeader $
-           V0 (creationTime
-                :+ relabelScalar creationTime
-                :+ def
-                :+ TSv0 0)
-            :+ def :+ def :+def :+ def :+ def :+ def :+ Custom (Scalar 2))
-          :. track
-            (trackHeader
-              TrackInMovieAndPreview
-              (TrackHeader $
-                V0 (creationTime
-                    :+ relabelScalar creationTime
-                    :+ 1
-                    :+ Constant
-                    :+ 0) :+
-                def)
-              :| media
-              (mediaHeader (MediaHeader $
-                             V0 (creationTime
-                                  :+ relabelScalar creationTime
-                                  :+ timeScaleForSampleRate
-                                  :+ TSv0 0)
-                             :+ def)
-                :. handler (namedAudioTrackHandler (T.pack trackName))
-                :| mediaInformation
-                ( soundMediaHeader (SoundMediaHeader def)
-                  :. (dataInformation $: localMediaDataReference)
-                  :| sampleTable
-                  ((sampleDescription
-                     $: audioSampleEntry 1 (aacAudioSampleEntrySimple
-                                            useHeAac
-                                            sampleRate
-                                            channelConfig
-                                            (Scalar 16))
-                     :. timeToSample []
-                     :. sampleToChunk []
-                     :. fixedSampleSize 0 0
-                     :| chunkOffset32 [])))))
-            :| (movieExtends $: trackExtendsUnknownDuration 1 1))
 
 -- | Convert a 'AacMp4TrackFragment record to a generic 'Boxes' collection.
 buildAacMp4TrackFragment

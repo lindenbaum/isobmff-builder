@@ -14,6 +14,7 @@ import Test.QuickCheck (property, Arbitrary(..), choose)
 import Test.TypeSpecCrazy
 import Text.Printf
 
+basicsSpec :: Spec
 basicsSpec = do
   describe "Maybe, Lists, Either, Bool, 'True, 'False, FlagJust, FlagNothing" $ do
     let checkFlagJust ::
@@ -159,7 +160,7 @@ sizedSpec =
         showARecord (Proxy :: Proxy (RecordField [utf8|Heλλo World!|])) `shouldBe` "utf-8(112) := <<He\955\955o World!>> [14 Bytes]"
       describe "Sized SizeField16 SizedString" $
         it "renders the number bytes not chars as the size field value" $
-        showARecord (Proxy :: Proxy (SizedField16 [utf8|Heλλo World!|])) `shouldBe` "size: U16 := hex: 000e (dec: 14)\n  utf-8(112) := <<He\955\955o World!>> [14 Bytes]"
+        showARecord (Proxy :: Proxy (SizedField16 [utf8|Heλλo World!|])) `shouldBe` "size: U16 := hex: 000e (dec: 14)\nutf-8(112) := <<He\955\955o World!>> [14 Bytes]"
     describe "bitStringBuilder" $ do
       describe "no length prefix" $
         it "renders no size prefix and the string as UTF-8 bytes" $

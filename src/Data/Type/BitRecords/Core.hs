@@ -29,19 +29,19 @@ type family WhenR (b :: Bool) (x :: BitRecord) :: BitRecord where
 
 -- *** Basic Accessor
 
--- | Eval the size in as a number of bits from a 'BitRecord'
+-- | Get the number of bits in a 'BitRecord'
 type family BitRecordSize (x :: BitRecord) :: Nat where
   BitRecordSize 'EmptyBitRecord           = 0
   BitRecordSize ('BitRecordMember f)      = BitRecordFieldSize f
   BitRecordSize ('BitRecordAppend l r)    = BitRecordSize l + BitRecordSize r
 
--- | The total number of members in a record.
+-- | Get the total number of members in a record.
 type family BitRecordMemberCount (b :: BitRecord) :: Nat where
   BitRecordMemberCount 'EmptyBitRecord           = 0
   BitRecordMemberCount ('BitRecordMember f)      = 1
   BitRecordMemberCount ('BitRecordAppend l r)    = BitRecordMemberCount l + BitRecordMemberCount r
 
--- | Return the size of the record.
+-- | Get the size of the record.
 getRecordSizeFromProxy
   :: forall px (rec :: BitRecord) . KnownNat (BitRecordSize rec) => px rec -> Integer
 getRecordSizeFromProxy _ = natVal (Proxy :: Proxy (BitRecordSize rec))
