@@ -2,7 +2,7 @@ name:                isobmff-builder
 version:             0.11.4.0
 synopsis:            A (bytestring-) builder for the ISO-14496-12 base media file format
 description:         Please see README.md
-homepage:            https://github.com/sheyll/isobmff-builder#readme
+homepage:            https://github.com/lindenbaum/isobmff-builder#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Sven Heyll
